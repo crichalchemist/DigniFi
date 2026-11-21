@@ -19,6 +19,7 @@ import pypdf
 from django.conf import settings
 
 from apps.forms.field_index import export_state, load_index
+from apps.forms.services.answer_records import PETITION_STEP_OF_KEY
 from apps.forms.services.widgets import (
     TemplateMismatch,
     TemplateWidget,
@@ -381,6 +382,11 @@ def validate_schema(
             errors.append(("E007", f"{f.pdf_field!r}: unknown predicate {f.conditional_on!r}"))
         if f.binding is not None and not f.binding.startswith(_BINDING_NAMESPACES):
             errors.append(("E007", f"{f.pdf_field!r}: unknown binding namespace {f.binding!r}"))
+        # A petition. key the record doesn't list reads blank at resolve time (4b).
+        if (f.binding or "").startswith("petition.") and (
+            f.binding.removeprefix("petition.").partition("[].")[0] not in PETITION_STEP_OF_KEY
+        ):
+            errors.append(("E007", f"{f.binding!r}: not a key PetitionAnswers asks"))
         if f.repeat is not None and not f.repeat_capacity:
             errors.append(("E007", f"repeat group {f.repeat!r} has no repeat_capacity"))
 

@@ -35,16 +35,38 @@ BELOW_MEDIAN = "/12b less or equal to 13"
 ABOVE_MEDIAN = "/12b more than 13"
 
 
-def _common(first, last, street, zip_code):
+# Form 101 (11/26) line 8: one single box a way to pay, each ticked /On.
+PAY_IN_FULL = (
+    "I will pay the entire fee when I file my petition "
+    "Please check with the clerks office in your"
+)
+INSTALLMENTS = "I need to pay the fee in installments If you choose this option sign and attach the"
+WAIVER = (
+    "I request that my fee be waived "
+    "You may request this option only if you are filing for Chapter 7"
+)
+LINE_17_YES = (
+    "Yes I am filing under Chapter 7 "
+    "Do you estimate that after any exempt property is excluded and"
+)
+
+
+def _common(first, last, number, street, zip_code):
+    """Form 101's name, home address (the court splits the street into Number and Street),
+    Chapter 7 on pages 1 and 3, line 13 No and line 17 Yes, each a single box."""
     return {
-        "Debtor1.First name": first,
-        "Debtor1.Last name": last,
-        "Debtor1.Street": street,
-        "Debtor1.City": "Chicago",
-        "Debtor1.State": "IL",
-        "Debtor1.ZIP Code": zip_code,
-        "Debtor1.County": "Cook",
-        "Check Box1": "/Chapter 7",
+        "First name": first,
+        "Last name": last,
+        "Number": number,
+        "Street": street,
+        "City": "Chicago",
+        "State_2": "IL",
+        "ZIP Code": zip_code,
+        "County": "Cook",
+        "Chapter 7": "/On",
+        "Chapter 7_2": "/On",
+        "No_4": "/On",
+        LINE_17_YES: "/On",
     }
 
 
@@ -125,8 +147,8 @@ def _own_car(make, model, year, miles, value):
 EXPECTED = {
     "maria": {
         "form_101": {
-            **_common("Maria", "Torres", "2145 W Division St Apt 3", "60622"),
-            "Check Box7": "/Request fees waived",
+            **_common("Maria", "Torres", "2145", "W Division St Apt 3", "60622"),
+            WAIVER: "/On",
         },
         "form_103b": {
             "You": "/On",
@@ -322,8 +344,8 @@ EXPECTED = {
     },
     "james": {
         "form_101": {
-            **_common("James", "Washington", "850 N State St Apt 1204", "60610"),
-            "Check Box7": "/Pay entirely",
+            **_common("James", "Washington", "850", "N State St Apt 1204", "60610"),
+            PAY_IN_FULL: "/On",
         },
         # Schedule A/B totals, hand-worked: 5 = 14,000 (Camry); 15 = 500+400+300; 36 = 40 cash + 1,200 checking; 62 = 63 = 14,000+1,200+1,240
         "schedule_a_b": {
@@ -490,8 +512,8 @@ EXPECTED = {
     },
     "priya": {
         "form_101": {
-            **_common("Priya", "Sharma", "456 W Fullerton Pkwy", "60614"),
-            "Check Box7": "/Pay entirely",
+            **_common("Priya", "Sharma", "456", "W Fullerton Pkwy", "60614"),
+            PAY_IN_FULL: "/On",
         },
         # Schedule A/B totals, hand-worked: 5 = 20,500 (CR-V); 15 = 2,500+1,500+800+1,200; 36 = 1,900+8,500+31,000+0+0; 62 = 63 = 20,500+6,000+41,400
         "schedule_a_b": {
@@ -856,8 +878,8 @@ EXPECTED = {
     },
     "deshawn": {
         "form_101": {
-            **_common("DeShawn", "Mitchell", "7823 S Sangamon St", "60620"),
-            "Check Box7": "/Pay in installments",
+            **_common("DeShawn", "Mitchell", "7823", "S Sangamon St", "60620"),
+            INSTALLMENTS: "/On",
         },
         # Schedule A/B totals, hand-worked: 55 = 180,000 (home); 5 = 8,000 (F-150); 15 = 1,500+400+300+600; 36 = 60+640+12,000; 62 = 8,000+2,800+12,700; 63 = 180,000+23,500
         "schedule_a_b": {
@@ -1038,8 +1060,8 @@ EXPECTED = {
     },
     "sarah": {
         "form_101": {
-            **_common("Sarah", "Chen", "1520 N Damen Ave Apt 2F", "60622"),
-            "Check Box7": "/Request fees waived",
+            **_common("Sarah", "Chen", "1520", "N Damen Ave Apt 2F", "60622"),
+            WAIVER: "/On",
         },
         # Guard: passes before 3f Task 2 (her typed application equals her Income step
         # figures); Maria's entry fails first.
@@ -1166,7 +1188,7 @@ EXPECTED = {
     },
     # His driving is a business on line 5 and 8a since 3e2 (§11).
     "andres": {
-        "form_101": {"Debtor1.County": "Kane", "Check Box7": "/Pay in installments"},
+        "form_101": {"County": "Kane", INSTALLMENTS: "/On"},
         # Schedule A/B totals, hand-worked: 5 = 0 (leased Corolla) + 4,300 (his half of the Fit); 15 = 1,200+400+300; 36 = 60+412+85; 45 = 310+150 = 460; 62 = 63 = 4,300+1,900+557+460
         "schedule_a_b": {
             "undefined_26": "4300.00",

@@ -350,8 +350,8 @@ class TestGenerateEndpoint:
     @pytest.mark.parametrize(
         "exc",
         [
-            UnknownField("form_101", ["Debtor1.SSNum"]),
-            InvalidFieldValue("form_101", "Debtor1.SSNum"),
+            UnknownField("form_101", ["Last 4 of the SSN"]),
+            InvalidFieldValue("form_101", "Last 4 of the SSN"),
         ],
         ids=lambda exc: type(exc).__name__,
     )
@@ -370,7 +370,7 @@ class TestGenerateEndpoint:
             "error": "This form couldn't be prepared. Please try again later.",
         }
         assert type(exc).__name__ in caplog.text
-        assert "Debtor1.SSNum" not in caplog.text
+        assert "Last 4 of the SSN" not in caplog.text
 
     # A letter the form can't print, or a value too long for its box, is the filer's to
     # change: a 422 naming the box and where to change it. It is no fault, so nothing is
@@ -432,7 +432,7 @@ class TestGenerateEndpoint:
         }
 
     def test_filed_form_keeps_what_was_filed(self, api_client, session_with_debtor, user):
-        form = _filed_form(session_with_debtor, user, "form_101", {"Debtor1.First name": "Jane"})
+        form = _filed_form(session_with_debtor, user, "form_101", {"First name": "Jane"})
         _rename_filer(session_with_debtor, "Janet")
 
         resp = api_client.post(
@@ -445,7 +445,7 @@ class TestGenerateEndpoint:
         assert resp.data == {"form_type": "form_101", "error": FILED}
         form.refresh_from_db()
         assert form.status == "filed"
-        assert json.loads(form.field_values) == {"Debtor1.First name": "Jane"}
+        assert json.loads(form.field_values) == {"First name": "Jane"}
 
 
 # ── A gate gap is refused first, in Complete's words (step 4a, 4a-R1) ──
@@ -727,7 +727,7 @@ class TestGenerateAllEndpoint:
         # The forms not yet filed are resolved from the current answers.
         petition = GeneratedForm.objects.get(session=session_with_debtor, form_type="form_101")
         (part,) = json.loads(petition.field_values)["parts"]
-        assert part["values"]["Debtor1.First name"] == "Janet"
+        assert part["values"]["First name"] == "Janet"
 
 
 @pytest.mark.django_db
@@ -822,7 +822,7 @@ def test_each_generate_names_the_step_that_fixes_a_letter_the_form_cannot_print(
 
     refusal = {
         "form_type": "form_101",
-        "error": "The court form can't print the letter “ą” in “Last name”. "
+        "error": "The court form can't print the letter “ą” in “Debtor 1, line 1: last name”. "
         "Change it to a letter without the mark.",
         "step": "debtor_info",
     }

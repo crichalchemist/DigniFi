@@ -6,7 +6,8 @@ UPL boundary: these encode ONLY facts and clerical transforms. A rule may
 apply a comparison the form itself spells out (122A-1 line 14: line 12b
 against line 13), but no rule may choose exemptions, decide priority, or
 answer anything the form leaves to the filer — those are ``asked`` +
-``legal_review`` in the schema.
+``legal_review`` in the schema. The one exception is ANSWER_BOX_RULES: a
+``legal_review`` box a rule ticks only for the filer's own stored choice.
 """
 
 from __future__ import annotations
@@ -1138,6 +1139,54 @@ _register("debt_nature_16b_yes", _is(_asked("debt_nature"), "business"), _step_o
 _register("debt_nature_16b_no", _is(_asked("debt_nature"), "neither"), _step_of("debt_nature"))
 _register("itin_answer_no", _is(_asked("itin_answer"), "no"), _step_of("itin_answer"))
 
+# The derived rules a legal_review box may print through (Ruling T4-legalreview): each ticks its
+# box only when the filer's own stored answer is exactly that box's choice, so it infers nothing.
+# fill_resolver's UPL guard keeps every other derived legal_review box blank.
+ANSWER_BOX_RULES = frozenset(
+    {
+        "credit_counseling_certificate",
+        "credit_counseling_no_certificate",
+        "credit_counseling_exigent",
+        "credit_counseling_not_required",
+        "not_required_incapacity",
+        "not_required_disability",
+        "not_required_active_duty",
+        "debt_nature_16a_yes",
+    }
+)
+
+# The running header's name-part boxes on pages 2, 4 and 7 (Ruling T4-header, provisional).
+_HEADER_TEMPLATE = "form_b101.pdf"
+_HEADER_BOXES = {
+    "first": ("First Name", "First Name_2", "First Name_3"),
+    "middle": ("Middle Name", "Middle Name_2", "Middle Name_3"),
+    "last": ("Last Name", "Last Name_2", "Last Name_3"),
+}
+
+
+def _header_part(session: IntakeSession, part: str) -> str:
+    """
+    The name part when it fits each of its three header boxes at 6 pt or larger, measured as
+    check() measures it (composed, the box's own font and inner width); "" when it doesn't, so a
+    long name never refuses the form. Line 1 and the whole-name headers print it whole.
+    """
+    from apps.forms.services.pdf_filler import _as_printed
+    from apps.forms.services.text_fit import fit
+    from apps.forms.services.widgets import template_widgets
+
+    text = _safe_debtor_attr(session, f"{part}_name")
+    boxes = [w for w in template_widgets(_HEADER_TEMPLATE) if w.full_name in _HEADER_BOXES[part]]
+    fits = all(fit(w, _HEADER_TEMPLATE, _as_printed(text)) is not None for w in boxes)
+    return text if fits else ""
+
+
+for _part in _HEADER_BOXES:
+    _register(
+        f"header_{_part}_name",
+        lambda s, part=_part: _header_part(s, part),
+        {"step": "debtor_info"},
+    )
+
 # Lines 18-20: one box a range, each keyed by the range the existing rule returns.
 for _prefix, _range_rule, _ranges, _fix in (
     ("creditor_count_is", _creditor_count_range, _CREDITOR_RANGES, {"step": "debts"}),
@@ -1660,9 +1709,6 @@ PREDICATES: dict[str, Callable[[IntakeSession], bool]] = {
     ),
     "has_address_history": lambda s, answer_cache=None: _form_answer_predicate(
         s, "address_history_gate", answer_cache
-    ),
-    "has_attorney": lambda s, answer_cache=None: _form_answer_predicate(
-        s, "attorney_gate", answer_cache
     ),
     **_PETITION_PREDICATES,
 }

@@ -19,27 +19,29 @@ from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
 from apps.forms.schema import load_schema
+from apps.forms.services.derivations import ANSWER_BOX_RULES
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.tests.pdf_readback import read_drawn
-from apps.intake.models import DebtorInfo, FormAnswer, IncomeInfo, IntakeSession
+from apps.intake.models import DebtorInfo, FormAnswer, IncomeInfo, IntakeSession, PetitionAnswers
 from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
-# Form → (box, state its "yes" ticks, state its "no" ticks), each state from the index.
+# Form → (box, state its "yes" ticks, state its "no" ticks), each state from the index. Form 101
+# (11/26) asks each as two single boxes: ((its Yes box, its No box), the one state each ticks).
 CONSUMER_DEBTS = {
-    "form_101": ("Check Box18", "/Yes", "/No"),
+    "form_101": (("Yes Go to line 17", "No Go to line 16b"), "/On"),
     "form_106sum": ("check7", "/consumer", "/not consumer"),
     "form_107": ("check6", "/yes", "/no"),
 }
 PAID_HELP = {
-    "form_101": ("Check Box26", "/Yes", "/no"),
+    "form_101": (("Yes Name of Person", "No_10"), "/On"),
     "form_106dec": ("check1", "/yes", "/no"),
     "form_107": ("check30", "/yes", "/no"),
 }
 HELPER_NAME = {
-    "form_101": "Name of person payed to help file",
+    "form_101": "undefined_22",
     "form_106dec": "Name of person payed to help file",
     "form_107": "Name of person agreed to pay",
 }
@@ -86,6 +88,46 @@ def _answer(session, key, value, form_type="form_101"):
     FormAnswer.objects.create(session=session, form_type=form_type, field_key=key, value=value)
 
 
+# The petition's own record of the answers 106Sum, 106Dec and 107 still read from FormAnswer
+# rows until 4d and 4i: key → (PetitionAnswers key, the stored value of a "yes" / "no").
+PETITION_ANSWER = {
+    "primarily_consumer_debts": ("debt_nature", {"yes": "consumer", "no": "business"}),
+    "paid_non_attorney_preparer": ("paid_preparer", {"yes": "yes", "no": "no"}),
+}
+
+
+def _says(session, form_type, key, value):
+    """The filer's answer, stored where the form reads it: Form 101's record, or the shared row."""
+    if form_type != "form_101":
+        _answer(session, key, value)
+        return
+    petition_key, stored = PETITION_ANSWER.get(key, (key, None))
+    record, _ = PetitionAnswers.objects.get_or_create(session=session)
+    record.merge({petition_key: stored[value] if stored else value})
+    record.save()
+    session.refresh_from_db()  # drops the record the session cached before this save
+
+
+def _boxes(entry):
+    """(yes box, yes state, no box, no state) of a table entry."""
+    if isinstance(entry[0], tuple):
+        (yes_box, no_box), state = entry
+        return yes_box, state, no_box, state
+    box, yes, no = entry
+    return box, yes, box, no
+
+
+def _shows(filled, form_type, entry, answer):
+    """What the form prints in the box of its Yes and the box of its No, for one answer."""
+    yes_box, yes, no_box, no = _boxes(entry)
+    if yes_box == no_box:
+        return filled.get(yes_box), {yes if answer == "yes" else no}
+    own, other = (yes_box, no_box) if answer == "yes" else (no_box, yes_box)
+    # Only the box of the filer's own answer is ticked; the other prints nothing.
+    assert filled.get(other) == set(), (form_type, other)
+    return filled.get(own), {yes if answer == "yes" else no}
+
+
 def _filled(session, form_type):
     """Box → what the drawn form prints in it: the ticked states, or the text."""
     values = resolve(load_schema(form_type), session)
@@ -106,19 +148,26 @@ def _filled(session, form_type):
 def test_the_consumer_debts_answer_ticks_the_same_answer_on_every_form_that_asks(
     session, form_type, answer
 ):
-    _answer(session, "primarily_consumer_debts", answer)
-    box, yes, no = CONSUMER_DEBTS[form_type]
-    assert _filled(session, form_type).get(box) == {yes if answer == "yes" else no}
+    _says(session, form_type, "primarily_consumer_debts", answer)
+    shown, expected = _shows(
+        _filled(session, form_type), form_type, CONSUMER_DEBTS[form_type], answer
+    )
+    assert shown == expected
 
 
 @pytest.mark.parametrize("form_type", CONSUMER_DEBTS)
 def test_only_the_filers_own_answer_can_tick_consumer_debts(form_type):
     # The answer decides whether the means test applies, and DigniFi never gives it for
     # the filer: the box is held for legal review, which fills it only from an answer.
-    box = CONSUMER_DEBTS[form_type][0]
+    box = _boxes(CONSUMER_DEBTS[form_type])[0]
     field = next((f for f in load_schema(form_type).fields if f.pdf_field == box), None)
     assert field is not None, f"{box!r} is not bound on {form_type}"
-    assert (field.source, field.legal_review) == ("asked", True)
+    if form_type == "form_101":
+        # Form 101 ticks its Yes box through a rule that fires on the filer's own "consumer".
+        assert (field.source, field.legal_review) == ("derived", True)
+        assert field.rule in ANSWER_BOX_RULES
+    else:
+        assert (field.source, field.legal_review) == ("asked", True)
 
 
 @pytest.mark.slow
@@ -126,21 +175,21 @@ def test_only_the_filers_own_answer_can_tick_consumer_debts(form_type):
 def test_a_filer_who_paid_a_non_lawyer_says_so_and_names_them_on_every_form_that_asks(
     session, form_type
 ):
-    _answer(session, "paid_non_attorney_preparer", "yes")
-    _answer(session, "preparer_name", "Pat Helper")
-    box, yes, _ = PAID_HELP[form_type]
+    _says(session, form_type, "paid_non_attorney_preparer", "yes")
+    _says(session, form_type, "preparer_name", "Pat Helper")
     filled = _filled(session, form_type)
-    assert filled.get(box) == {yes}
+    shown, expected = _shows(filled, form_type, PAID_HELP[form_type], "yes")
+    assert shown == expected
     assert filled.get(HELPER_NAME[form_type]) == {"Pat Helper"}
 
 
 @pytest.mark.slow
 @pytest.mark.parametrize("form_type", PAID_HELP)
 def test_a_filer_who_paid_no_one_says_no_and_names_no_one(session, form_type):
-    _answer(session, "paid_non_attorney_preparer", "no")
-    box, _, no = PAID_HELP[form_type]
+    _says(session, form_type, "paid_non_attorney_preparer", "no")
     filled = _filled(session, form_type)
-    assert filled.get(box) == {no}
+    shown, expected = _shows(filled, form_type, PAID_HELP[form_type], "no")
+    assert shown == expected
     assert filled.get(HELPER_NAME[form_type]) == set()
 
 
@@ -166,10 +215,14 @@ def test_each_form_103b_payment_question_prints_its_own_answer(session, yes_line
 @pytest.mark.slow
 def test_a_question_the_filer_has_not_answered_prints_nothing(session):
     boxes = {
-        "form_101": ["Check Box18", "Check Box26", HELPER_NAME["form_101"]],
+        "form_101": [
+            *CONSUMER_DEBTS["form_101"][0],
+            *PAID_HELP["form_101"][0],
+            HELPER_NAME["form_101"],
+        ],
         "form_103b": [box for _, box in PAYMENT_LINES.values()],
         "form_106dec": ["check1", HELPER_NAME["form_106dec"]],
-        "form_106sum": ["check7"],
+        "form_106sum": [CONSUMER_DEBTS["form_106sum"][0]],
         "form_107": ["check6", "check30", HELPER_NAME["form_107"]],
     }
     for form_type, names in boxes.items():

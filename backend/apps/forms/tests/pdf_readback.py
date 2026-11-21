@@ -2,10 +2,12 @@
 Read a drawn PDF back box by box, the way a person reads the printed page (spec §8).
 
 Every value prints in Helvetica (on the List of Creditors, Times-Roman) and every tick is
-the template's ZapfDingbats check mark, while the templates print their own words in Arial,
-Wingdings and Times. A character belongs to a widget when its centre lies inside the
-widget's rect from the field index: two pairs of boxes overlap by about 2 pt, and a glyph
-merely touching a rect would put a neighbour's tick in it. A copy of an extra page is read
+the template's own on-appearance: a ZapfDingbats check mark, or, on Form 101 (11/26), a
+black filled square, while the templates print their own words in Arial, Wingdings and
+Times. A character belongs to a widget when its centre lies inside the widget's rect from
+the field index: two pairs of boxes overlap by about 2 pt, and a glyph merely touching a
+rect would put a neighbour's tick in it. A filled square belongs to a widget when it lies
+wholly inside the rect. A copy of an extra page is read
 as the template page it copies, found through the form's parts. An attached sheet has no
 widget: its pages are read line by line under its columns (read_sheets).
 """
@@ -36,7 +38,7 @@ class DrawnWidget:
     page: int
     tag: str
     value: str  # the Helvetica (List of Creditors: Times-Roman) text inside the widget's rect; "" when none
-    state: str  # a box: its on-state when a check mark is inside, else "/Off"; "" for text
+    state: str  # a box: its on-state when a tick (mark or square) is inside, else "/Off"; "" text
     copy: int | None = None  # on a copy of an extra page, its number; None on the form's own
 
 
@@ -78,6 +80,19 @@ def _inside(character: _Character, rect: tuple[float, ...]) -> bool:
     return rect[0] <= x <= rect[2] and rect[1] <= y <= rect[3]
 
 
+def _black_fills(page: pymupdf.Page) -> list[tuple[float, float, float, float]]:
+    """The rect of every path on the page filled black: Form 101 (11/26)'s tick is one."""
+    return [
+        tuple(drawing["rect"])
+        for drawing in page.get_drawings()
+        if "f" in drawing["type"] and drawing.get("fill") is not None and max(drawing["fill"]) < 0.1
+    ]
+
+
+def _wholly_inside(box: tuple[float, ...], rect: tuple[float, ...]) -> bool:
+    return rect[0] <= box[0] and rect[1] <= box[1] and box[2] <= rect[2] and box[3] <= rect[3]
+
+
 def _text(widget: TemplateWidget, characters: list[_Character]) -> str:
     """The Helvetica (List of Creditors: Times-Roman) characters inside the widget, line by line from the top."""
     lines: dict[tuple[int, int], list[_Character]] = {}
@@ -100,9 +115,12 @@ def _read(
     drawn = []
     for output, (page, copy) in zip(document, pages, strict=True):
         on_page = _characters(output)
+        fills = _black_fills(output)
         for widget in widgets.get(page, []):
             if widget.kind in _BOXES:
-                ticked = any(c.font == _TICK_FONT and _inside(c, widget.rect) for c in on_page)
+                ticked = any(
+                    c.font == _TICK_FONT and _inside(c, widget.rect) for c in on_page
+                ) or any(_wholly_inside(fill, widget.rect) for fill in fills)
                 value, state = "", widget.states[0] if ticked else "/Off"
             else:
                 value, state = _text(widget, on_page), ""

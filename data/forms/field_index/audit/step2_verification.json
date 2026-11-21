@@ -1,103 +1,1603 @@
 [
   {
     "schema": "form_101",
-    "pdf_field": "Debtor1.ZIP Code_2",
-    "producer": "asked:answer:form_101.mailing_zip",
+    "pdf_field": "District",
+    "producer": "derived:court_district",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
-    "correct_target": "Debtor1.ZIP Code_2",
-    "evidence": "Field index: Debtor1.ZIP Code_2 p2 line 5 'If your mailing address is different from the one above (mailing address): ZIP Code' (adjudicated). The audit's own row on this box says the residence ZIP doesn't belong here, and its confirmed rows on Debtor2.ZIP and ZIP Code_4 name this box for the mailing_zip answer. Owner's decision 6d (step 2 spec Appendix E 2, §6.4): the mailing ZIP reads the mailing answer, like the street, city and state beside it."
+    "correct_target": "District",
+    "evidence": "Field index: District p1 T1, \"Court: the district, before 'District of' (page 1)\" (adjudicated). Spec §8's row for the cover and running headers: court_district prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
   },
   {
     "schema": "form_101",
-    "pdf_field": "Check Box20",
-    "producer": "constant:yes",
+    "pdf_field": "State",
+    "producer": "derived:court_state",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
-    "correct_target": "Check Box20",
-    "evidence": "Field index: Check Box20 p7 line 17 'Are you filing under Chapter 7?', states /No and /Yes. Step 2 spec §6.4: line 17 is Yes; every DigniFi filing is Chapter 7."
+    "correct_target": "State",
+    "evidence": "Field index: State p1 T2, \"Court: the state, after 'District of' (page 1)\" (adjudicated). Spec §8's row for the cover and running headers: court_state prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
   },
   {
     "schema": "form_101",
-    "pdf_field": "Check Box21",
-    "producer": "derived:creditor_count_range",
+    "pdf_field": "Chapter 7",
+    "producer": "constant:true",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
-    "correct_target": "Check Box21",
-    "evidence": "Field index: Check Box21 p7 line 18 'How many creditors do you estimate that you owe?', ten states from /1-49 to /More than 100000. Step 2 spec §6.2 and §6.4: lines 18-20 tick their ranges; creditor_count_range buckets the number of debts in the intake and is blank with none."
+    "correct_target": "Chapter 7",
+    "evidence": "Field index: Chapter 7 p1 T4, 'Chapter you are filing under, page 1: Chapter 7' (adjudicated). Spec §8's row for the cover and running headers: prints for every filer (§8: the cover and line 7's Chapter 7, line 13, line 17). Read by test_form_101_schema.py and tier 1."
   },
   {
     "schema": "form_101",
-    "pdf_field": "Check Box22",
-    "producer": "derived:total_assets_range",
+    "pdf_field": "First Name",
+    "producer": "derived:header_first_name",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
-    "correct_target": "Check Box22",
-    "evidence": "Field index: Check Box22 p7 line 19 'How much do you estimate your assets to be worth?', twelve states from /0-50000 to /More than 50000000000; this line spells the $100M range /100000000-500000000. Step 2 spec §6.1 (B5) and §6.2: total_assets_range buckets the total of every asset, the figure 106Sum line 1c prints."
+    "correct_target": "First Name",
+    "evidence": "Field index: First Name p2 T1, 'Header, page 2: Debtor 1 first name' (adjudicated). Spec §8's row for the cover and running headers: header_first_name prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
   },
   {
     "schema": "form_101",
-    "pdf_field": "Check Box23",
-    "producer": "derived:total_debts_range",
+    "pdf_field": "Middle Name",
+    "producer": "derived:header_middle_name",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
-    "correct_target": "Check Box23",
-    "evidence": "Field index: Check Box23 p7 line 20 'How much do you estimate your liabilities to be?', twelve states from /0-50000 to /More than 50000000000; this line spells the $100M range /100000001-500000000. Step 2 spec §6.1 (B5) and §6.2: total_debts_range buckets the total of every debt (total_debts)."
+    "correct_target": "Middle Name",
+    "evidence": "Field index: Middle Name p2 T2, 'Header, page 2: Debtor 1 middle name' (adjudicated). Spec §8's row for the cover and running headers: header_middle_name prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
   },
   {
     "schema": "form_101",
-    "pdf_field": "Debtor1.Name",
+    "pdf_field": "Last Name",
+    "producer": "derived:header_last_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Last Name",
+    "evidence": "Field index: Last Name p2 T3, 'Header, page 2: Debtor 1 last name' (adjudicated). Spec §8's row for the cover and running headers: header_last_name prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "First Name_2",
+    "producer": "derived:header_first_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "First Name_2",
+    "evidence": "Field index: First Name_2 p4 T1, 'Header, page 4: Debtor 1 first name' (adjudicated). Spec §8's row for the cover and running headers: header_first_name prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Middle Name_2",
+    "producer": "derived:header_middle_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Middle Name_2",
+    "evidence": "Field index: Middle Name_2 p4 T2, 'Header, page 4: Debtor 1 middle name' (adjudicated). Spec §8's row for the cover and running headers: header_middle_name prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Last Name_2",
+    "producer": "derived:header_last_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Last Name_2",
+    "evidence": "Field index: Last Name_2 p4 T3, 'Header, page 4: Debtor 1 last name' (adjudicated). Spec §8's row for the cover and running headers: header_last_name prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "First Name_3",
+    "producer": "derived:header_first_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "First Name_3",
+    "evidence": "Field index: First Name_3 p7 T1, 'Header, page 7: Debtor 1 first name' (adjudicated). Spec §8's row for the cover and running headers: header_first_name prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Middle Name_3",
+    "producer": "derived:header_middle_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Middle Name_3",
+    "evidence": "Field index: Middle Name_3 p7 T2, 'Header, page 7: Debtor 1 middle name' (adjudicated). Spec §8's row for the cover and running headers: header_middle_name prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Last Name_3",
+    "producer": "derived:header_last_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Last Name_3",
+    "evidence": "Field index: Last Name_3 p7 T3, 'Header, page 7: Debtor 1 last name' (adjudicated). Spec §8's row for the cover and running headers: header_last_name prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Debtor 1",
     "producer": "derived:full_name",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
-    "correct_target": "Debtor1.Name",
-    "evidence": "Field index: Debtor1.Name 'Running header: Debtor 1 (First Name Middle Name Last Name)', one field with a widget on each of pages 2-9 (header). Step 2 spec §6.4: the header name prints on pages 2-9."
+    "correct_target": "Debtor 1",
+    "evidence": "Field index: Debtor 1 p3 T1, 'Header, page 3: Debtor 1 name' (adjudicated). Spec §8's row for the cover and running headers: full_name prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
   },
   {
     "schema": "form_101",
-    "pdf_field": "Debtor1.Contact phone_2",
-    "producer": "derived:phone",
+    "pdf_field": "Debtor 1_2",
+    "producer": "derived:full_name",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
-    "correct_target": "Debtor1.Contact phone_2",
-    "evidence": "Field index: Debtor1.Contact phone_2 p9 Part 7 'For you if you are filing this bankruptcy without an attorney: Contact phone' (adjudicated). The audit's confirmed note on this box: the debtor's own phone, which the phone rule gives; the preparer's phone belongs on Form 119. Step 2 spec §6.4: Contact phone gets the phone, and Cell phone stays blank because the wizard never asks whether the number is a cell."
+    "correct_target": "Debtor 1_2",
+    "evidence": "Field index: Debtor 1_2 p5 T1, 'Header, page 5: Debtor 1 name' (adjudicated). Spec §8's row for the cover and running headers: full_name prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
   },
   {
     "schema": "form_101",
-    "pdf_field": "Check Box18",
-    "producer": "asked:answer:form_101.primarily_consumer_debts",
+    "pdf_field": "Debtor 1_3",
+    "producer": "derived:full_name",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
-    "correct_target": "Check Box18",
-    "evidence": "Field index: Check Box18 p7 line 16a 'Are your debts primarily consumer debts?', states /No (sampled_ok) and /Yes (vision_agreed). form_101.unbound.json names this box for the answer: 'the Check Box16 constant was evidently meant for it'. Owner's answer Q7 (DIG-121; step 2 spec §3, §6.3): each filer answers 'primarily consumer debts', and the answer prints on 101 Check Box18, 106Sum check7 and 107 check6, marked for legal review."
+    "correct_target": "Debtor 1_3",
+    "evidence": "Field index: Debtor 1_3 p6 T1, 'Header, page 6: Debtor 1 name' (adjudicated). Spec §8's row for the cover and running headers: full_name prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
   },
   {
     "schema": "form_101",
-    "pdf_field": "Check Box26",
-    "producer": "asked:answer:form_101.paid_non_attorney_preparer",
+    "pdf_field": "Debtor 1_4",
+    "producer": "derived:full_name",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
-    "correct_target": "Check Box26",
-    "evidence": "Field index: Check Box26 p9 Part 7 'For you if you are filing this bankruptcy without an attorney: Did you pay or agree to pay someone who is not an attorney to help you fill out your bankruptcy forms?', states /no ('No') and /Yes ('Yes. Name of Person'), adjudicated. Owner's answer Q12 (step 2 spec §3, §6.3): DigniFi is free, so it is not a petition preparer; each filer answers the form's own question, and the paid-help answer prints on 101 Check Box26, 106Dec check1 and 107 check30."
+    "correct_target": "Debtor 1_4",
+    "evidence": "Field index: Debtor 1_4 p8 T1, 'Header, page 8: Debtor 1 name' (adjudicated). Spec §8's row for the cover and running headers: full_name prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
   },
   {
     "schema": "form_101",
-    "pdf_field": "Debtor1.County",
+    "pdf_field": "First name",
+    "producer": "derived:first_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "First name",
+    "evidence": "Field index: First name p1 T9 line 1, 'Debtor 1, line 1: first name' (adjudicated). Spec §8's row for line 1: first_name prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Middle name",
+    "producer": "derived:middle_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Middle name",
+    "evidence": "Field index: Middle name p1 T11 line 1, 'Debtor 1, line 1: middle name' (adjudicated). Spec §8's row for line 1: middle_name prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Last name",
+    "producer": "derived:last_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Last name",
+    "evidence": "Field index: Last name p1 T13 line 1, 'Debtor 1, line 1: last name' (adjudicated). Spec §8's row for line 1: last_name prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Suffix Sr Jr II III",
+    "producer": "asked:petition.name_suffix",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Suffix Sr Jr II III",
+    "evidence": "Field index: Suffix Sr Jr II III p1 T15 line 1, 'Debtor 1, line 1: suffix' (adjudicated). Spec §8's row for line 1: petition.name_suffix prints the filer's own answer. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "First name_3",
+    "producer": "asked:petition.other_names[].first",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "First name_3",
+    "evidence": "Field index: First name_3 p1 T17 line 2, 'Debtor 1, line 2: other name 1, first name' (adjudicated). Spec §8's row for line 2: Row 1 of group other_names prints petition.other_names[].first here. Printed only while petition_other_names_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Middle name_3",
+    "producer": "asked:petition.other_names[].middle",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Middle name_3",
+    "evidence": "Field index: Middle name_3 p1 T19 line 2, 'Debtor 1, line 2: other name 1, middle name' (adjudicated). Spec §8's row for line 2: Row 1 of group other_names prints petition.other_names[].middle here. Printed only while petition_other_names_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Last name_3",
+    "producer": "asked:petition.other_names[].last",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Last name_3",
+    "evidence": "Field index: Last name_3 p1 T21 line 2, 'Debtor 1, line 2: other name 1, last name' (adjudicated). Spec §8's row for line 2: Row 1 of group other_names prints petition.other_names[].last here. Printed only while petition_other_names_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "First name_5",
+    "producer": "asked:petition.other_names[].first",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "First name_5",
+    "evidence": "Field index: First name_5 p1 T23 line 2, 'Debtor 1, line 2: other name 2, first name' (adjudicated). Spec §8's row for line 2: Row 2 of group other_names prints petition.other_names[].first here. Printed only while petition_other_names_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Middle name_5",
+    "producer": "asked:petition.other_names[].middle",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Middle name_5",
+    "evidence": "Field index: Middle name_5 p1 T25 line 2, 'Debtor 1, line 2: other name 2, middle name' (adjudicated). Spec §8's row for line 2: Row 2 of group other_names prints petition.other_names[].middle here. Printed only while petition_other_names_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Last name_5",
+    "producer": "asked:petition.other_names[].last",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Last name_5",
+    "evidence": "Field index: Last name_5 p1 T27 line 2, 'Debtor 1, line 2: other name 2, last name' (adjudicated). Spec §8's row for line 2: Row 2 of group other_names prints petition.other_names[].last here. Printed only while petition_other_names_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Business name if applicable",
+    "producer": "asked:petition.other_business_names[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Business name if applicable",
+    "evidence": "Field index: Business name if applicable p1 T29 line 2, 'Debtor 1, line 2: business name 1' (adjudicated). Spec §8's row for line 2: Row 1 of group other_business_names prints petition.other_business_names[].name here. Printed only while petition_other_names_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Business name if applicable_2",
+    "producer": "asked:petition.other_business_names[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Business name if applicable_2",
+    "evidence": "Field index: Business name if applicable_2 p1 T31 line 2, 'Debtor 1, line 2: business name 2' (adjudicated). Spec §8's row for line 2: Row 2 of group other_business_names prints petition.other_business_names[].name here. Printed only while petition_other_names_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "xx",
+    "producer": "derived:ssn_last4_digit_1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "xx",
+    "evidence": "Field index: xx p1 T33 line 3, 'Debtor 1, line 3: last 4 of the SSN, digit 1 of 4' (adjudicated). Spec §8's row for line 3: ssn_last4_digit_1 prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "undefined",
+    "producer": "derived:ssn_last4_digit_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined",
+    "evidence": "Field index: undefined p1 T34 line 3, 'Debtor 1, line 3: last 4 of the SSN, digit 2 of 4' (adjudicated). Spec §8's row for line 3: ssn_last4_digit_2 prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "undefined_2",
+    "producer": "derived:ssn_last4_digit_3",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_2",
+    "evidence": "Field index: undefined_2 p1 T35 line 3, 'Debtor 1, line 3: last 4 of the SSN, digit 3 of 4' (adjudicated). Spec §8's row for line 3: ssn_last4_digit_3 prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "undefined_3",
+    "producer": "derived:ssn_last4_digit_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_3",
+    "evidence": "Field index: undefined_3 p1 T36 line 3, 'Debtor 1, line 3: last 4 of the SSN, digit 4 of 4' (adjudicated). Spec §8's row for line 3: ssn_last4_digit_4 prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "undefined_7",
+    "producer": "derived:itin_last4_digit_1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_7",
+    "evidence": "Field index: undefined_7 p1 T41 line 3, 'Debtor 1, line 3: last 4 of the ITIN, digit 1 of 4' (adjudicated). Spec §8's row for line 3: itin_last4_digit_1 prints it (§8, B56). Printed only while petition_itin_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "undefined_8",
+    "producer": "derived:itin_last4_digit_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_8",
+    "evidence": "Field index: undefined_8 p1 T42 line 3, 'Debtor 1, line 3: last 4 of the ITIN, digit 2 of 4' (adjudicated). Spec §8's row for line 3: itin_last4_digit_2 prints it (§8, B56). Printed only while petition_itin_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "undefined_9",
+    "producer": "derived:itin_last4_digit_3",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_9",
+    "evidence": "Field index: undefined_9 p1 T43 line 3, 'Debtor 1, line 3: last 4 of the ITIN, digit 3 of 4' (adjudicated). Spec §8's row for line 3: itin_last4_digit_3 prints it (§8, B56). Printed only while petition_itin_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "undefined_10",
+    "producer": "derived:itin_last4_digit_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_10",
+    "evidence": "Field index: undefined_10 p1 T44 line 3, 'Debtor 1, line 3: last 4 of the ITIN, digit 4 of 4' (adjudicated). Spec §8's row for line 3: itin_last4_digit_4 prints it (§8, B56). Printed only while petition_itin_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "EIN",
+    "producer": "derived:ein_prefix",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "EIN",
+    "evidence": "Field index: EIN p2 T5 line 4, 'Debtor 1, line 4: EIN 1, first 2 digits' (adjudicated). Spec §8's row for line 4: ein_prefix prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "undefined_14",
+    "producer": "derived:ein_suffix",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_14",
+    "evidence": "Field index: undefined_14 p2 T6 line 4, 'Debtor 1, line 4: EIN 1, last 7 digits' (adjudicated). Spec §8's row for line 4: ein_suffix prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Number",
+    "producer": "derived:home_number",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Number",
+    "evidence": "Field index: Number p2 T13 line 5, 'Debtor 1, line 5: home, number' (adjudicated). Spec §8's row for line 5: home_number prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Street",
+    "producer": "derived:home_street",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street",
+    "evidence": "Field index: Street p2 T14 line 5, 'Debtor 1, line 5: home, street' (adjudicated). Spec §8's row for line 5: home_street prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "City",
+    "producer": "derived:city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City",
+    "evidence": "Field index: City p2 T22 line 5, 'Debtor 1, line 5: home, city' (adjudicated). Spec §8's row for line 5: city prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "State_2",
+    "producer": "derived:state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State_2",
+    "evidence": "Field index: State_2 p2 T23 line 5, 'Debtor 1, line 5: home, state' (adjudicated). Spec §8's row for line 5: state prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "ZIP Code",
+    "producer": "derived:zip_code",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "ZIP Code",
+    "evidence": "Field index: ZIP Code p2 T24 line 5, 'Debtor 1, line 5: home, ZIP code' (adjudicated). Spec §8's row for line 5: zip_code prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "County",
     "producer": "derived:county",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
-    "correct_target": "Debtor1.County",
-    "evidence": "Field index: Debtor1.County p2 line 5, column 'Debtor 1', 'Where you live: County' (adjudicated). 3e1 spec §6, §10.4 [DIG-277]: the county picked on Your Information, from the district's 18, printed bare (\"Cook\")."
+    "correct_target": "County",
+    "evidence": "Field index: County p2 T26 line 5, 'Debtor 1, line 5: home, county' (adjudicated). Spec §8's row for line 5: county prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Number_2",
+    "producer": "derived:mailing_number",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Number_2",
+    "evidence": "Field index: Number_2 p2 T27 line 5, 'Debtor 1, line 5: mailing, number' (adjudicated). Spec §8's row for line 5: mailing_number prints it (§8, B56). Printed only while petition_mailing_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Street_2",
+    "producer": "derived:mailing_street",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street_2",
+    "evidence": "Field index: Street_2 p2 T28 line 5, 'Debtor 1, line 5: mailing, street' (adjudicated). Spec §8's row for line 5: mailing_street prints it (§8, B56). Printed only while petition_mailing_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "PO Box",
+    "producer": "asked:petition.mailing_po_box",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "PO Box",
+    "evidence": "Field index: PO Box p2 T31 line 5, 'Debtor 1, line 5: mailing, P.O. Box' (adjudicated). Spec §8's row for line 5: petition.mailing_po_box prints the filer's own answer. Printed only while petition_mailing_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "City_2",
+    "producer": "asked:petition.mailing_city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City_2",
+    "evidence": "Field index: City_2 p2 T33 line 5, 'Debtor 1, line 5: mailing, city' (adjudicated). Spec §8's row for line 5: petition.mailing_city prints the filer's own answer. Printed only while petition_mailing_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "State_3",
+    "producer": "asked:petition.mailing_state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State_3",
+    "evidence": "Field index: State_3 p2 T34 line 5, 'Debtor 1, line 5: mailing, state' (adjudicated). Spec §8's row for line 5: petition.mailing_state prints the filer's own answer. Printed only while petition_mailing_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "ZIP Code_2",
+    "producer": "asked:petition.mailing_zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "ZIP Code_2",
+    "evidence": "Field index: ZIP Code_2 p2 T35 line 5, 'Debtor 1, line 5: mailing, ZIP code' (adjudicated). Spec §8's row for line 5: petition.mailing_zip prints the filer's own answer. Printed only while petition_mailing_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Over the last 180 days before filing this petition",
+    "producer": "derived:venue_lived_here",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Over the last 180 days before filing this petition",
+    "evidence": "Field index: Over the last 180 days before filing this petition p2 T39 line 6, 'Debtor 1, line 6: lived in this district longer' (adjudicated). Spec §8's row for line 6: venue_lived_here ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "I have another reason Explain",
+    "producer": "derived:venue_other",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "I have another reason Explain",
+    "evidence": "Field index: I have another reason Explain p2 T41 line 6, 'Debtor 1, line 6: another reason' (adjudicated). Spec §8's row for line 6: venue_other ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "See 28 USC  1408 1",
+    "producer": "derived:venue_reason_line_1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "See 28 USC  1408 1",
+    "evidence": "Field index: See 28 USC  1408 1 p2 T43 line 6, 'Debtor 1, line 6: the other reason, line 1 of 4' (adjudicated). Spec §8's row for line 6: venue_reason_line_1 prints it (§8, B56). Printed only while petition_venue_other holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "See 28 USC  1408 2",
+    "producer": "derived:venue_reason_line_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "See 28 USC  1408 2",
+    "evidence": "Field index: See 28 USC  1408 2 p2 T45 line 6, 'Debtor 1, line 6: the other reason, line 2 of 4' (adjudicated). Spec §8's row for line 6: venue_reason_line_2 prints it (§8, B56). Printed only while petition_venue_other holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "See 28 USC  1408 3",
+    "producer": "derived:venue_reason_line_3",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "See 28 USC  1408 3",
+    "evidence": "Field index: See 28 USC  1408 3 p2 T47 line 6, 'Debtor 1, line 6: the other reason, line 3 of 4' (adjudicated). Spec §8's row for line 6: venue_reason_line_3 prints it (§8, B56). Printed only while petition_venue_other holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "See 28 USC  1408 4",
+    "producer": "derived:venue_reason_line_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "See 28 USC  1408 4",
+    "evidence": "Field index: See 28 USC  1408 4 p2 T49 line 6, 'Debtor 1, line 6: the other reason, line 4 of 4' (adjudicated). Spec §8's row for line 6: venue_reason_line_4 prints it (§8, B56). Printed only while petition_venue_other holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Chapter 7_2",
+    "producer": "constant:true",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Chapter 7_2",
+    "evidence": "Field index: Chapter 7_2 p3 T3 line 7, 'Line 7: Chapter 7' (adjudicated). Spec §8's row for line 7: prints for every filer (§8: the cover and line 7's Chapter 7, line 13, line 17). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "I will pay the entire fee when I file my petition Please check with the clerks office in your",
+    "producer": "derived:fee_choice_pay_in_full",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "I will pay the entire fee when I file my petition Please check with the clerks office in your",
+    "evidence": "Field index: I will pay the entire fee when I file my petition Please check with the clerks office in your p3 T7 line 8, 'Line 8: pay the entire fee when filing' (adjudicated). Spec §8's row for line 8: fee_choice_pay_in_full ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "I need to pay the fee in installments If you choose this option sign and attach the",
+    "producer": "derived:fee_choice_installments",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "I need to pay the fee in installments If you choose this option sign and attach the",
+    "evidence": "Field index: I need to pay the fee in installments If you choose this option sign and attach the p3 T8 line 8, 'Line 8: pay the fee in installments' (adjudicated). Spec §8's row for line 8: fee_choice_installments ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "I request that my fee be waived You may request this option only if you are filing for Chapter 7",
+    "producer": "derived:fee_choice_waiver",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "I request that my fee be waived You may request this option only if you are filing for Chapter 7",
+    "evidence": "Field index: I request that my fee be waived You may request this option only if you are filing for Chapter 7 p3 T9 line 8, 'Line 8: ask that the fee be waived' (adjudicated). Spec §8's row for line 8: fee_choice_waiver ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "bankruptcy within the",
+    "producer": "asked:petition.prior_bankruptcy_answer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "bankruptcy within the",
+    "evidence": "Field index: bankruptcy within the p3 T10 line 9, 'Line 9: No' (adjudicated); p3 T14 line 9, 'Line 9: Yes' (adjudicated). Spec §8's row for line 9: petition.prior_bankruptcy_answer picks the group's own state for the filer's No or Yes (§5.3). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "District",
+    "producer": "asked:petition.prior_cases[].district",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "District",
+    "evidence": "Field index: District p3 T11 line 9, 'Line 9: case 1, district' (adjudicated). Spec §8's row for line 9: Row 1 of group prior_cases prints petition.prior_cases[].district here. Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "When",
+    "producer": "asked:petition.prior_cases[].filed_on",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "When",
+    "evidence": "Field index: When p3 T12 line 9, 'Line 9: case 1, when' (adjudicated). Spec §8's row for line 9: Row 1 of group prior_cases prints petition.prior_cases[].filed_on here. Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Case number",
+    "producer": "asked:petition.prior_cases[].case_number",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Case number",
+    "evidence": "Field index: Case number p3 T13 line 9, 'Line 9: case 1, case number' (adjudicated). Spec §8's row for line 9: Row 1 of group prior_cases prints petition.prior_cases[].case_number here. Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "District_2",
+    "producer": "asked:petition.prior_cases[].district",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "District_2",
+    "evidence": "Field index: District_2 p3 T15 line 9, 'Line 9: case 2, district' (adjudicated). Spec §8's row for line 9: Row 2 of group prior_cases prints petition.prior_cases[].district here. Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "When_2",
+    "producer": "asked:petition.prior_cases[].filed_on",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "When_2",
+    "evidence": "Field index: When_2 p3 T16 line 9, 'Line 9: case 2, when' (adjudicated). Spec §8's row for line 9: Row 2 of group prior_cases prints petition.prior_cases[].filed_on here. Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Case number_2",
+    "producer": "asked:petition.prior_cases[].case_number",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Case number_2",
+    "evidence": "Field index: Case number_2 p3 T17 line 9, 'Line 9: case 2, case number' (adjudicated). Spec §8's row for line 9: Row 2 of group prior_cases prints petition.prior_cases[].case_number here. Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "District_3",
+    "producer": "asked:petition.prior_cases[].district",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "District_3",
+    "evidence": "Field index: District_3 p3 T18 line 9, 'Line 9: case 3, district' (adjudicated). Spec §8's row for line 9: Row 3 of group prior_cases prints petition.prior_cases[].district here. Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "When_3",
+    "producer": "asked:petition.prior_cases[].filed_on",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "When_3",
+    "evidence": "Field index: When_3 p3 T19 line 9, 'Line 9: case 3, when' (adjudicated). Spec §8's row for line 9: Row 3 of group prior_cases prints petition.prior_cases[].filed_on here. Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Case number_3",
+    "producer": "asked:petition.prior_cases[].case_number",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Case number_3",
+    "evidence": "Field index: Case number_3 p3 T20 line 9, 'Line 9: case 3, case number' (adjudicated). Spec §8's row for line 9: Row 3 of group prior_cases prints petition.prior_cases[].case_number here. Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "filed by a spouse who is",
+    "producer": "asked:petition.pending_case_answer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "filed by a spouse who is",
+    "evidence": "Field index: filed by a spouse who is p3 T21 line 10, 'Line 10: No' (adjudicated); p3 T24 line 10, 'Line 10: Yes' (adjudicated). Spec §8's row for line 10: petition.pending_case_answer picks the group's own state for the filer's No or Yes (§5.3). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Debtor",
+    "producer": "asked:petition.pending_cases[].debtor",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor",
+    "evidence": "Field index: Debtor p3 T22 line 10, 'Line 10: case 1, debtor' (adjudicated). Spec §8's row for line 10: Row 1 of group pending_cases prints petition.pending_cases[].debtor here. Printed only while petition_pending_case_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Relationship to you",
+    "producer": "asked:petition.pending_cases[].relationship",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Relationship to you",
+    "evidence": "Field index: Relationship to you p3 T23 line 10, 'Line 10: case 1, relationship to you' (adjudicated). Spec §8's row for line 10: Row 1 of group pending_cases prints petition.pending_cases[].relationship here. Printed only while petition_pending_case_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "District_4",
+    "producer": "asked:petition.pending_cases[].district",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "District_4",
+    "evidence": "Field index: District_4 p3 T25 line 10, 'Line 10: case 1, district' (adjudicated). Spec §8's row for line 10: Row 1 of group pending_cases prints petition.pending_cases[].district here. Printed only while petition_pending_case_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "When_4",
+    "producer": "asked:petition.pending_cases[].filed_on",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "When_4",
+    "evidence": "Field index: When_4 p3 T26 line 10, 'Line 10: case 1, when' (adjudicated). Spec §8's row for line 10: Row 1 of group pending_cases prints petition.pending_cases[].filed_on here. Printed only while petition_pending_case_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Case number if known_3",
+    "producer": "asked:petition.pending_cases[].case_number",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Case number if known_3",
+    "evidence": "Field index: Case number if known_3 p3 T27 line 10, 'Line 10: case 1, case number' (adjudicated). Spec §8's row for line 10: Row 1 of group pending_cases prints petition.pending_cases[].case_number here. Printed only while petition_pending_case_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Debtor_2",
+    "producer": "asked:petition.pending_cases[].debtor",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor_2",
+    "evidence": "Field index: Debtor_2 p3 T28 line 10, 'Line 10: case 2, debtor' (adjudicated). Spec §8's row for line 10: Row 2 of group pending_cases prints petition.pending_cases[].debtor here. Printed only while petition_pending_case_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Relationship to you_2",
+    "producer": "asked:petition.pending_cases[].relationship",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Relationship to you_2",
+    "evidence": "Field index: Relationship to you_2 p3 T29 line 10, 'Line 10: case 2, relationship to you' (adjudicated). Spec §8's row for line 10: Row 2 of group pending_cases prints petition.pending_cases[].relationship here. Printed only while petition_pending_case_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "District_5",
+    "producer": "asked:petition.pending_cases[].district",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "District_5",
+    "evidence": "Field index: District_5 p3 T30 line 10, 'Line 10: case 2, district' (adjudicated). Spec §8's row for line 10: Row 2 of group pending_cases prints petition.pending_cases[].district here. Printed only while petition_pending_case_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "When_5",
+    "producer": "asked:petition.pending_cases[].filed_on",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "When_5",
+    "evidence": "Field index: When_5 p3 T31 line 10, 'Line 10: case 2, when' (adjudicated). Spec §8's row for line 10: Row 2 of group pending_cases prints petition.pending_cases[].filed_on here. Printed only while petition_pending_case_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Case number if known_4",
+    "producer": "asked:petition.pending_cases[].case_number",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Case number if known_4",
+    "evidence": "Field index: Case number if known_4 p3 T32 line 10, 'Line 10: case 2, case number' (adjudicated). Spec §8's row for line 10: Row 2 of group pending_cases prints petition.pending_cases[].case_number here. Printed only while petition_pending_case_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Go to line 12",
+    "producer": "asked:petition.rents_residence",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Go to line 12",
+    "evidence": "Field index: Go to line 12 p3 T33 line 11, 'Line 11: rent your residence, No' (adjudicated); p3 T34 line 11, 'Line 11: rent your residence, Yes' (adjudicated). Spec §8's row for line 11: petition.rents_residence picks the group's own state for the filer's No or Yes (§5.3). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "No Go to line 12",
+    "producer": "derived:eviction_no",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "No Go to line 12",
+    "evidence": "Field index: No Go to line 12 p3 T35 line 11, 'Line 11: eviction judgment, No' (adjudicated). Spec §8's row for line 11: eviction_no ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Yes Fill out Initial Statement About an Eviction Judgment Against You Form 101A and file it as",
+    "producer": "derived:eviction_yes",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Yes Fill out Initial Statement About an Eviction Judgment Against You Form 101A and file it as",
+    "evidence": "Field index: Yes Fill out Initial Statement About an Eviction Judgment Against You Form 101A and file it as p3 T36 line 11, 'Line 11: eviction judgment, Yes' (adjudicated). Spec §8's row for line 11: eviction_yes ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "No Go to Part 4",
+    "producer": "derived:sole_proprietor_no",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "No Go to Part 4",
+    "evidence": "Field index: No Go to Part 4 p4 T5 line 12, 'Line 12: No' (adjudicated). Spec §8's row for line 12: sole_proprietor_no ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Yes Name and location of business",
+    "producer": "derived:sole_proprietor_yes",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Yes Name and location of business",
+    "evidence": "Field index: Yes Name and location of business p4 T6 line 12, 'Line 12: Yes' (adjudicated). Spec §8's row for line 12: sole_proprietor_yes ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Name of business if any",
+    "producer": "asked:petition.business_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Name of business if any",
+    "evidence": "Field index: Name of business if any p4 T7 line 12, 'Line 12: name of business' (adjudicated). Spec §8's row for line 12: petition.business_name prints the filer's own answer. Printed only while petition_sole_proprietor_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Number_5",
+    "producer": "derived:business_number",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Number_5",
+    "evidence": "Field index: Number_5 p4 T8 line 12, 'Line 12: business, number' (adjudicated). Spec §8's row for line 12: business_number prints it (§8, B56). Printed only while petition_sole_proprietor_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Street_5",
+    "producer": "derived:business_street",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street_5",
+    "evidence": "Field index: Street_5 p4 T9 line 12, 'Line 12: business, street' (adjudicated). Spec §8's row for line 12: business_street prints it (§8, B56). Printed only while petition_sole_proprietor_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "2",
+    "producer": "asked:petition.business_city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "2",
+    "evidence": "Field index: 2 p4 T11 line 12, 'Line 12: business, city' (adjudicated). Spec §8's row for line 12: petition.business_city prints the filer's own answer. Printed only while petition_sole_proprietor_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "State_6",
+    "producer": "asked:petition.business_state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State_6",
+    "evidence": "Field index: State_6 p4 T12 line 12, 'Line 12: business, state' (adjudicated). Spec §8's row for line 12: petition.business_state prints the filer's own answer. Printed only while petition_sole_proprietor_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "ZIP Code_5",
+    "producer": "asked:petition.business_zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "ZIP Code_5",
+    "evidence": "Field index: ZIP Code_5 p4 T13 line 12, 'Line 12: business, ZIP code' (adjudicated). Spec §8's row for line 12: petition.business_zip prints the filer's own answer. Printed only while petition_sole_proprietor_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Health Care Business as defined in 11 USC  10127A",
+    "producer": "derived:business_kind_health_care",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Health Care Business as defined in 11 USC  10127A",
+    "evidence": "Field index: Health Care Business as defined in 11 USC  10127A p4 T14 line 12, 'Line 12: Health Care Business' (adjudicated). Spec §8's row for line 12: business_kind_health_care ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Single Asset Real Estate as defined in 11 USC  10151B",
+    "producer": "derived:business_kind_single_asset",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Single Asset Real Estate as defined in 11 USC  10151B",
+    "evidence": "Field index: Single Asset Real Estate as defined in 11 USC  10151B p4 T15 line 12, 'Line 12: Single Asset Real Estate' (adjudicated). Spec §8's row for line 12: business_kind_single_asset ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Stockbroker as defined in 11 USC  10153A",
+    "producer": "derived:business_kind_stockbroker",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Stockbroker as defined in 11 USC  10153A",
+    "evidence": "Field index: Stockbroker as defined in 11 USC  10153A p4 T16 line 12, 'Line 12: Stockbroker' (adjudicated). Spec §8's row for line 12: business_kind_stockbroker ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Commodity Broker as defined in 11 USC  1016",
+    "producer": "derived:business_kind_commodity_broker",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Commodity Broker as defined in 11 USC  1016",
+    "evidence": "Field index: Commodity Broker as defined in 11 USC  1016 p4 T17 line 12, 'Line 12: Commodity Broker' (adjudicated). Spec §8's row for line 12: business_kind_commodity_broker ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "None of the above",
+    "producer": "derived:business_kind_none",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "None of the above",
+    "evidence": "Field index: None of the above p4 T18 line 12, 'Line 12: None of the above' (adjudicated). Spec §8's row for line 12: business_kind_none ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "No_4",
+    "producer": "constant:true",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "No_4",
+    "evidence": "Field index: No_4 p4 T19 line 13, 'Line 13: No, not filing under Chapter 11' (adjudicated). Spec §8's row for line 13: prints for every filer (§8: the cover and line 7's Chapter 7, line 13, line 17). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "property that poses or is",
+    "producer": "asked:petition.hazard_answer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "property that poses or is",
+    "evidence": "Field index: property that poses or is p4 T23 line 14, 'Line 14: No' (adjudicated); p4 T25 line 14, 'Line 14: Yes' (adjudicated). Spec §8's row for line 14: petition.hazard_answer picks the group's own state for the filer's No or Yes (§5.3). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "What is the hazard",
+    "producer": "asked:petition.hazard_what",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "What is the hazard",
+    "evidence": "Field index: What is the hazard p4 T24 line 14, 'Line 14: what is the hazard, first line' (adjudicated). Spec §8's row for line 14: petition.hazard_what prints the filer's own answer. Printed only while petition_hazard_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "If immediate attention is needed why is it needed",
+    "producer": "asked:petition.hazard_why",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "If immediate attention is needed why is it needed",
+    "evidence": "Field index: If immediate attention is needed why is it needed p4 T27 line 14, 'Line 14: why immediate attention is needed, first line' (adjudicated). Spec §8's row for line 14: petition.hazard_why prints the filer's own answer. Printed only while petition_hazard_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Number_6",
+    "producer": "derived:hazard_number",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Number_6",
+    "evidence": "Field index: Number_6 p4 T29 line 14, 'Line 14: where the property is, number' (adjudicated). Spec §8's row for line 14: hazard_number prints it (§8, B56). Printed only while petition_hazard_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Street_6",
+    "producer": "derived:hazard_street",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street_6",
+    "evidence": "Field index: Street_6 p4 T30 line 14, 'Line 14: where the property is, street' (adjudicated). Spec §8's row for line 14: hazard_street prints it (§8, B56). Printed only while petition_hazard_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "2_2",
+    "producer": "asked:petition.hazard_city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "2_2",
+    "evidence": "Field index: 2_2 p4 T32 line 14, 'Line 14: where the property is, city' (adjudicated). Spec §8's row for line 14: petition.hazard_city prints the filer's own answer. Printed only while petition_hazard_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "State_7",
+    "producer": "asked:petition.hazard_state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State_7",
+    "evidence": "Field index: State_7 p4 T33 line 14, 'Line 14: where the property is, state' (adjudicated). Spec §8's row for line 14: petition.hazard_state prints the filer's own answer. Printed only while petition_hazard_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "ZIP Code_6",
+    "producer": "asked:petition.hazard_zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "ZIP Code_6",
+    "evidence": "Field index: ZIP Code_6 p4 T34 line 14, 'Line 14: where the property is, ZIP code' (adjudicated). Spec §8's row for line 14: petition.hazard_zip prints the filer's own answer. Printed only while petition_hazard_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "I received a briefing from an approved credit",
+    "producer": "derived:credit_counseling_certificate",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "I received a briefing from an approved credit",
+    "evidence": "Field index: I received a briefing from an approved credit p5 T3 line 15, 'Debtor 1, line 15: a briefing and a certificate' (adjudicated). Spec §8's row for line 15: credit_counseling_certificate ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "I received a briefing from an approved credit_2",
+    "producer": "derived:credit_counseling_no_certificate",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "I received a briefing from an approved credit_2",
+    "evidence": "Field index: I received a briefing from an approved credit_2 p5 T5 line 15, 'Debtor 1, line 15: a briefing and no certificate' (adjudicated). Spec §8's row for line 15: credit_counseling_no_certificate ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "I certify that I asked for credit counseling",
+    "producer": "derived:credit_counseling_exigent",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "I certify that I asked for credit counseling",
+    "evidence": "Field index: I certify that I asked for credit counseling p5 T7 line 15, 'Debtor 1, line 15: asked for counseling, a 30-day waiver' (adjudicated). Spec §8's row for line 15: credit_counseling_exigent ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "I am not required to receive a briefing about",
+    "producer": "derived:credit_counseling_not_required",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "I am not required to receive a briefing about",
+    "evidence": "Field index: I am not required to receive a briefing about p5 T9 line 15, 'Debtor 1, line 15: not required to receive a briefing' (adjudicated). Spec §8's row for line 15: credit_counseling_not_required ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Incapacity",
+    "producer": "derived:not_required_incapacity",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Incapacity",
+    "evidence": "Field index: Incapacity p5 T11 line 15, 'Debtor 1, line 15: not required, incapacity' (adjudicated). Spec §8's row for line 15: not_required_incapacity ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Disability",
+    "producer": "derived:not_required_disability",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Disability",
+    "evidence": "Field index: Disability p5 T13 line 15, 'Debtor 1, line 15: not required, disability' (adjudicated). Spec §8's row for line 15: not_required_disability ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Active duty I am currently on active military",
+    "producer": "derived:not_required_active_duty",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Active duty I am currently on active military",
+    "evidence": "Field index: Active duty I am currently on active military p5 T15 line 15, 'Debtor 1, line 15: not required, active duty' (adjudicated). Spec §8's row for line 15: not_required_active_duty ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "No Go to line 16b",
+    "producer": "derived:debt_nature_16a_no",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "No Go to line 16b",
+    "evidence": "Field index: No Go to line 16b p6 T3 line 16a, 'Line 16a: consumer debts, No' (adjudicated). Spec §8's row for line 16a: debt_nature_16a_no ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Yes Go to line 17",
+    "producer": "derived:debt_nature_16a_yes",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Yes Go to line 17",
+    "evidence": "Field index: Yes Go to line 17 p6 T4 line 16a, 'Line 16a: consumer debts, Yes' (adjudicated). Spec §8's row for line 16a: debt_nature_16a_yes ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "No Go to line 16c",
+    "producer": "derived:debt_nature_16b_no",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "No Go to line 16c",
+    "evidence": "Field index: No Go to line 16c p6 T5 line 16b, 'Line 16b: business debts, No' (adjudicated). Spec §8's row for line 16b: debt_nature_16b_no ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Yes Go to line 17_2",
+    "producer": "derived:debt_nature_16b_yes",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Yes Go to line 17_2",
+    "evidence": "Field index: Yes Go to line 17_2 p6 T6 line 16b, 'Line 16b: business debts, Yes' (adjudicated). Spec §8's row for line 16b: debt_nature_16b_yes ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "16c State the type of debts you owe that are not consumer debts or business debts",
+    "producer": "asked:petition.debt_nature_text",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "16c State the type of debts you owe that are not consumer debts or business debts",
+    "evidence": "Field index: 16c State the type of debts you owe that are not consumer debts or business debts p6 T7 line 16c, 'Line 16c: the type of debts' (adjudicated). Spec §8's row for line 16c: petition.debt_nature_text prints the filer's own answer. Printed only while petition_debt_nature_neither holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Yes I am filing under Chapter 7 Do you estimate that after any exempt property is excluded and",
+    "producer": "constant:true",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Yes I am filing under Chapter 7 Do you estimate that after any exempt property is excluded and",
+    "evidence": "Field index: Yes I am filing under Chapter 7 Do you estimate that after any exempt property is excluded and p6 T9 line 17, 'Line 17: Yes, filing under Chapter 7' (adjudicated). Spec §8's row for line 17: prints for every filer (§8: the cover and line 7's Chapter 7, line 13, line 17). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "149",
+    "producer": "derived:creditor_count_is_1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "149",
+    "evidence": "Field index: 149 p6 T12 line 18, 'Line 18: 1-49 creditors' (adjudicated). Spec §8's row for line 18: creditor_count_is_1 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "5099",
+    "producer": "derived:creditor_count_is_50",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "5099",
+    "evidence": "Field index: 5099 p6 T15 line 18, 'Line 18: 50-99 creditors' (adjudicated). Spec §8's row for line 18: creditor_count_is_50 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "100199",
+    "producer": "derived:creditor_count_is_100",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "100199",
+    "evidence": "Field index: 100199 p6 T18 line 18, 'Line 18: 100-199 creditors' (adjudicated). Spec §8's row for line 18: creditor_count_is_100 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "200999",
+    "producer": "derived:creditor_count_is_200",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "200999",
+    "evidence": "Field index: 200999 p6 T21 line 18, 'Line 18: 200-999 creditors' (adjudicated). Spec §8's row for line 18: creditor_count_is_200 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "10005000",
+    "producer": "derived:creditor_count_is_1000",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "10005000",
+    "evidence": "Field index: 10005000 p6 T13 line 18, 'Line 18: 1,000-5,000 creditors' (adjudicated). Spec §8's row for line 18: creditor_count_is_1000 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "500110000",
+    "producer": "derived:creditor_count_is_5001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "500110000",
+    "evidence": "Field index: 500110000 p6 T16 line 18, 'Line 18: 5,001-10,000 creditors' (adjudicated). Spec §8's row for line 18: creditor_count_is_5001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "1000125000",
+    "producer": "derived:creditor_count_is_10001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "1000125000",
+    "evidence": "Field index: 1000125000 p6 T19 line 18, 'Line 18: 10,001-25,000 creditors' (adjudicated). Spec §8's row for line 18: creditor_count_is_10001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "2500150000",
+    "producer": "derived:creditor_count_is_25001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "2500150000",
+    "evidence": "Field index: 2500150000 p6 T14 line 18, 'Line 18: 25,001-50,000 creditors' (adjudicated). Spec §8's row for line 18: creditor_count_is_25001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "50001100000",
+    "producer": "derived:creditor_count_is_50001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "50001100000",
+    "evidence": "Field index: 50001100000 p6 T17 line 18, 'Line 18: 50,001-100,000 creditors' (adjudicated). Spec §8's row for line 18: creditor_count_is_50001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "More than 100000",
+    "producer": "derived:creditor_count_is_more",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "More than 100000",
+    "evidence": "Field index: More than 100000 p6 T20 line 18, 'Line 18: more than 100,000 creditors' (adjudicated). Spec §8's row for line 18: creditor_count_is_more ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "050000",
+    "producer": "derived:total_assets_is_0",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "050000",
+    "evidence": "Field index: 050000 p6 T22 line 19, 'Line 19: assets $0-$50,000' (adjudicated). Spec §8's row for line 19: total_assets_is_0 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "50001100000_2",
+    "producer": "derived:total_assets_is_50001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "50001100000_2",
+    "evidence": "Field index: 50001100000_2 p6 T25 line 19, 'Line 19: assets $50,001-$100,000' (adjudicated). Spec §8's row for line 19: total_assets_is_50001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "100001500000",
+    "producer": "derived:total_assets_is_100001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "100001500000",
+    "evidence": "Field index: 100001500000 p6 T28 line 19, 'Line 19: assets $100,001-$500,000' (adjudicated). Spec §8's row for line 19: total_assets_is_100001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "5000011 million",
+    "producer": "derived:total_assets_is_500001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "5000011 million",
+    "evidence": "Field index: 5000011 million p6 T31 line 19, 'Line 19: assets $500,001-$1 million' (adjudicated). Spec §8's row for line 19: total_assets_is_500001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "100000110 million",
+    "producer": "derived:total_assets_is_1000001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "100000110 million",
+    "evidence": "Field index: 100000110 million p6 T23 line 19, 'Line 19: assets $1,000,001-$10 million' (adjudicated). Spec §8's row for line 19: total_assets_is_1000001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "1000000150 million",
+    "producer": "derived:total_assets_is_10000001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "1000000150 million",
+    "evidence": "Field index: 1000000150 million p6 T26 line 19, 'Line 19: assets $10,000,001-$50 million' (adjudicated). Spec §8's row for line 19: total_assets_is_10000001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "50000001100 million",
+    "producer": "derived:total_assets_is_50000001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "50000001100 million",
+    "evidence": "Field index: 50000001100 million p6 T29 line 19, 'Line 19: assets $50,000,001-$100 million' (adjudicated). Spec §8's row for line 19: total_assets_is_50000001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "100000001500 million",
+    "producer": "derived:total_assets_is_100000001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "100000001500 million",
+    "evidence": "Field index: 100000001500 million p6 T32 line 19, 'Line 19: assets $100,000,001-$500 million' (adjudicated). Spec §8's row for line 19: total_assets_is_100000001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "5000000011 billion",
+    "producer": "derived:total_assets_is_500000001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "5000000011 billion",
+    "evidence": "Field index: 5000000011 billion p6 T24 line 19, 'Line 19: assets $500,000,001-$1 billion' (adjudicated). Spec §8's row for line 19: total_assets_is_500000001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "100000000110 billion",
+    "producer": "derived:total_assets_is_1000000001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "100000000110 billion",
+    "evidence": "Field index: 100000000110 billion p6 T27 line 19, 'Line 19: assets $1,000,000,001-$10 billion' (adjudicated). Spec §8's row for line 19: total_assets_is_1000000001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "1000000000150 billion",
+    "producer": "derived:total_assets_is_10000000001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "1000000000150 billion",
+    "evidence": "Field index: 1000000000150 billion p6 T30 line 19, 'Line 19: assets $10,000,000,001-$50 billion' (adjudicated). Spec §8's row for line 19: total_assets_is_10000000001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "More than 50 billion",
+    "producer": "derived:total_assets_is_more",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "More than 50 billion",
+    "evidence": "Field index: More than 50 billion p6 T33 line 19, 'Line 19: assets more than $50 billion' (adjudicated). Spec §8's row for line 19: total_assets_is_more ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "050000_2",
+    "producer": "derived:total_debts_is_0",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "050000_2",
+    "evidence": "Field index: 050000_2 p6 T34 line 20, 'Line 20: liabilities $0-$50,000' (adjudicated). Spec §8's row for line 20: total_debts_is_0 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "50001100000_3",
+    "producer": "derived:total_debts_is_50001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "50001100000_3",
+    "evidence": "Field index: 50001100000_3 p6 T37 line 20, 'Line 20: liabilities $50,001-$100,000' (adjudicated). Spec §8's row for line 20: total_debts_is_50001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "100001500000_2",
+    "producer": "derived:total_debts_is_100001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "100001500000_2",
+    "evidence": "Field index: 100001500000_2 p6 T40 line 20, 'Line 20: liabilities $100,001-$500,000' (adjudicated). Spec §8's row for line 20: total_debts_is_100001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "5000011 million_2",
+    "producer": "derived:total_debts_is_500001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "5000011 million_2",
+    "evidence": "Field index: 5000011 million_2 p6 T43 line 20, 'Line 20: liabilities $500,001-$1 million' (adjudicated). Spec §8's row for line 20: total_debts_is_500001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "100000110 million_2",
+    "producer": "derived:total_debts_is_1000001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "100000110 million_2",
+    "evidence": "Field index: 100000110 million_2 p6 T35 line 20, 'Line 20: liabilities $1,000,001-$10 million' (adjudicated). Spec §8's row for line 20: total_debts_is_1000001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "1000000150 million_2",
+    "producer": "derived:total_debts_is_10000001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "1000000150 million_2",
+    "evidence": "Field index: 1000000150 million_2 p6 T38 line 20, 'Line 20: liabilities $10,000,001-$50 million' (adjudicated). Spec §8's row for line 20: total_debts_is_10000001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "50000001100 million_2",
+    "producer": "derived:total_debts_is_50000001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "50000001100 million_2",
+    "evidence": "Field index: 50000001100 million_2 p6 T41 line 20, 'Line 20: liabilities $50,000,001-$100 million' (adjudicated). Spec §8's row for line 20: total_debts_is_50000001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "100000001500 million_2",
+    "producer": "derived:total_debts_is_100000001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "100000001500 million_2",
+    "evidence": "Field index: 100000001500 million_2 p6 T44 line 20, 'Line 20: liabilities $100,000,001-$500 million' (adjudicated). Spec §8's row for line 20: total_debts_is_100000001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "5000000011 billion_2",
+    "producer": "derived:total_debts_is_500000001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "5000000011 billion_2",
+    "evidence": "Field index: 5000000011 billion_2 p6 T36 line 20, 'Line 20: liabilities $500,000,001-$1 billion' (adjudicated). Spec §8's row for line 20: total_debts_is_500000001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "100000000110 billion_2",
+    "producer": "derived:total_debts_is_1000000001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "100000000110 billion_2",
+    "evidence": "Field index: 100000000110 billion_2 p6 T39 line 20, 'Line 20: liabilities $1,000,000,001-$10 billion' (adjudicated). Spec §8's row for line 20: total_debts_is_1000000001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "1000000000150 billion_2",
+    "producer": "derived:total_debts_is_10000000001",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "1000000000150 billion_2",
+    "evidence": "Field index: 1000000000150 billion_2 p6 T42 line 20, 'Line 20: liabilities $10,000,000,001-$50 billion' (adjudicated). Spec §8's row for line 20: total_debts_is_10000000001 ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "More than 50 billion_2",
+    "producer": "derived:total_debts_is_more",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "More than 50 billion_2",
+    "evidence": "Field index: More than 50 billion_2 p6 T45 line 20, 'Line 20: liabilities more than $50 billion' (adjudicated). Spec §8's row for line 20: total_debts_is_more ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "consequences",
+    "producer": "asked:petition.aware_consequences",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "consequences",
+    "evidence": "Field index: consequences p8 T3, 'Notice page: aware of the consequences, No' (adjudicated); p8 T4, 'Notice page: aware of the consequences, Yes' (adjudicated). Spec §8's row for the notice page: petition.aware_consequences picks the group's own state for the filer's No or Yes (§5.3). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "inaccurate or incomplete you could be fined or imprisoned",
+    "producer": "asked:petition.aware_fraud",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "inaccurate or incomplete you could be fined or imprisoned",
+    "evidence": "Field index: inaccurate or incomplete you could be fined or imprisoned p8 T5, 'Notice page: aware that fraud is a crime, No' (adjudicated); p8 T6, 'Notice page: aware that fraud is a crime, Yes' (adjudicated). Spec §8's row for the notice page: petition.aware_fraud picks the group's own state for the filer's No or Yes (§5.3). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "No_10",
+    "producer": "derived:paid_preparer_no",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "No_10",
+    "evidence": "Field index: No_10 p8 T7, 'Notice page: paid a non-attorney to help, No' (adjudicated). Spec §8's row for the notice page: paid_preparer_no ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Yes Name of Person",
+    "producer": "derived:paid_preparer_yes",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Yes Name of Person",
+    "evidence": "Field index: Yes Name of Person p8 T9, 'Notice page: paid a non-attorney to help, Yes' (adjudicated). Spec §8's row for the notice page: paid_preparer_yes ticks it for its own answer and leaves it blank for another (B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "undefined_22",
+    "producer": "asked:petition.preparer_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_22",
+    "evidence": "Field index: undefined_22 p8 T8, \"Notice page: the paid preparer's name\" (adjudicated). Spec §8's row for the notice page: petition.preparer_name prints the filer's own answer. Printed only while petition_paid_preparer_yes holds. Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Contact phone_2",
+    "producer": "derived:phone",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contact phone_2",
+    "evidence": "Field index: Contact phone_2 p8 T16, 'Notice page: Debtor 1 contact phone' (adjudicated). Spec §8's row for the notice page: phone prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Email address_2",
+    "producer": "derived:email",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Email address_2",
+    "evidence": "Field index: Email address_2 p8 T20, 'Notice page: Debtor 1 email address' (adjudicated). Spec §8's row for the notice page: email prints it (§8, B56). Read by test_form_101_schema.py and tier 1."
   },
   {
     "schema": "form_103b",
@@ -13138,16 +14638,6 @@
     "status": "confirmed",
     "correct_target": "Other 21",
     "evidence": "Field index: Other 21 p3 T3, 'Other. Specify:' (adjudicated). 3e2 spec §9.4: the filer's own Specify text from the Expenses step, printed only beside a printed amount."
-  },
-  {
-    "schema": "form_101",
-    "pdf_field": "Check Box7",
-    "producer": "derived:fee_payment_choice",
-    "original_verdicts": [],
-    "final_verdicts": ["correct"],
-    "status": "confirmed",
-    "correct_target": "Check Box7",
-    "evidence": "Field index: Check Box7 p3 line 8 'How you will pay the fee', states /Pay entirely ('I will pay the entire fee when I file my petition.', sampled_ok), /Pay in installments ('I need to pay the fee in installments.', vision_agreed) and /Request fees waived ('I request that my fee be waived', sampled_ok). 3f spec §8.1 and §6.1: line 8 ticks the filer's own answer, FilingFee.payment_choice; blank while unanswered, when Form 101's requires() refuses the form."
   },
   {
     "schema": "form_103b",

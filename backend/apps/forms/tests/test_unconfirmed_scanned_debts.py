@@ -101,7 +101,7 @@ def test_the_petition_estimates_liabilities_from_confirmed_debts_only(session):
     _debt(session, "credit_card", "50000.00")
     _debt(session, "credit_card", "0.01", draft=True)
 
-    assert _resolved(session, "form_101")["Check Box23"] == "/0-50000"
+    assert _resolved(session, "form_101")["050000_2"] == "/On"
 
 
 def test_a_filer_whose_only_debts_are_unconfirmed_lists_no_creditors(session):
@@ -113,4 +113,16 @@ def test_a_filer_whose_only_debts_are_unconfirmed_lists_no_creditors(session):
     assert _resolved(session, "schedule_e_f")["check1"] == "/no"
     assert _resolved(session, "schedule_e_f")["check7"] == "/no"
     # Line 18 asks how many creditors; with none confirmed it stays blank.
-    assert "Check Box21" not in _resolved(session, "form_101")
+    line_18 = {
+        "149",
+        "5099",
+        "100199",
+        "200999",
+        "10005000",
+        "500110000",
+        "1000125000",
+        "2500150000",
+        "50001100000",
+        "More than 100000",
+    }
+    assert not line_18 & set(_resolved(session, "form_101"))
