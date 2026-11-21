@@ -70,10 +70,11 @@ def test_unfiled_form_prints_the_filers_current_answers(api_client_authed, gener
 
 
 _FILED_ON_06_24 = json.dumps({"Debtor1.First name": "Jane"})  # a 06/24 box, which 11/26 lacks
+_EARLIER_REVISION_LOG = "filed form_101 on an earlier template revision"
 
 
 def test_a_form_filed_on_the_06_24_revision_downloads_as_a_422_naming_the_revision_and_keeps_its_values(
-    api_client_authed, generated_form_factory
+    api_client_authed, generated_form_factory, caplog
 ):
     # B62, DIG-155: a filed row keeps what it was filed with, and the retired template's box
     # names are no widget of the current one, so the filer is told it can no longer be printed.
@@ -90,13 +91,15 @@ def test_a_form_filed_on_the_06_24_revision_downloads_as_a_422_naming_the_revisi
         "This form was filed on an older version of Form 101. "
         "DigniFi can no longer print it. Keep the copy you gave the court."
     )
+    assert _EARLIER_REVISION_LOG in caplog.text
+    assert "Jane" not in caplog.text
     form.refresh_from_db()
     assert form.field_values == _FILED_ON_06_24
     assert form.status == "filed"
 
 
 def test_a_06_24_form_filed_as_parts_is_the_same_422_and_keeps_its_values(
-    api_client_authed, generated_form_factory
+    api_client_authed, generated_form_factory, caplog
 ):
     parts = json.dumps(
         {"version": 2, "parts": [{"kind": "form", "values": {"Debtor1.First name": "Jane"}}]}
@@ -110,8 +113,35 @@ def test_a_06_24_form_filed_as_parts_is_the_same_422_and_keeps_its_values(
 
     assert response.status_code == 422
     assert response.data == {"form_type": "form_101", "error": FILED_ON_EARLIER_REVISION}
+    assert _EARLIER_REVISION_LOG in caplog.text
     form.refresh_from_db()
     assert form.field_values == parts
+
+
+def test_a_form_101_filed_on_the_live_template_with_an_unknown_box_is_a_logged_500(
+    api_client_authed, generated_form_factory, caplog
+):
+    # PF2-9: the stored hash is the live template's, so an unknown key is a defect in
+    # DigniFi's index, never a retired revision. It must not tell the filer the form can
+    # never be printed, and it is logged (type only) for us.
+    form = generated_form_factory(status="filed")
+    form.form_type = "form_101"
+    form.field_values = _FILED_ON_06_24
+    form.template_version = load_schema("form_101").template_version
+    form.save()
+
+    response = _download(api_client_authed, form)
+
+    assert response.status_code == 500
+    assert response.data == {
+        "form_type": "form_101",
+        "error": "This form couldn't be prepared. Please try again later.",
+    }
+    assert "UnknownField" in caplog.text
+    assert _EARLIER_REVISION_LOG not in caplog.text
+    form.refresh_from_db()
+    assert form.field_values == _FILED_ON_06_24
+    assert form.status == "filed"
 
 
 def test_another_form_filed_with_a_box_its_template_lacks_stays_the_generic_500(

@@ -580,6 +580,14 @@ RADIOS = [
 ]
 
 
+def test_the_radios_this_file_pins_are_the_keys_the_save_guards():
+    # PF2-12 (a): a radio bound without a RADIOS row is unpinned, and one in RADIO_KEYS
+    # with no radio guards nothing.
+    from apps.intake.models import PetitionAnswers
+
+    assert {key for key, *_ in RADIOS} == set(PetitionAnswers.RADIO_KEYS)
+
+
 @pytest.mark.parametrize("key,label,no,yes", RADIOS)
 def test_every_radio_prints_neither_state_for_an_absent_key(session, key, label, no, yes):
     name = _box(label)
