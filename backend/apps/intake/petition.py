@@ -8,6 +8,8 @@ preconditions. The sentences are DigniFi's own; `petitionGaps.ts` copies them an
 import re
 from datetime import datetime
 
+from apps.forms.services.answer_records import PETITION_STEP_OF_KEY
+
 from .completion import Gap
 from .models import PetitionAnswers
 
@@ -111,19 +113,26 @@ def _debtor_info_details(answers: dict) -> list[Gap]:
     elif venue == "other" and _blank(answers.get("venue_reason")):
         gaps.append(_detail(DETAIL_VENUE_REASON, step, "venue_reason"))
 
-    if answers.get("other_names_answer") == "yes" and not _has_a_row(answers, "other_names"):
+    # Line 2 asks for both lists under the one Yes, so either list answers it.
+    if (
+        answers.get("other_names_answer") == "yes"
+        and not _has_a_row(answers, "other_names")
+        and not _has_a_row(answers, "other_business_names")
+    ):
         gaps.append(_detail(DETAIL_OTHER_NAMES, step, "other_names"))
     if answers.get("itin_answer") == "yes" and not is_nine_digits(answers.get("itin")):
         gaps.append(_detail(DETAIL_ITIN, step, "itin"))
     if answers.get("other_ssn_answer") == "yes" and not is_nine_digits(answers.get("other_ssn")):
         gaps.append(_detail(DETAIL_OTHER_SSN, step, "other_ssn"))
-    ein = answers.get("ein")
-    if not _blank(ein) and not is_nine_digits(ein):
-        gaps.append(_detail(DETAIL_EIN, step, "ein"))
     if answers.get("mailing_answer") == "yes" and all(
         _blank(answers.get(key)) for key in _MAILING_KEYS
     ):
         gaps.append(_detail(DETAIL_MAILING, step, "mailing_street"))
+    if answers.get("sole_proprietor_answer") == "yes" and _blank(answers.get("business_name")):
+        gaps.append(_detail(DETAIL_BUSINESS, step, "business_name"))
+    ein = answers.get("ein")
+    if not _blank(ein) and not is_nine_digits(ein):
+        gaps.append(_detail(DETAIL_EIN, step, "ein"))
 
     if answers.get("prior_bankruptcy_answer") == "yes":
         rows = answers.get("prior_cases") or []
@@ -135,8 +144,6 @@ def _debtor_info_details(answers: dict) -> list[Gap]:
         rows = answers.get("pending_cases") or []
         if any(_blank(row.get("debtor")) for row in rows):
             gaps.append(_detail(DETAIL_PENDING_CASE, step, "pending_cases"))
-    if answers.get("sole_proprietor_answer") == "yes" and _blank(answers.get("business_name")):
-        gaps.append(_detail(DETAIL_BUSINESS, step, "business_name"))
     return gaps
 
 
@@ -160,9 +167,10 @@ def petition_step_gaps(session) -> list[Gap]:
     """
     record = getattr(session, "petition_answers", None)
     answers = record.get_answers() if record else {}
+    # Only the keys steps 1 and 5 ask in 4b; 4d's, 4i's and the landlord's are other steps'.
     limited = list(PetitionAnswers.TEXT_LIMITS)
-    step_1_keys = [key for key in limited if not key.startswith("hazard_")]
-    hazard_keys = [key for key in limited if key.startswith("hazard_")]
+    step_1_keys = [k for k in limited if PETITION_STEP_OF_KEY.get(k) == "debtor_info"]
+    hazard_keys = [k for k in limited if PETITION_STEP_OF_KEY.get(k) == "assets"]
 
     gaps = [
         Gap(_GATE_SENTENCE[key], "debtor_info", Gap.GATE)

@@ -160,3 +160,60 @@ def test_a_too_long_text_names_its_box_in_plain_words(filer, monkeypatch):
     expected = DETAIL_TOO_LONG.format(label="Name of business")
     assert gaps == [("debtor_info", "detail", expected)]
     assert "{" not in expected
+
+
+def test_a_yes_to_other_names_is_answered_by_a_business_name_alone(filer):
+    _, session = filer
+    base = {**NO, "venue_choice": "lived_here", "other_names_answer": "yes"}
+    named = {**base, "other_business_names": [{"name": "Demo Trading Co"}]}
+    assert _gaps(session, named) == []
+    assert [t for _, _, t in _gaps(session, base)] == [DETAIL_OTHER_NAMES]
+
+
+def test_the_details_come_in_one_fixed_order(filer, monkeypatch):
+    _, session = filer
+    monkeypatch.setattr(PetitionAnswers, "TEXT_LIMITS", {"business_city": 3})
+    monkeypatch.setattr(PetitionAnswers, "TEXT_LABELS", {"business_city": "City of business"})
+    every_yes = {key: "yes" for key in (*STEP_1_GATES, "hazard_answer", "rents_residence")}
+    answers = {
+        **every_yes,
+        "venue_choice": "other",
+        "ein": "12",
+        "business_city": "Springfield",
+        "prior_cases": [{"district": "Demo", "filed_on": "13/45/2020"}, {"filed_on": None}],
+        "pending_cases": [{"debtor": ""}],
+    }
+    PetitionAnswers.objects.create(session=session, answers=json.dumps(answers))
+    session.refresh_from_db()
+    assert [str(g) for g in petition_step_gaps(session)] == [
+        DETAIL_VENUE_REASON,
+        DETAIL_OTHER_NAMES,
+        DETAIL_ITIN,
+        DETAIL_OTHER_SSN,
+        DETAIL_MAILING,
+        DETAIL_BUSINESS,
+        DETAIL_EIN,
+        DETAIL_PRIOR_CASE,
+        DETAIL_PRIOR_DATE,
+        DETAIL_PENDING_CASE,
+        DETAIL_TOO_LONG.format(label="City of business"),
+        DETAIL_HAZARD,
+        GATE_EVICTION,
+    ]
+
+
+def test_a_too_long_answer_to_another_steps_question_is_not_listed_here(filer, monkeypatch):
+    _, session = filer
+    monkeypatch.setattr(
+        PetitionAnswers,
+        "TEXT_LIMITS",
+        {"preparer_name": 3, "debt_nature_text": 3, "landlord_name": 3},
+    )
+    answers = {
+        **NO,
+        "venue_choice": "lived_here",
+        "preparer_name": "A" * 10,
+        "debt_nature_text": "B" * 10,
+        "landlord_name": "C" * 10,
+    }
+    assert _gaps(session, answers) == []
