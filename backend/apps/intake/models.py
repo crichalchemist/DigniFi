@@ -61,8 +61,8 @@ class IntakeSession(models.Model):
         """Set a completed intake back to in progress, because its intake data changed.
 
         The filer then presses Complete again, which re-runs the completion checks (spec
-        §5.3). The filing fee, exemptions and means-test pages are not intake data and never
-        call this.
+        §5.3). Form answers, SOFA and the filing fee, exemptions and means-test pages are not
+        intake data and never call this.
 
         The database decides, not this copy: an upload loads the session seconds before it
         reopens it, and the filer may have pressed Complete meanwhile. The copy is updated too,
@@ -931,7 +931,7 @@ class PetitionAnswers(models.Model):
     TEXT_CEILING: ClassVar[int] = 500
     ROW_CEILING: ClassVar[int] = 20
     LIST_CAPS: ClassVar[dict[str, int]] = {"other_names": 2, "other_business_names": 2}
-    # Measured from Form 101's boxes at 6 pt by Task 4's tool; empty until that file exists.
+    # Measured from Form 101's boxes at 6 pt by build_form_101.py, read from form_101.limits.json.
     TEXT_LIMITS: ClassVar[dict[str, int]]
     TEXT_LABELS: ClassVar[dict[str, str]]
 
@@ -953,7 +953,8 @@ class PetitionAnswers(models.Model):
         return json.loads(self.answers)
 
     def merge(self, sent: Mapping[str, Any]) -> None:
-        """Set each sent answer; a null removes the key, and the fill date is stamped.
+        """Set each sent answer; a null removes the key, and the fill date is stamped when an
+        answer changed (spec §7.1: the fill date of the last change).
 
         Every key is checked before any is set: an unknown key raises KeyError naming it.
         Doesn't save.
@@ -961,19 +962,22 @@ class PetitionAnswers(models.Model):
         for key in sent:
             if key not in self.KEYS:
                 raise KeyError(key)
-        answers = self.get_answers()
+        stored = self.get_answers()
+        answers = dict(stored)
         for key, value in sent.items():
             if value is None:
                 answers.pop(key, None)
             else:
                 answers[key] = value
-        self.answers = json.dumps(answers)
-        self.answered_on = fill_date().isoformat()
+        if answers != stored:
+            self.answers = json.dumps(answers)
+            self.answered_on = fill_date().isoformat()
 
 
 def _read_text_limits() -> dict:
+    # Read unconditionally: a missing file fails at import, never as text with no caps.
     path = Path(settings.FORM_SCHEMAS_DIRECTORY) / "form_101.limits.json"
-    return json.loads(path.read_text()) if path.is_file() else {}
+    return json.loads(path.read_text())
 
 
 _LIMITS = _read_text_limits()

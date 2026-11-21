@@ -1060,7 +1060,15 @@ def _save_petition_answers(session: IntakeSession, data: dict) -> None:
 
 
 def _petition_text_ok(value) -> bool:
-    return isinstance(value, str) and len(value) <= PetitionAnswers.TEXT_CEILING
+    if not isinstance(value, str) or len(value) > PetitionAnswers.TEXT_CEILING:
+        return False
+    # Half of a surrogate pair can't be written as UTF-8, so every later read of the session
+    # would fail to render: refuse it before anything is stored, as CharField does.
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
 
 
 def _petition_value_ok(key: str, value) -> bool:
@@ -1275,7 +1283,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         if claim_answers_data is not None:
             _save_claim_answers(session, claim_answers_data)
 
-        if petition_answers_data is not None:
+        if petition_answers_data:
             _save_petition_answers(session, petition_answers_data)
 
         # Create assets
@@ -1298,6 +1306,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         spouse rows saved, so the reply reads what this save stored rather than the copies
         select_related cached before it.
         """
+        if validated_data.get("petition_answers") == {}:
+            # Only echoed read-only keys, or nothing: no answer to save, so nothing reopens.
+            del validated_data["petition_answers"]
         if _INTAKE_DATA.intersection(validated_data):
             instance.reopen()
 

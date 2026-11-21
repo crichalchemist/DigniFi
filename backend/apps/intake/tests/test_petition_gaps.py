@@ -6,7 +6,6 @@ would print blank is only a detail, and no question is ever answered for the fil
 
 import json
 
-from apps.intake import petition
 from apps.intake.models import PetitionAnswers
 from apps.intake.petition import (
     DETAIL_BUSINESS,
@@ -24,7 +23,14 @@ from apps.intake.petition import (
     DETAIL_VENUE_REASON,
     GATE_EVICTION,
     GATE_HAZARD,
+    GATE_ITIN,
+    GATE_MAILING,
+    GATE_OTHER_NAMES,
+    GATE_OTHER_SSN,
+    GATE_PENDING_CASE,
+    GATE_PRIOR_BANKRUPTCY,
     GATE_RENTS,
+    GATE_SOLE_PROPRIETOR,
     STEP_1_GATES,
     petition_step_gaps,
 )
@@ -40,13 +46,26 @@ def _gaps(session, answers):
     return [(g.step, g.kind, str(g)) for g in petition_step_gaps(session)]
 
 
+# Each step-1 question with the sentence that asks it, written out so a sentence moved to
+# another question (say the ITIN's to the other number's) is caught.
+STEP_1_GATE_SENTENCES = [
+    ("other_names_answer", GATE_OTHER_NAMES),
+    ("itin_answer", GATE_ITIN),
+    ("other_ssn_answer", GATE_OTHER_SSN),
+    ("mailing_answer", GATE_MAILING),
+    ("prior_bankruptcy_answer", GATE_PRIOR_BANKRUPTCY),
+    ("pending_case_answer", GATE_PENDING_CASE),
+    ("sole_proprietor_answer", GATE_SOLE_PROPRIETOR),
+]
+
+
 def test_a_session_with_no_record_lists_the_seven_step_1_gates_then_the_hazard_and_rent_gates(
     filer,
 ):
     _, session = filer
     gaps = petition_step_gaps(session)
     assert [(g.step, g.kind, str(g)) for g in gaps[:7]] == [
-        ("debtor_info", "gate", petition._GATE_SENTENCE[key]) for key in STEP_1_GATES
+        ("debtor_info", "gate", sentence) for _, sentence in STEP_1_GATE_SENTENCES
     ]
     assert [(g.step, g.kind, str(g)) for g in gaps[7:]] == [
         ("debtor_info", "detail", DETAIL_VENUE),
@@ -54,6 +73,23 @@ def test_a_session_with_no_record_lists_the_seven_step_1_gates_then_the_hazard_a
         ("contracts", "gate", GATE_RENTS),
     ]
     assert len(gaps) == 7 + 1 + 1 + 1
+
+
+def test_each_step_1_question_left_open_is_asked_in_its_own_words(filer):
+    _, session = filer
+    for key, sentence in STEP_1_GATE_SENTENCES:
+        answers = {**NO, "venue_choice": "lived_here"}
+        del answers[key]
+        assert _gaps(session, answers) == [("debtor_info", "gate", sentence)], key
+
+
+def test_the_other_reason_gap_asks_only_for_the_reason(filer):
+    # FR-venue: it names no other answer to pick, since line 6's first answer is a sworn
+    # statement about where the filer lived (UPL §II.4).
+    _, session = filer
+    assert _gaps(session, {**NO, "venue_choice": "other"}) == [
+        ("debtor_info", "detail", "Explain your other reason for filing here.")
+    ]
 
 
 def test_every_no_lists_nothing(filer):

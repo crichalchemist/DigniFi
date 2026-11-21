@@ -11,7 +11,7 @@ import pytest
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
-from apps.intake.models import PetitionAnswers
+from apps.intake.models import PetitionAnswers, _read_text_limits
 from apps.intake.petition import petition_step_gaps
 
 
@@ -150,6 +150,66 @@ def test_the_itin_and_other_ssn_never_come_back(filer):
     assert b"900701234" not in response.content
 
 
+def test_a_stored_other_ssn_never_comes_back_in_any_reply(filer):
+    client, session = filer
+    body = {
+        "itin_answer": "yes",
+        "itin": "900701234",
+        "other_ssn_answer": "yes",
+        "other_ssn": "900554321",
+    }
+    response = _patch(client, session, body)
+    assert response.status_code == 200
+    assert _stored(session)["other_ssn"] == "900554321"
+    read = client.get(_url(session))
+    for reply in (response, read):
+        answers = reply.json()["petition_answers"]
+        assert "other_ssn" not in answers and "itin" not in answers
+        assert answers["other_ssn_saved"] is True and answers["itin_saved"] is True
+        assert b"900554321" not in reply.content
+        assert b"900701234" not in reply.content
+
+
+def _raw_patch(client, session, text):
+    """A PATCH body sent as typed JSON text, so it can carry what a test renderer can't."""
+    return client.patch(_url(session), data=text, content_type="application/json")
+
+
+def test_half_of_a_surrogate_pair_is_refused_and_the_session_still_reads(filer):
+    # A browser can cut a pasted emoji in half at a box's maxLength. Stored, it would make
+    # every later read of the session fail to render, so it is refused before any write.
+    client, session = filer
+    text = json.dumps({"petition_answers": {"venue_reason": "ok \ud83d"}})
+    refused = _raw_patch(client, session, text)
+    assert refused.status_code == 400
+    assert refused.json() == {"petition_answers": ["Check the answer for venue_reason."]}
+    cell = json.dumps({"petition_answers": {"prior_cases": [{"district": "Demo \udc00"}]}})
+    assert _raw_patch(client, session, cell).status_code == 400
+    assert not PetitionAnswers.objects.filter(session=session).exists()
+    assert client.get(_url(session)).status_code == 200
+
+
+def test_a_list_holds_at_most_twenty_rows(filer):
+    client, session = filer
+    rows = [{"district": f"Demo {n}", "filed_on": "01/02/2020"} for n in range(21)]
+    for key in ("prior_cases", "pending_cases"):
+        refused = _patch(client, session, {key: rows if key == "prior_cases" else [{}] * 21})
+        assert refused.status_code == 400, key
+        assert refused.json() == {"petition_answers": [f"Check the answer for {key}."]}
+    assert _patch(client, session, {"prior_cases": rows[:20]}).status_code == 200
+
+
+def test_a_row_cell_over_the_ceiling_or_a_row_that_is_not_an_object_is_refused(filer):
+    client, session = filer
+    long_cell = [{"district": "x" * (PetitionAnswers.TEXT_CEILING + 1)}]
+    assert _patch(client, session, {"prior_cases": long_cell}).status_code == 400
+    assert _patch(client, session, {"prior_cases": ["Demo"]}).status_code == 400
+    assert _patch(client, session, {"other_names": [["Demo", "Name"]]}).status_code == 400
+    assert not PetitionAnswers.objects.filter(session=session).exists()
+    at_ceiling = [{"district": "x" * PetitionAnswers.TEXT_CEILING}]
+    assert _patch(client, session, {"prior_cases": at_ceiling}).status_code == 200
+
+
 def test_an_echoed_read_never_changes_a_stored_itin(filer):
     client, session = filer
     _patch(client, session, {"itin_answer": "yes", "itin": "900701234"})
@@ -187,6 +247,31 @@ def test_answered_on_is_stamped_and_read_only(filer, monkeypatch):
     assert PetitionAnswers.objects.get(session=session).answered_on == "2026-11-19"
 
 
+def test_answered_on_moves_only_when_an_answer_changes(filer, monkeypatch):
+    client, session = filer
+    today = {"day": datetime.date(2026, 11, 19)}
+    monkeypatch.setattr("apps.districts.dated_tables._today", lambda: today["day"])
+    assert _patch(client, session, {"mailing_answer": "no"}).status_code == 200
+    today["day"] = datetime.date(2026, 11, 20)
+    assert _patch(client, session, {"mailing_answer": "no", "ein": None}).status_code == 200
+    assert PetitionAnswers.objects.get(session=session).answered_on == "2026-11-19"
+    assert _patch(client, session, {"mailing_answer": "yes"}).status_code == 200
+    assert PetitionAnswers.objects.get(session=session).answered_on == "2026-11-20"
+
+
+def test_a_body_with_no_answer_in_it_saves_nothing_and_leaves_a_completed_intake_complete(
+    filer,
+):
+    client, session = filer
+    session.status = "completed"
+    session.save()
+    for body in ({}, {"itin_saved": True, "other_ssn_saved": False, "answered_on": "x"}):
+        assert _patch(client, session, body).status_code == 200
+        session.refresh_from_db()
+        assert session.status == "completed"
+    assert not PetitionAnswers.objects.filter(session=session).exists()
+
+
 def test_a_petition_save_reopens_a_completed_intake(filer):
     client, session = filer
     session.status = "completed"
@@ -204,6 +289,13 @@ def test_the_record_rides_on_the_session_read(filer):
     assert response.json()["petition_answers"]["mailing_answer"] == "no"
     # select_related joins it: no query of its own reads the record's table.
     assert [q for q in queries if 'FROM "petition_answers"' in q["sql"]] == []
+
+
+def test_a_missing_caps_file_fails_loudly(settings, tmp_path):
+    # Read at import: without it every text would lose its cap with no sign of it.
+    settings.FORM_SCHEMAS_DIRECTORY = tmp_path
+    with pytest.raises(FileNotFoundError):
+        _read_text_limits()
 
 
 @pytest.mark.parametrize("key", PetitionAnswers.RADIO_KEYS)

@@ -1,8 +1,8 @@
 """What Form 101's questions still lack from the filer (forms step 4b spec §7.1).
 
 Pure reading: the gaps come from the session's `PetitionAnswers` record, never from a form's
-preconditions. The sentences are DigniFi's own; `petitionGaps.ts` copies them and
-`test_petition_frontend_copy.py` pins the copy.
+preconditions. The sentences are DigniFi's own; 4b-ii adds the browser's copy
+(`petitionGaps.ts`) and the test that pins it (`test_petition_frontend_copy.py`).
 """
 
 import re
@@ -34,7 +34,8 @@ GATE_HAZARD = "Say whether you own property that poses a hazard or needs immedia
 GATE_RENTS = "Say whether you rent your residence."
 GATE_EVICTION = "Say whether your landlord has an eviction judgment against you."
 DETAIL_VENUE = "Choose why you are filing in this district."
-DETAIL_VENUE_REASON = "Explain your other reason for filing here, or choose the first answer."
+# DRAFT: counsel C-40
+DETAIL_VENUE_REASON = "Explain your other reason for filing here."
 DETAIL_OTHER_NAMES = "Add the other name you used, or change your answer to No."
 DETAIL_ITIN = "Type your 9-digit ITIN, or change your answer to No."
 DETAIL_OTHER_SSN = "Type the other 9-digit Social Security number, or change your answer to No."
@@ -58,8 +59,9 @@ _GATE_SENTENCE = {
     "sole_proprietor_answer": GATE_SOLE_PROPRIETOR,
 }
 
-# Every key a detail can name, to the forms that print its box blank while it is open (4b-R12):
-# Form 101 prints each, and Form 121 prints the ITIN and the other Social Security number too.
+# Every key a detail can name, to the forms that print its box blank while it is open (4b-R12).
+# Form 101 prints the ITIN's last four but no box of the other Social Security number; Form 121's
+# boxes for both come with 4b-ii, and the tuple names Form 121 for them ahead of that.
 FORMS_OF_KEY: dict[str, tuple[str, ...]] = {key: ("form_101",) for key in PetitionAnswers.KEYS}
 FORMS_OF_KEY.update({key: ("form_101", "form_121") for key in PetitionAnswers.SECRET_KEYS})
 

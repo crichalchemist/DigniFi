@@ -989,6 +989,35 @@ def test_a_write_that_loaded_the_intake_before_complete_still_reopens_it(complet
 # ── What is not intake data ───────────────────────────────────────────
 
 
+def test_form_answers_and_sofa_leave_a_completed_intake_complete(filer, completed):
+    # A waiver filer answers 103B lines 17-19 at /ask/form_103b after Complete; that must not
+    # send them back to the wizard.
+    client, _ = filer
+
+    answers = client.post(
+        _session_url(completed, "answers/bulk/"),
+        {
+            "answers": [
+                {
+                    "form_type": "form_103b",
+                    "binding": "answer:form_103b.paid_anyone_for_services",
+                    "value": "Yes",
+                },
+                {"form_type": "form_107", "binding": "sofa.has_prior_income", "value": "True"},
+            ]
+        },
+        format="json",
+    )
+    assert answers.status_code == 200
+    assert _status(completed) == "completed"
+
+    sofa = client.patch(
+        f"/api/intake/sofa-report/{completed.pk}/", {"has_business": False}, format="json"
+    )
+    assert sofa.status_code == 200
+    assert _status(completed) == "completed"
+
+
 def test_the_filing_fee_leaves_a_completed_intake_complete_and_a_petition_answer_reopens_it(
     filer, completed
 ):
