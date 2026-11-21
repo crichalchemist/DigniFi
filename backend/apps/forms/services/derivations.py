@@ -11,6 +11,7 @@ answer anything the form leaves to the filer — those are ``asked`` +
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from decimal import Decimal
 from functools import reduce
@@ -24,6 +25,7 @@ from apps.eligibility.cmi import (
     is_above_median,
     spouse_monthly_income,
 )
+from apps.forms.services.answer_records import PETITION_STEP_OF_KEY, record_value
 from apps.intake.asset_lines import (
     LINE_BY_KEY,
     LINES,
@@ -898,6 +900,274 @@ def _county(session: IntakeSession) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Form 101 (11/26): one answer in several boxes, one box per choice (step 4b)
+# ---------------------------------------------------------------------------
+
+
+def digits(value: str) -> str:
+    """The digits of what the filer typed: "900-70-1234" and "900701234" read the same."""
+    return re.sub(r"\D", "", value or "")
+
+
+def nine_digit_slice(value, start: int, stop: int) -> str:
+    """digits(value)[start:stop], or "" unless the value has exactly nine digits."""
+    found = digits(value)
+    return found[start:stop] if len(found) == 9 else ""
+
+
+_NUMBER_STREET = re.compile(r"(\d+(?:-\d+|[A-Za-z])?)\s+(\S.*)")
+
+
+def split_number_street(street: str) -> tuple[str, str]:
+    """
+    A street line as the form's two boxes, Number and Street (B56). A leading run of digits is
+    the Number, with a trailing letter or a hyphenated range kept in it, and the rest is the
+    Street:
+      "1234 Main St"        -> ("1234", "Main St")
+      "1234A Main St"       -> ("1234A", "Main St")
+      "12-14 Main St"       -> ("12-14", "Main St")
+      "Rural Route 2"       -> ("", "Rural Route 2")  no leading digits, so no Number
+      "1234 Main St Apt 3"  -> ("1234", "Main St Apt 3")
+    """
+    street = (street or "").strip()
+    match = _NUMBER_STREET.fullmatch(street)
+    return (match[1], match[2]) if match else ("", street)
+
+
+def split_district_name(name: str) -> tuple[str, str]:
+    """
+    "Northern District of Illinois" as ("Northern", "Illinois"); a name without " District of "
+    is ("", name).
+    """
+    district, found, state = name.partition(" District of ")
+    return (district, state) if found else ("", name)
+
+
+def _petition(session: IntakeSession, key: str) -> str:
+    return record_value(session, f"petition.{key}")
+
+
+def _asked(key: str) -> Callable[[IntakeSession], str]:
+    return lambda s: _petition(s, key)
+
+
+def _is(reader: Callable[[IntakeSession], str], value: str) -> Callable[[IntakeSession], str]:
+    """A single box's rule: "true" when the reader gives the value, "" otherwise."""
+    return lambda s: "true" if reader(s) == value else ""
+
+
+def _is_one_of(
+    reader: Callable[[IntakeSession], str], values: tuple[str, ...]
+) -> Callable[[IntakeSession], str]:
+    return lambda s: "true" if reader(s) in values else ""
+
+
+def _under_value(
+    gate_key: str, gate_value: str, reader: Callable[[IntakeSession], str]
+) -> Callable[[IntakeSession], str]:
+    """The reader's value only while the gate answer is the gate value; stored rows stay."""
+    return lambda s: reader(s) if _petition(s, gate_key) == gate_value else ""
+
+
+def _under(gate_key: str, reader: Callable[[IntakeSession], str]) -> Callable[[IntakeSession], str]:
+    """The reader's value only while the yes/no gate answer is "yes"."""
+    return _under_value(gate_key, "yes", reader)
+
+
+# The explain box (line 6, "the other reason", Debtor 1) the four venue lines are measured by.
+_VENUE_REASON_TEMPLATE = "form_b101.pdf"
+_VENUE_REASON_BOX = "See 28 USC  1408 1"
+_VENUE_REASON_LINES = 4
+
+
+def _venue_reason_lines(text: str) -> list[str]:
+    """
+    The venue reason broken at spaces into the four one-line boxes at 6 pt. Past four lines the
+    fourth carries the rest, and a word wider than a box leaves the whole text on the first, so
+    check() refuses that box as ValueTooLong and names it.
+    """
+    from apps.forms.services.text_fit import MIN_SIZE, font_for, reverse_cmap_for, wrap
+    from apps.forms.services.widgets import template_widgets
+
+    text = " ".join((text or "").split())
+    lines = [""] * _VENUE_REASON_LINES
+    if not text:
+        return lines
+    widget = next(
+        w for w in template_widgets(_VENUE_REASON_TEMPLATE) if w.full_name == _VENUE_REASON_BOX
+    )
+    wrapped = wrap(
+        font_for(_VENUE_REASON_TEMPLATE, widget.font),
+        reverse_cmap_for(_VENUE_REASON_TEMPLATE, widget.font),
+        text,
+        MIN_SIZE,
+        widget.width - 4 * widget.margin,
+    )
+    if wrapped is None:
+        wrapped = [text]
+    if len(wrapped) > _VENUE_REASON_LINES:
+        wrapped = [
+            *wrapped[: _VENUE_REASON_LINES - 1],
+            " ".join(wrapped[_VENUE_REASON_LINES - 1 :]),
+        ]
+    lines[: len(wrapped)] = wrapped
+    return lines
+
+
+def _step_of(key: str) -> dict[str, str]:
+    return {"step": PETITION_STEP_OF_KEY[key]}
+
+
+_PETITION_DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {}
+_PETITION_FIXES: dict[str, dict[str, str]] = {}
+
+
+def _register(name: str, rule: Callable[[IntakeSession], str], fix: dict[str, str]) -> None:
+    _PETITION_DERIVATIONS[name] = rule
+    _PETITION_FIXES[name] = fix
+
+
+def _register_digits(prefix: str, reader, start: int, count: int, fix: dict[str, str]) -> None:
+    """One rule a box: `<prefix>_<n>` reads count digits of the nine, from start."""
+    for n in range(1, count + 1):
+        _register(
+            f"{prefix}_{n}",
+            lambda s, n=n: nine_digit_slice(reader(s), start + n - 1, start + n),
+            fix,
+        )
+
+
+_register_digits(
+    "ssn_last4_digit", lambda s: _safe_debtor_attr(s, "ssn"), 5, 4, {"step": "debtor_info"}
+)
+_register_digits("itin_last4_digit", _asked("itin"), 5, 4, _step_of("itin"))
+_register("itin_whole", lambda s: nine_digit_slice(_petition(s, "itin"), 0, 9), _step_of("itin"))
+_register(
+    "other_ssn_whole",
+    lambda s: nine_digit_slice(_petition(s, "other_ssn"), 0, 9),
+    _step_of("other_ssn"),
+)
+_register("ein_prefix", lambda s: nine_digit_slice(_petition(s, "ein"), 0, 2), _step_of("ein"))
+_register("ein_suffix", lambda s: nine_digit_slice(_petition(s, "ein"), 2, 9), _step_of("ein"))
+
+_register("court_district", lambda s: split_district_name(s.district.name)[0], {})
+_register("court_state", lambda s: split_district_name(s.district.name)[1], {})
+
+# Each street splits into Number and Street; the three detail addresses print under their Yes.
+for _prefix, _reader, _fix in (
+    ("home", lambda s: _safe_debtor_attr(s, "street_address"), {"step": "debtor_info"}),
+    (
+        "mailing",
+        _under("mailing_answer", _asked("mailing_street")),
+        _step_of("mailing_street"),
+    ),
+    (
+        "business",
+        _under("sole_proprietor_answer", _asked("business_street")),
+        _step_of("business_street"),
+    ),
+    ("hazard", _under("hazard_answer", _asked("hazard_street")), _step_of("hazard_street")),
+):
+    _register(f"{_prefix}_number", lambda s, r=_reader: split_number_street(r(s))[0], _fix)
+    _register(f"{_prefix}_street", lambda s, r=_reader: split_number_street(r(s))[1], _fix)
+
+_register("venue_lived_here", _is(_asked("venue_choice"), "lived_here"), _step_of("venue_choice"))
+_register("venue_other", _is(_asked("venue_choice"), "other"), _step_of("venue_choice"))
+for _n in range(1, _VENUE_REASON_LINES + 1):
+    _register(
+        f"venue_reason_line_{_n}",
+        lambda s, n=_n: _venue_reason_lines(_petition(s, "venue_reason"))[n - 1],
+        _step_of("venue_reason"),
+    )
+
+for _value in ("pay_in_full", "installments", "waiver"):
+    _register(
+        f"fee_choice_{_value}",
+        _is(_fee_answer("payment_choice"), _value),
+        {"page": "/filing-fee"},
+    )
+
+for _value in ("no", "yes"):
+    _register(
+        f"eviction_{_value}",
+        _is(_under("rents_residence", _asked("eviction_judgment")), _value),
+        _step_of("eviction_judgment"),
+    )
+    _register(
+        f"sole_proprietor_{_value}",
+        _is(_asked("sole_proprietor_answer"), _value),
+        _step_of("sole_proprietor_answer"),
+    )
+    _register(
+        f"paid_preparer_{_value}", _is(_asked("paid_preparer"), _value), _step_of("paid_preparer")
+    )
+
+for _value in ("health_care", "single_asset", "stockbroker", "commodity_broker", "none"):
+    _register(
+        f"business_kind_{_value}",
+        _is(_under("sole_proprietor_answer", _asked("business_kind")), _value),
+        _step_of("business_kind"),
+    )
+
+for _value in ("certificate", "no_certificate", "exigent", "not_required"):
+    _register(
+        f"credit_counseling_{_value}",
+        _is(_asked("credit_counseling"), _value),
+        _step_of("credit_counseling"),
+    )
+for _value in ("incapacity", "disability", "active_duty"):
+    _register(
+        f"not_required_{_value}",
+        _is(
+            _under_value("credit_counseling", "not_required", _asked("not_required_reason")),
+            _value,
+        ),
+        _step_of("not_required_reason"),
+    )
+
+# Line 16a asks "primarily consumer debts"; 16b, only when it is No, asks "primarily business".
+_register("debt_nature_16a_yes", _is(_asked("debt_nature"), "consumer"), _step_of("debt_nature"))
+_register(
+    "debt_nature_16a_no",
+    _is_one_of(_asked("debt_nature"), ("business", "neither")),
+    _step_of("debt_nature"),
+)
+_register("debt_nature_16b_yes", _is(_asked("debt_nature"), "business"), _step_of("debt_nature"))
+_register("debt_nature_16b_no", _is(_asked("debt_nature"), "neither"), _step_of("debt_nature"))
+_register("itin_answer_no", _is(_asked("itin_answer"), "no"), _step_of("itin_answer"))
+
+# Lines 18-20: one box a range, each keyed by the range the existing rule returns.
+for _prefix, _range_rule, _ranges, _fix in (
+    ("creditor_count_is", _creditor_count_range, _CREDITOR_RANGES, {"step": "debts"}),
+    ("total_assets_is", _total_assets_range, _AMOUNT_RANGES, {"step": "assets"}),
+    ("total_debts_is", _total_debts_range, _AMOUNT_RANGES, {"step": "debts"}),
+):
+    for _value in (*(lowest for _, lowest in _ranges), "more"):
+        _register(f"{_prefix}_{_value}", _is(_range_rule, _value), _fix)
+
+_PETITION_PREDICATES: dict[str, Callable[..., bool]] = {
+    f"petition_{name}": (
+        lambda s, answer_cache=None, key=key, value=value: _petition(s, key) == value
+    )
+    for name, key, value in (
+        ("other_names_yes", "other_names_answer", "yes"),
+        ("itin_yes", "itin_answer", "yes"),
+        ("other_ssn_yes", "other_ssn_answer", "yes"),
+        ("mailing_yes", "mailing_answer", "yes"),
+        ("venue_other", "venue_choice", "other"),
+        ("prior_bankruptcy_yes", "prior_bankruptcy_answer", "yes"),
+        ("pending_case_yes", "pending_case_answer", "yes"),
+        ("sole_proprietor_yes", "sole_proprietor_answer", "yes"),
+        ("hazard_yes", "hazard_answer", "yes"),
+        ("rents_yes", "rents_residence", "yes"),
+        ("debt_nature_neither", "debt_nature", "neither"),
+        ("credit_counseling_exigent", "credit_counseling", "exigent"),
+        ("paid_preparer_yes", "paid_preparer", "yes"),
+    )
+}
+
+
+# ---------------------------------------------------------------------------
 # DERIVATIONS dict (all referenced functions must be defined above)
 # ---------------------------------------------------------------------------
 
@@ -1100,6 +1370,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_h_spouse_city": lambda s: community_answers(s)["spouse_city"],
     "schedule_h_spouse_state": lambda s: community_answers(s)["spouse_state"],
     "schedule_h_spouse_zip": lambda s: community_answers(s)["spouse_zip"],
+    **_PETITION_DERIVATIONS,
 }
 
 
@@ -1311,6 +1582,7 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "schedule_h_spouse_city": {"step": "codebtors"},
     "schedule_h_spouse_state": {"step": "codebtors"},
     "schedule_h_spouse_zip": {"step": "codebtors"},
+    **_PETITION_FIXES,
 }
 
 
@@ -1390,4 +1662,5 @@ PREDICATES: dict[str, Callable[[IntakeSession], bool]] = {
     "has_attorney": lambda s, answer_cache=None: _form_answer_predicate(
         s, "attorney_gate", answer_cache
     ),
+    **_PETITION_PREDICATES,
 }
