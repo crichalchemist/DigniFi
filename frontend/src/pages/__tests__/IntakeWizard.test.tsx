@@ -349,7 +349,8 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(REFUSED);
-    const firstReason = screen.getByText(NO_INCOME.message);
+    // The list comes from the gaps re-read the refusal starts, which can land after the alert
+    const firstReason = await screen.findByText(NO_INCOME.message);
     // The general message comes first, then the list
     expect(
       alert.compareDocumentPosition(firstReason) & Node.DOCUMENT_POSITION_FOLLOWING
