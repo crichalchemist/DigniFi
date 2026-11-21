@@ -28,11 +28,14 @@ _KEY_OF_RULE.update({f"venue_reason_line_{n}": "venue_reason" for n in range(1, 
 
 PETITION = "petition."
 
-# What a too-long box names: (key, None) for a text key, (list, attr) for a row cell.
-Measured = tuple[str, str | None]
+# What a too-long box names: (key, None, None) for a text key, (list, attr, row) for a row cell,
+# the row its place in the list, counted from 1 (owner ruling Q5).
+Measured = tuple[str, str | None, int | None]
+# The petition key, or row cell, a box prints: (key, None) or (list, attr).
+Cell = tuple[str, str | None]
 
 
-def _measured(field: FieldSpec) -> Measured | None:
+def _measured(field: FieldSpec) -> Cell | None:
     """The petition key, or row cell, a field's box prints; None for any other box."""
     if field.binding and field.binding.startswith(PETITION):
         key, _, attr = field.binding[len(PETITION) :].partition("[].")
@@ -82,17 +85,20 @@ def _sheet_refusals(
                 PDFFormFiller().check(form_type, {"version": 2, "parts": [part]})
             except (ValueTooLong, UnprintableLetter) as refusal:
                 index = by_label.get(refusal.label)
-                if index is None:  # the filer's name in the sheet's header, not a cell
+                # The filer's name in the sheet's header is no cell; nor is a label whose cell is
+                # already blank (a header label equal to a column's), which would be refused the
+                # same way on every measure, for ever.
+                if index is None or cells[index] == "":
                     break
                 if isinstance(refusal, ValueTooLong):
-                    found.add(columns[index])
+                    found.add((*columns[index], position))
                 cells[index] = ""
                 continue
             break
     return {cell for cell in found if cell[0] in keys}
 
 
-def _measured_column(binding: str) -> Measured:
+def _measured_column(binding: str) -> Cell:
     key, _, attr = binding[len(PETITION) :].partition("[].")
     return key, attr
 
@@ -100,8 +106,9 @@ def _measured_column(binding: str) -> Measured:
 def too_long(session, keys: Collection[str]) -> dict[Measured, frozenset[str]]:
     """
     Each text key of `keys` that check() refuses as too long in a box it prints in, as
-    (key, None), and each row cell of a list in `keys` refused in its slot box or on its sheet,
-    as (list, attr), over every form in MEASURED_FORMS, each to the form types that refuse it
+    (key, None, None), and each row cell of a list in `keys` refused in its slot box or on its
+    sheet, as (list, attr, row) with the row counted from 1, so the filer is told which row to
+    shorten, over every form in MEASURED_FORMS, each to the form types that refuse it
     (two forms can print one cell, and only a refusing form's box is too small). Whether the box
     shows at all is the caller's to judge (petition.text_shows); a box is measured on what it
     would print.
@@ -116,13 +123,15 @@ def too_long(session, keys: Collection[str]) -> dict[Measured, frozenset[str]]:
             if measured is None or measured[0] not in keys:
                 continue
             if field.repeat is None:
+                row = None
                 value = _emit(field, _scalar_value(field, session))
             else:
+                row = field.row
                 capacities[field.repeat] = field.repeat_capacity or 0
                 cells = resolve_binding(field.binding, session)
                 value = _emit(field, cells[field.row - 1]) if field.row <= len(cells) else None
             if value is not None and _refused(form_type, {_key(field): value}):
-                refused.add(measured)
+                refused.add((*measured, row))
         for name, capacity in capacities.items():
             group = schema.groups.get(name)
             if group is not None and group.sheet is not None:

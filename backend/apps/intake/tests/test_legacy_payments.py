@@ -33,6 +33,7 @@ from apps.intake.tests.builders import (
     answer_asset_lines,
     answer_claims,
     answer_household,
+    answer_petition,
     complete_contract,
     linked_lease,
     linked_loan,
@@ -64,6 +65,7 @@ def filer(db):
     )
     answer_household(session)
     ExpenseInfo.objects.create(session=session, expenses_include_others="no")
+    answer_petition(session)
     client = APIClient()
     client.force_authenticate(user=user)
     return client, session

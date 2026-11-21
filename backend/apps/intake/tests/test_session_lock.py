@@ -56,6 +56,7 @@ from apps.intake.models import (
 from apps.intake.tests.builders import (
     answer_asset_lines,
     answer_household,
+    answer_petition,
     complete_codebtor,
     complete_contract,
     complete_debt,
@@ -134,6 +135,7 @@ def ready(transactional_db):
     )
     answer_household(session)
     ExpenseInfo.objects.create(session=session, expenses_include_others="no")
+    answer_petition(session)
     return user, session
 
 

@@ -30,9 +30,11 @@ from apps.intake.models import (
     FilingFee,
     Household,
     MeansTestAnswers,
+    PetitionAnswers,
     SecuredDebtAnswers,
     SpouseIncome,
 )
+from apps.intake.petition import STEP_1_GATES
 
 
 def answer_income_detail(
@@ -149,17 +151,46 @@ def answer_household(
 
 
 def finish_intake(session, **expense_over) -> None:
-    """Give a session that answer_household finished the Expenses row Complete requires.
+    """Give a session that answer_household finished the Expenses row Complete requires, and
+    Form 101's answers (answer_petition's defaults; a stored answer is kept).
 
-    answer_household's $0 payroll_tax already covers take-home pay, so the row is the last
-    thing a gate in completion_gaps asks of it. expenses_include_others is the form's own
-    word, "no", never False: the column holds the string and Schedule J prints it, so a
-    boolean would print "False", a No the filer did not give. update_or_create, because
-    ExpenseInfo.session is one-to-one and a test may have made the row itself.
+    answer_household's $0 payroll_tax already covers take-home pay, so the row and the petition
+    answers are the last things a gate in completion_gaps asks of it. expenses_include_others is
+    the form's own word, "no", never False: the column holds the string and Schedule J prints
+    it, so a boolean would print "False", a No the filer did not give. update_or_create,
+    because ExpenseInfo.session is one-to-one and a test may have made the row itself.
     """
     ExpenseInfo.objects.update_or_create(
         session=session, defaults={"expenses_include_others": "no", **expense_over}
     )
+    answer_petition(session)
+
+
+# Form 101's answers that finish its steps (4b-ii): every step 1 question No, the venue as "lived
+# here", the hazard No and the rent No. Nothing for 4d's or 4i's keys, which no step asks yet.
+PETITION_DEFAULTS = MappingProxyType(
+    {
+        **dict.fromkeys(STEP_1_GATES, "no"),
+        "venue_choice": "lived_here",
+        "hazard_answer": "no",
+        "rents_residence": "no",
+    }
+)
+
+
+def answer_petition(session, **over) -> PetitionAnswers:
+    """Store Form 101's asked answers (4b-ii), through the session's own relation.
+
+    The record is made if missing. A stored answer beats a default, so a second call keeps what
+    a test stored; `over` beats both, a None in it removes the key (unanswered), and an unknown
+    key raises KeyError, as the record's own merge does.
+    """
+    record, _ = PetitionAnswers.objects.get_or_create(session=session)
+    stored = record.get_answers()
+    defaults = {key: value for key, value in PETITION_DEFAULTS.items() if key not in stored}
+    record.merge({**defaults, **over})
+    record.save()
+    return record
 
 
 def answer_exemptions(

@@ -306,11 +306,12 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         """What Complete would still refuse (kind "gate") and what prints blank (kind "detail"), in
         Complete's order: wizard order, with the claims tail last on purpose (3c4; the comment at
         `complete`, step 4 spec §5.7). Reads only: no lock, no write, never the packet or a form's
-        preconditions."""
+        preconditions. Each entry's `forms` names the forms that print a detail's box blank, so
+        the dashboard can repeat it on their cards; a gate's is empty (4b-R12)."""
         return Response(
             {
                 "gaps": [
-                    {"message": str(g), "step": g.step, "kind": g.kind}
+                    {"message": str(g), "step": g.step, "kind": g.kind, "forms": list(g.forms)}
                     for g in completion_gaps(self.get_object())
                 ]
             }

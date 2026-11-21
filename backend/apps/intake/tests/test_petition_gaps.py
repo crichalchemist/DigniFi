@@ -23,6 +23,7 @@ from apps.intake.petition import (
     DETAIL_PRIOR_CASE,
     DETAIL_PRIOR_DATE,
     DETAIL_TOO_LONG,
+    DETAIL_TOO_LONG_ROW,
     DETAIL_VENUE,
     DETAIL_VENUE_REASON,
     GATE_EVICTION,
@@ -327,6 +328,10 @@ def _too_long(label):
     return DETAIL_TOO_LONG.format(label=label)
 
 
+def _row_too_long(label, noun, n):
+    return DETAIL_TOO_LONG_ROW.format(label=label, noun=noun, n=n)
+
+
 def test_capitals_under_a_cap_that_dont_fit_the_box_are_named_too_long(filer):
     # PF2-1: the cap counts digit-wide letters, so wide capitals under it can still be refused
     # at Generate; Review names them first, in the same sentence as an answer over its cap.
@@ -378,8 +383,8 @@ def test_too_wide_texts_and_cells_come_after_the_step_1_details_in_one_order(fil
     }
     assert _gaps(session, answers) == [
         ("debtor_info", "detail", _too_long(PetitionAnswers.TEXT_LABELS["mailing_city"])),
-        ("debtor_info", "detail", _too_long(CELL_LABELS["other_names"]["first"])),
-        ("debtor_info", "detail", _too_long(CELL_LABELS["prior_cases"]["district"])),
+        ("debtor_info", "detail", _row_too_long(CELL_LABELS["other_names"]["first"], "name", 1)),
+        ("debtor_info", "detail", _row_too_long(CELL_LABELS["prior_cases"]["district"], "case", 1)),
         ("assets", "detail", _too_long(PetitionAnswers.TEXT_LABELS["hazard_what"])),
     ]
 
@@ -396,6 +401,6 @@ def test_a_too_wide_row_cell_names_the_forms_of_its_list(filer):
     session.refresh_from_db()
     (gap,) = petition_step_gaps(session)
     assert (str(gap), gap.forms) == (
-        _too_long(CELL_LABELS["pending_cases"]["debtor"]),
+        _row_too_long(CELL_LABELS["pending_cases"]["debtor"], "case", 1),
         ("form_101",),
     )

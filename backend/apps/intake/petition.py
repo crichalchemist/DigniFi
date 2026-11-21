@@ -14,7 +14,7 @@ from apps.forms.services.answer_records import (
 )
 
 from .completion import Gap
-from .models import _LIMITS, PetitionAnswers
+from .models import PetitionAnswers
 
 STEP_1_GATES = (
     "other_names_answer",
@@ -51,8 +51,11 @@ DETAIL_PENDING_DATE = "A date is written as MM/DD/YYYY. Check the date of the pe
 DETAIL_PENDING_CASE = "Each pending case needs the name of the person who filed it."
 DETAIL_BUSINESS = "Add your business's name, or change your answer to No."
 DETAIL_HAZARD = "Say what the hazard is, or change your answer to No."
-# The one template: {label} is the box's index label in plain words (TEXT_LABELS, CELL_LABELS).
+# A one-off text's template: {label} is the box's index label in plain words (TEXT_LABELS).
 DETAIL_TOO_LONG = "Your answer for {label} is too long for its box on Form 101."
+# A row cell's (owner ruling Q5): {label} from CELL_LABELS, {noun} from ROW_NOUNS, {n} the row's
+# place in its list, counted from 1.
+DETAIL_TOO_LONG_ROW = "Your answer for {label}, in {noun} {n}, is too long to fit on Form 101."
 
 # The row lists step 1 asks, in the form's line order (2, 9, 10), each printed under its line's
 # Yes; their cells have no character cap and are measured where they print (PF2-10a).
@@ -63,7 +66,14 @@ ROW_LIST_GATES = {
     "pending_cases": "pending_case_answer",
 }
 # Each list's row cells in plain words, written by build_form_101.py into form_101.limits.json.
-CELL_LABELS: dict[str, dict[str, str]] = _LIMITS["cell_labels"]
+CELL_LABELS: dict[str, dict[str, str]] = PetitionAnswers.CELL_LABELS
+# What the filer calls a row of each list: line 2's are names, lines 9's and 10's cases.
+ROW_NOUNS = {
+    "other_names": "name",
+    "other_business_names": "name",
+    "prior_cases": "case",
+    "pending_cases": "case",
+}
 
 _GATE_SENTENCE = {
     "other_names_answer": GATE_OTHER_NAMES,
@@ -184,21 +194,28 @@ def _too_long(answers: dict, step: str, keys: list[str], too_wide: dict) -> list
         limit = PetitionAnswers.TEXT_LIMITS.get(key)
         value = answers.get(key)
         over = limit is not None and isinstance(value, str) and len(value) > limit
-        if over or (key, None) in too_wide:
+        if over or (key, None, None) in too_wide:
             label = PetitionAnswers.TEXT_LABELS.get(key, key.replace("_", " "))
             gaps.append(_detail(DETAIL_TOO_LONG.format(label=label), step, key))
     return gaps
 
 
 def _cells_too_long(answers: dict, too_wide: dict) -> list[Gap]:
-    """A detail for each row cell too wide where it prints, once a cell, by line (PF2-10a)."""
-    return [
-        _detail(DETAIL_TOO_LONG.format(label=label), "debtor_info", list_key)
-        for list_key in ROW_LIST_GATES
-        if text_shows(answers, list_key)
-        for attr, label in CELL_LABELS[list_key].items()
-        if (list_key, attr) in too_wide
-    ]
+    """A detail for each row cell too wide where it prints, naming its row (PF2-10a, owner ruling
+    Q5): by line, then row by row, then the row's cells in the line's order."""
+    gaps = []
+    for list_key in ROW_LIST_GATES:
+        if not text_shows(answers, list_key):
+            continue
+        rows = sorted({row for key, _, row in too_wide if key == list_key})
+        for n in rows:
+            for attr, label in CELL_LABELS[list_key].items():
+                if (list_key, attr, n) in too_wide:
+                    sentence = DETAIL_TOO_LONG_ROW.format(
+                        label=label, noun=ROW_NOUNS[list_key], n=n
+                    )
+                    gaps.append(_detail(sentence, "debtor_info", list_key))
+    return gaps
 
 
 def petition_step_gaps(session) -> list[Gap]:

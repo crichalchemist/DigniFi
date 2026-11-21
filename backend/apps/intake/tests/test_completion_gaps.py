@@ -17,10 +17,40 @@ from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
 from apps.districts.models import District
+from apps.intake.asset_lines import asset_step_gaps
+from apps.intake.claims import claim_step_gaps
 from apps.intake.completion import WIZARD_STEP_COUNT, Gap, completion_gaps
 from apps.intake.models import DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
-from apps.intake.tests.builders import answer_asset_lines, answer_household, complete_debt
+from apps.intake.petition import (
+    DETAIL_VENUE,
+    GATE_HAZARD,
+    GATE_ITIN,
+    GATE_MAILING,
+    GATE_OTHER_NAMES,
+    GATE_OTHER_SSN,
+    GATE_PENDING_CASE,
+    GATE_PRIOR_BANKRUPTCY,
+    GATE_RENTS,
+    GATE_SOLE_PROPRIETOR,
+)
+from apps.intake.tests.builders import (
+    answer_asset_lines,
+    answer_household,
+    answer_petition,
+    complete_debt,
+)
 from apps.users.models import User
+
+# Step 1's seven questions, in the order the step asks them.
+STEP_1_GATE_SENTENCES = [
+    GATE_OTHER_NAMES,
+    GATE_ITIN,
+    GATE_OTHER_SSN,
+    GATE_MAILING,
+    GATE_PRIOR_BANKRUPTCY,
+    GATE_PENDING_CASE,
+    GATE_SOLE_PROPRIETOR,
+]
 
 FRONTEND = settings.BASE_DIR.parent / "frontend" / "src"
 
@@ -68,6 +98,7 @@ def completed(filer, district):
     )
     answer_household(session)
     ExpenseInfo.objects.create(session=session, expenses_include_others="no")
+    answer_petition(session)
     return session
 
 
@@ -119,15 +150,124 @@ def test_the_gap_list_is_what_complete_refuses_in_the_same_order(filer, unfinish
     response = client.post(_session_url(unfinished, "complete/"))
 
     assert response.status_code == 400
-    assert gaps
-    assert [(g.step, str(g)) for g in gaps] == [
+    gates = [g for g in gaps if g.kind == Gap.GATE]
+    assert gates
+    assert [(g.step, str(g)) for g in gates] == [
         (e["step"], e["message"]) for e in response.data["errors"]
     ]
-    assert {g.kind for g in gaps} == {Gap.GATE}
+    # The venue choice is the one detail an untouched intake lists (step 1 asks it, and Form 101
+    # prints the line blank), and Complete never names it (4b-R4).
+    assert [str(g) for g in gaps if g.kind == Gap.DETAIL] == [DETAIL_VENUE]
 
 
 def test_a_finished_intake_has_no_gaps(filer, completed):
     assert completion_gaps(completed) == []
+
+
+def test_the_seven_step_1_gates_come_after_the_county_and_before_the_income_step(filer, unfinished):
+    # Wizard order: Form 101's step 1 questions sit after the county on the same step, so
+    # Review lists them before anything the Income step asks (4b-R4).
+    gaps = completion_gaps(unfinished)
+
+    assert [g.step for g in gaps[:9]] == ["debtor_info"] * 9
+    assert [str(g) for g in gaps[2:9]] == STEP_1_GATE_SENTENCES
+    assert all(g.kind == Gap.GATE for g in gaps[:9])
+    # Then step 1's one detail (the venue left open), and only then the Income step.
+    assert (gaps[9].step, gaps[9].kind, str(gaps[9])) == ("debtor_info", Gap.DETAIL, DETAIL_VENUE)
+    assert gaps[10].step == "income_info"
+    assert all(g.step != "debtor_info" for g in gaps[10:])
+
+
+def test_the_hazard_gate_follows_the_assets_gaps_and_the_rent_gate_sits_among_the_contracts_gaps(
+    filer, district
+):
+    # The hazard question ends the Assets step, so it is listed right after the last Schedule A/B
+    # gap and before the claims walk; the rent question is on Contracts & Leases, after its gaps
+    # and before Codebtors' (4b-R4). No home row is linked, so the claims walk has no Assets gap.
+    _, user = filer
+    session = IntakeSession.objects.create(user=user, district=district, current_step=9)
+    answer_asset_lines(session, yes=("3",))  # Yes on vehicles with no row: an Assets gap
+    asset_messages = [str(g) for g in asset_step_gaps(session)]
+    claim_messages = [str(g) for g in claim_step_gaps(session)]
+    assert asset_messages and claim_messages
+
+    gaps = completion_gaps(session)
+    messages = [str(g) for g in gaps]
+    hazard = messages.index(GATE_HAZARD)
+    rents = messages.index(GATE_RENTS)
+
+    assert messages[hazard - 1] == asset_messages[-1]
+    assert messages[hazard + 1] == claim_messages[0]
+    assert gaps[hazard].step == "assets"
+    assert gaps[rents - 1].step == "contracts"
+    assert gaps[rents + 1].step == "codebtors"
+    assert gaps[rents].step == "contracts"
+
+
+def test_the_rent_gate_stays_before_the_claims_tail_when_the_claims_steps_have_no_gap(
+    filer, completed
+):
+    # With Contracts and Codebtors finished there is nothing to sit beside: the rent question
+    # still belongs to the wizard-order part of the list, never after the legacy figure's gap,
+    # whose step (Amounts Owed) comes before Contracts & Leases in the wizard.
+    completed.status = "in_progress"
+    completed.save(update_fields=["status"])
+    answer_petition(completed, rents_residence=None)
+    ExpenseInfo.objects.filter(session=completed).update(vehicle_payment=Decimal("350.00"))
+    completed.refresh_from_db()
+
+    gaps = [(g.step, str(g)) for g in completion_gaps(completed)]
+
+    assert [step for step, _ in gaps] == ["contracts", "debts"]
+    assert gaps[0][1] == GATE_RENTS
+
+
+def test_a_detail_is_listed_and_complete_lets_it_through(filer, completed):
+    # Every gate answered and the venue left open: Review names the open line, with the form
+    # that prints it blank, and Complete still goes through (spec §5.7).
+    client, _ = filer
+    completed.status = "in_progress"
+    completed.save(update_fields=["status"])
+    answer_petition(completed, venue_choice=None)
+
+    listed = client.get(_session_url(completed, "gaps/"))
+    finished = client.post(_session_url(completed, "complete/"))
+
+    assert listed.data == {
+        "gaps": [
+            {
+                "kind": "detail",
+                "message": DETAIL_VENUE,
+                "step": "debtor_info",
+                "forms": ["form_101"],
+            }
+        ]
+    }
+    assert finished.status_code == 200
+    assert finished.data["session"]["status"] == "completed"
+
+
+def test_a_gate_carries_no_forms(filer, unfinished):
+    # A gate refuses every form at once, so no form's card repeats it (4b-R12).
+    client, _ = filer
+
+    entries = client.get(_session_url(unfinished, "gaps/")).data["gaps"]
+
+    gates = [e for e in entries if e["kind"] == "gate"]
+    assert gates
+    assert all(e["forms"] == [] for e in gates)
+
+
+def test_a_gate_is_what_complete_refuses(filer, completed):
+    client, _ = filer
+    completed.status = "in_progress"
+    completed.save(update_fields=["status"])
+    answer_petition(completed, itin_answer=None)
+
+    response = client.post(_session_url(completed, "complete/"))
+
+    assert response.status_code == 400
+    assert response.data["errors"] == [{"step": "debtor_info", "message": GATE_ITIN}]
 
 
 def test_a_detail_gap_never_refuses_complete_but_a_gate_after_it_does(
@@ -164,9 +304,11 @@ def test_the_gaps_endpoint_returns_the_list_and_writes_nothing(filer, unfinished
     assert response.status_code == 200
     assert response.data == {
         "gaps": [
-            {"message": str(g), "step": g.step, "kind": "gate"} for g in completion_gaps(unfinished)
+            {"message": str(g), "step": g.step, "kind": g.kind, "forms": list(g.forms)}
+            for g in completion_gaps(unfinished)
         ]
     }
+    assert {e["kind"] for e in response.data["gaps"]} == {"gate", "detail"}
     assert not _writes(queries)
     unfinished.refresh_from_db()
     assert (unfinished.status, unfinished.current_step, unfinished.completed_at) == before

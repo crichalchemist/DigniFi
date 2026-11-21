@@ -934,6 +934,8 @@ class PetitionAnswers(models.Model):
     # Measured from Form 101's boxes at 6 pt by build_form_101.py, read from form_101.limits.json.
     TEXT_LIMITS: ClassVar[dict[str, int]]
     TEXT_LABELS: ClassVar[dict[str, str]]
+    # Each row list's cells in plain words, from the same file, for the too-long lines.
+    CELL_LABELS: ClassVar[dict[str, dict[str, str]]]
 
     session = models.OneToOneField(
         IntakeSession, on_delete=models.CASCADE, related_name="petition_answers"
@@ -983,6 +985,7 @@ def _read_text_limits() -> dict:
 _LIMITS = _read_text_limits()
 PetitionAnswers.TEXT_LIMITS = _LIMITS.get("limits", {})
 PetitionAnswers.TEXT_LABELS = _LIMITS.get("labels", {})
+PetitionAnswers.CELL_LABELS = _LIMITS["cell_labels"]
 
 
 class DebtInfoQuerySet(models.QuerySet):

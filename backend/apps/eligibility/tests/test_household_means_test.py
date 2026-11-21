@@ -35,6 +35,7 @@ from apps.intake.tests.builders import (
     answer_claims,
     answer_household,
     answer_income_detail,
+    answer_petition,
 )
 from apps.users.models import User
 
@@ -216,6 +217,8 @@ def _completed_before_3e1(session):
     ExpenseInfo.objects.create(session=session)
     answer_asset_lines(session)  # the Assets step is finished, so the Income step's gap speaks
     answer_claims(session, no_debts=True)  # so is the claims step
+    # Form 101's step 1 questions come before the Income step in Complete's order (4b-R4).
+    answer_petition(session)
 
 
 REFUSED = {"error": MARRIAGE, "step": "income_info"}
@@ -290,6 +293,8 @@ def _completed_before_3e2(session):
         assistance_answer=None,
         payroll_tax=None,
     )
+    # Form 101's step 1 questions come before the Income step in Complete's order (4b-R4).
+    answer_petition(session)
 
 
 def test_an_intake_completed_before_3e2_refuses_every_forms_call_with_the_income_step(filer):
