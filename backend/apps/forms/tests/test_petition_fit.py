@@ -19,7 +19,7 @@ from apps.districts.models import District
 from apps.forms.schema import load_schema
 from apps.forms.services.answer_records import PETITION_STEP_OF_KEY
 from apps.forms.services.fill_resolver import resolve_parts
-from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
+from apps.forms.services.pdf_filler import PDFFormFiller, UnprintableLetter, ValueTooLong
 from apps.forms.services.petition_fit import too_long
 from apps.intake.models import DebtorInfo, IntakeSession, PetitionAnswers
 from apps.intake.petition import CELL_LABELS, DETAIL_TOO_LONG, petition_step_gaps
@@ -240,3 +240,54 @@ def test_one_line_per_cell_however_many_rows_are_too_wide(session):
     _answer(session, {"prior_bankruptcy_answer": "yes", "prior_cases": rows})
     label = DETAIL_TOO_LONG.format(label=CELL_LABELS["prior_cases"]["district"])
     assert _too_long_lines(session) == [label]
+
+
+def test_two_cells_too_wide_in_one_sheet_row_are_both_listed(session):
+    # A sheet refusal names one column; if Review stopped there, the filer would fix the debtor,
+    # come back, and only then be told the case number doesn't fit either.
+    rows = [{}, {}, {"debtor": "W" * 40, "case_number": "W" * 40}]
+    _answer(session, {"pending_case_answer": "yes", "pending_cases": rows})
+    labels = CELL_LABELS["pending_cases"]
+    assert _too_long_lines(session) == [
+        DETAIL_TOO_LONG.format(label=labels["debtor"]),
+        DETAIL_TOO_LONG.format(label=labels["case_number"]),
+    ]
+
+
+# A letter Form 101's font can't print: Generate refuses it in its own sentence, never as too long.
+UNPRINTABLE = "北"  # a CJK letter, outside the /Helv encoding
+
+
+def _letter_refused(session):
+    try:
+        PDFFormFiller().check("form_101", resolve_parts(load_schema("form_101"), session))
+    except UnprintableLetter:
+        return True
+    return False
+
+
+def test_an_unprintable_letter_in_a_text_leaves_review_standing_and_says_nothing_of_length(
+    session,
+):
+    # Once the petition gaps feed Complete and every forms call, a raise here would answer the
+    # filer with a server error instead of Generate's own sentence about the letter.
+    _answer(session, {"mailing_answer": "yes", "mailing_city": f"Demo {UNPRINTABLE}"})
+    assert _letter_refused(session)
+    assert _too_long_lines(session) == []
+
+
+def test_an_unprintable_letter_in_a_slot_cell_leaves_review_standing(session):
+    rows = [{"district": f"Demo {UNPRINTABLE}"}]
+    _answer(session, {"prior_bankruptcy_answer": "yes", "prior_cases": rows})
+    assert _letter_refused(session)
+    assert _too_long_lines(session) == []
+
+
+def test_an_unprintable_letter_on_the_sheet_still_lets_a_wide_cell_beside_it_be_listed(session):
+    # The sheet checks its columns in order: the letter in District is refused first, and the
+    # Case number too wide in the same row must still be found, while District is not called long.
+    rows = [{}, {}, {}, {"district": f"Demo {UNPRINTABLE}", "case_number": "W" * 40}]
+    _answer(session, {"prior_bankruptcy_answer": "yes", "prior_cases": rows})
+    assert _letter_refused(session)
+    labels = CELL_LABELS["prior_cases"]
+    assert _too_long_lines(session) == [DETAIL_TOO_LONG.format(label=labels["case_number"])]
