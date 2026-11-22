@@ -466,20 +466,31 @@ def claim_step_gaps(session) -> list[ClaimStepGap]:
     to. Contracts and codebtors go in id order, debts in ordered_debts' order. The tail also reads
     the Expenses row (_legacy_figure) and, through linked_payments, the session's assets, its
     vehicle leases and only its confirmed debts, so a draft never counts there.
+
+    It is claim_gap_parts' head and tail, joined.
+    """
+    head, tail = claim_gap_parts(session)
+    return head + tail
+
+
+def claim_gap_parts(session) -> tuple[list[ClaimStepGap], list[ClaimStepGap]]:
+    """claim_step_gaps in two lists: the four blocks in wizard order, and the tail (the legacy
+    gaps, then the line 4 question), so completion_gaps can put Form 101's rent question among
+    the wizard-order blocks without mistaking the tail's `debts` gap for Amounts Owed's (4b-R4).
     """
     row = getattr(session, "claim_answers", None)
     answers = row.get_answers() if row is not None else {}
     debts = list(session.debts.all())
     contracts = sorted(session.executory_contracts.all(), key=lambda row: row.pk)
     codebtors = sorted(session.codebtors.all(), key=lambda row: row.pk)
-    gaps = [
+    head = [
         *_asset_gaps(session, debts, contracts),
         *_debt_gaps(session, debts, answers),
         *_contract_gaps(session, contracts, answers),
         *_codebtor_gaps(session, codebtors, debts, contracts, answers),
     ]
     linked = linked_payments(session)
-    return [*gaps, *_legacy_gaps(session, linked), *_line_4_gap(session, linked, answers)]
+    return head, [*_legacy_gaps(session, linked), *_line_4_gap(session, linked, answers)]
 
 
 def _legacy_figure(session, field) -> Decimal:

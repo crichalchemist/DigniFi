@@ -25,11 +25,18 @@ import {
   CLAIM_GAP_LEGACY_VEHICLE,
   CODEBTOR_GAP_NO_NAME,
   CONTRACT_GAP_NO_NAME,
+  DELETE_HIDDEN,
+  HIDDEN_ANSWERS,
+  ITIN_SAVED,
   LEGACY_REMOVE,
   LINE_4_PAY_BOTH,
   NOT_SAVED_TRY_AGAIN,
   NO_DEBTS_BUTTON,
   OLD_ROWS_NOTE,
+  OTHER_SSN_SAVED,
+  PETITION_ADD_OTHER_NAME,
+  PETITION_GATE_EVICTION,
+  REPLACE_SAVED,
   REVIEW_GAPS_UNAVAILABLE,
   REVIEW_NO_DEBTS,
   REVIEW_NOTHING_MISSING,
@@ -44,6 +51,10 @@ vi.mock('../../context/AuthContext', () => ({
 // ---------------------------------------------------------------------------
 // Shared fixtures
 // ---------------------------------------------------------------------------
+
+// Form 101's gates on Assets (line 14) and Contracts & Leases (line 11), answered No, so a session
+// past those steps can continue from them as it could before 4b asked them (PF2-T9-6)
+const LATER_PETITION_GATES = { hazard_answer: 'no' as const, rents_residence: 'no' as const };
 
 const sessionAtStep9 = {
   id: 1,
@@ -60,6 +71,7 @@ const sessionAtStep9 = {
   expense_info: { rent_or_mortgage: 1000 },
   assets: [],
   debts: [],
+  petition_answers: LATER_PETITION_GATES,
 };
 
 /** Session sitting on step 1 with no pre-filled data (autosave tests). */
@@ -152,7 +164,53 @@ async function fillDebtorInfoFields(county: string | null = 'Cook') {
       target: { value: county },
     });
   }
+  // Form 101's seven yes/noes hold Continue until each is answered (step 4b). fireEvent, not
+  // userEvent, since some callers run this under fake timers.
+  for (const gate of STEP_1_GATES) {
+    fireEvent.click(document.querySelector(`input[name="${gate}"][value="no"]`) as HTMLElement);
+  }
 }
+
+// Step 1's Form 101 yes/noes, each a gate (apps/intake/petition.py STEP_1_GATES)
+const STEP_1_GATES = [
+  'other_names_answer',
+  'itin_answer',
+  'other_ssn_answer',
+  'mailing_answer',
+  'prior_bankruptcy_answer',
+  'pending_case_answer',
+  'sole_proprietor_answer',
+] as const;
+
+// Every key step 1's body sends under `petition_answers`, the secrets aside
+const STEP_1_PETITION_KEYS = [
+  'name_suffix',
+  'other_names_answer',
+  'itin_answer',
+  'other_ssn_answer',
+  'ein',
+  'mailing_answer',
+  'mailing_street',
+  'mailing_po_box',
+  'mailing_city',
+  'mailing_state',
+  'mailing_zip',
+  'venue_choice',
+  'venue_reason',
+  'prior_bankruptcy_answer',
+  'pending_case_answer',
+  'sole_proprietor_answer',
+  'business_name',
+  'business_street',
+  'business_city',
+  'business_state',
+  'business_zip',
+  'business_kind',
+  'other_names',
+  'other_business_names',
+  'prior_cases',
+  'pending_cases',
+];
 
 // ===========================================================================
 // Existing tests — handleComplete routing
@@ -868,7 +926,11 @@ describe('IntakeWizard autosave', { timeout: 15_000 }, () => {
     // Autosave must have sent at least one PATCH carrying the debtor_info slice.
     await waitFor(() => expect(patchBodies.length).toBeGreaterThan(0));
     expect(patchBodies[patchBodies.length - 1]).toEqual(
-      expect.objectContaining({ debtor_info: expect.any(Object) })
+      expect.objectContaining({
+        debtor_info: expect.any(Object),
+        household: expect.any(Object),
+        petition_answers: expect.any(Object),
+      })
     );
   });
 
@@ -964,6 +1026,7 @@ const sessionAtStep6 = {
   ...sessionAtStep1,
   current_step: 6,
   debtor_info: { first_name: 'Jane', last_name: 'Doe' },
+  petition_answers: LATER_PETITION_GATES,
 };
 
 /** A draft debt the document processor created from an uploaded bill. */
@@ -1265,6 +1328,7 @@ const CLAIM_ANSWERS_DONE = {
 const sessionAtStep6WithDebts = {
   ...sessionAtStep1,
   current_step: 6,
+  petition_answers: LATER_PETITION_GATES,
   debts: [
     {
       id: 7,
@@ -1301,6 +1365,7 @@ const sessionAtStep6WithDebts = {
 const sessionAtStep5WithAssets = {
   ...sessionAtStep1,
   current_step: 5,
+  petition_answers: LATER_PETITION_GATES,
   assets: [
     {
       id: 3,
@@ -1969,7 +2034,7 @@ describe('IntakeWizard the rows of the Assets step', { timeout: 30_000 }, () => 
 });
 
 describe('IntakeWizard the walk through Schedule A/B', { timeout: 30_000 }, () => {
-  const onAssets = { ...sessionAtStep1, current_step: 5 };
+  const onAssets = { ...sessionAtStep1, current_step: 5, petition_answers: LATER_PETITION_GATES };
   // Every line that shows, answered No
   const everyLineNo = Object.fromEntries(
     ASSET_LINES.filter((line) => line.gate === null).map((line) => [line.key, 'no'])
@@ -2070,6 +2135,57 @@ describe('IntakeWizard the walk through Schedule A/B', { timeout: 30_000 }, () =
     }
 
     expect(bodies).toEqual([]);
+  });
+
+  it('the Assets body carries only the hazard keys of the petition record', async () => {
+    // Every Part complete and the hazard open: the step opens at Part 7, which asks it (PF2-T9-1)
+    const { bodies } = await open({
+      ...onAssets,
+      asset_lines: everyLineNo,
+      petition_answers: { name_suffix: 'Jr.', other_names_answer: 'no', rents_residence: 'no' },
+    });
+    expect(screen.getByText('Part 7 of 7')).toBeInTheDocument();
+    expect(continueButton()).toBeDisabled();
+
+    fireEvent.click(document.querySelector('input[name="hazard_answer"][value="no"]')!);
+
+    await waitFor(() => expect(bodies).toHaveLength(1), { timeout: 4000 });
+    // Step 1's keys and the rent stay out: each step's body names only its own (spec §5.6)
+    expect(bodies[0].petition_answers).toEqual({
+      hazard_answer: 'no',
+      hazard_what: null,
+      hazard_why: null,
+      hazard_street: null,
+      hazard_city: null,
+      hazard_state: null,
+      hazard_zip: null,
+    });
+    await waitFor(() => expect(continueButton()).toBeEnabled());
+  });
+
+  it('sends nothing when the step shows again, and keeps sending a hazard text kept under a No', async () => {
+    const { bodies } = await open({
+      ...onAssets,
+      asset_lines: everyLineNo,
+      petition_answers: { hazard_answer: 'no', hazard_what: 'Barn roof' },
+    });
+
+    vi.useFakeTimers();
+    try {
+      await waitSeconds(4);
+    } finally {
+      vi.useRealTimers();
+    }
+    // PF2-7: the widened body is built the same way from loaded and edited answers
+    expect(bodies).toEqual([]);
+
+    say('1', 'yes');
+    await waitFor(() => expect(bodies).toHaveLength(1), { timeout: 4000 });
+    // PF2-T9-8: the text stays stored under the No, so it goes with every save
+    expect(bodies[0].petition_answers).toMatchObject({
+      hazard_answer: 'no',
+      hazard_what: 'Barn roof',
+    });
   });
 
   it('autosaves mid-Part while Continue is disabled', async () => {
@@ -2211,6 +2327,24 @@ describe('IntakeWizard the walk through Schedule A/B', { timeout: 30_000 }, () =
     fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
 
     expect(await screen.findByText('Part 2 of 7')).toBeInTheDocument();
+  });
+
+  // T9-showstep: every way back onto the step, not only the first read, opens where the hazard is
+  // asked while every line is answered and the hazard isn't (PF2-T9-1)
+  it('opens at Part 7 when the filer comes back from the next step with only the hazard left', async () => {
+    serveSessionSaves({
+      ...onAssets,
+      current_step: 6,
+      asset_lines: everyLineNo,
+      petition_answers: { rents_residence: 'no' },
+    });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+
+    expect(await screen.findByText('Part 7 of 7')).toBeInTheDocument();
+    expect(document.querySelector('input[name="hazard_answer"]')).not.toBeNull();
   });
 
   // No line is ever suggested, not even from the old type: which line a row goes on is the filer's
@@ -2384,6 +2518,7 @@ describe('IntakeWizard a new debt after Complete', { timeout: 30_000 }, () => {
         codebtors_answer: 'no',
         community_lived: 'no',
       },
+      petition_answers: LATER_PETITION_GATES,
     });
     server.use(
       http.post(
@@ -3199,6 +3334,7 @@ describe('IntakeWizard county', { timeout: 15_000 }, () => {
     expect(patchBodies[0]).toEqual({
       debtor_info: expect.objectContaining({ first_name: 'Jane' }),
       household: { county: 'Cook' },
+      petition_answers: expect.any(Object),
     });
   });
 
@@ -3211,7 +3347,266 @@ describe('IntakeWizard county', { timeout: 15_000 }, () => {
     expect(patchBodies.at(-1)).toEqual({
       debtor_info: expect.objectContaining({ first_name: 'Jane', zip_code: '60601' }),
       household: { county: 'Cook' },
+      petition_answers: expect.any(Object),
     });
+  });
+
+  it('the step 1 body carries the petition answers beside debtor_info and household', async () => {
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await fillDebtorInfoFields();
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByText('DocumentUploadPage');
+    const petition = patchBodies.at(-1)!.petition_answers as Record<string, unknown>;
+    // Every step-1 key, an unanswered one as null, so the body is built the same way from a
+    // loaded record as from typing; no ITIN goes when none was typed
+    expect(Object.keys(petition)).toEqual(STEP_1_PETITION_KEYS);
+    for (const gate of STEP_1_GATES) expect(petition[gate]).toBe('no');
+    expect(petition.venue_choice).toBeNull();
+    expect(petition.other_names).toBeNull();
+    expect(petition).not.toHaveProperty('itin');
+    expect(petition).not.toHaveProperty('other_ssn');
+  });
+
+  /** A step 1 the server already holds whole: an SSN and an ITIN saved, every gate answered */
+  const savedStep1 = {
+    ...sessionAtStep1,
+    debtor_info: {
+      ...completedSession.debtor_info,
+      phone: '312-555-0100',
+      ssn_saved: true,
+    },
+    household: { county: 'Boone', members: null },
+    petition_answers: {
+      other_names_answer: 'yes',
+      other_names: [{ first: 'Demo', middle: '', last: 'Maiden' }],
+      itin_answer: 'yes',
+      itin_saved: true,
+      other_ssn_answer: 'no',
+      other_ssn_saved: false,
+      mailing_answer: 'no',
+      prior_bankruptcy_answer: 'no',
+      pending_case_answer: 'no',
+      sole_proprietor_answer: 'no',
+      venue_choice: 'lived_here',
+      answered_on: '2026-10-16',
+    },
+  };
+
+  it('showing step 1 again sends nothing', async () => {
+    // A loaded step 1 is complete now that a saved SSN counts (owner ruling Q3), so autosave is
+    // live on mount: a body built differently from loaded data would save, and reopen a completed
+    // intake, on every visit
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(savedStep1)
+      )
+    );
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled());
+    vi.useFakeTimers();
+    try {
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(patchBodies).toHaveLength(0);
+  });
+
+  it('Delete removes a saved other number under a No in its own PATCH, and it reads as not saved', async () => {
+    // F10: the filer can remove a number typed by mistake. The one request carries only that key
+    // as null, which the server removes, and step 1's own body never carries it
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({
+          ...savedStep1,
+          petition_answers: { ...savedStep1.petition_answers, other_ssn_saved: true },
+        })
+      )
+    );
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    const block = (
+      document.querySelector('input[name="other_ssn_answer"][value="no"]') as HTMLElement
+    ).closest('fieldset') as HTMLElement;
+    expect(within(block).getByText(HIDDEN_ANSWERS)).toBeInTheDocument();
+    await userEvent.click(within(block).getByRole('button', { name: DELETE_HIDDEN }));
+    await waitFor(() => expect(patchBodies).toEqual([{ petition_answers: { other_ssn: null } }]));
+    await waitFor(() => expect(within(block).queryByText(HIDDEN_ANSWERS)).not.toBeInTheDocument());
+
+    // The saved flag now reads false: a Yes opens an empty box, not "Another ... is saved."
+    fireEvent.click(
+      document.querySelector('input[name="other_ssn_answer"][value="yes"]') as HTMLElement
+    );
+    expect(document.querySelector('input[name="other_ssn"]')).toHaveValue('');
+    expect(screen.queryByText(OTHER_SSN_SAVED)).not.toBeInTheDocument();
+  });
+
+  it('Delete drops the digits typed for that number, so the next save cannot send them again', async () => {
+    // A number typed under a Yes, then the answer changed to No and Delete pressed: the typed
+    // digits must not ride the next save and undo the Delete
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({
+          ...savedStep1,
+          petition_answers: { ...savedStep1.petition_answers, other_ssn_saved: true },
+        })
+      )
+    );
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    fireEvent.click(
+      document.querySelector('input[name="other_ssn_answer"][value="yes"]') as HTMLElement
+    );
+    const block = (
+      document.querySelector('input[name="other_ssn_answer"][value="no"]') as HTMLElement
+    ).closest('fieldset') as HTMLElement;
+    await userEvent.click(within(block).getByRole('button', { name: REPLACE_SAVED }));
+    fireEvent.change(document.querySelector('input[name="other_ssn"]') as HTMLElement, {
+      target: { value: '900-12-3456' },
+    });
+    fireEvent.click(
+      document.querySelector('input[name="other_ssn_answer"][value="no"]') as HTMLElement
+    );
+    await userEvent.click(within(block).getByRole('button', { name: DELETE_HIDDEN }));
+    await waitFor(() =>
+      expect(patchBodies).toContainEqual({ petition_answers: { other_ssn: null } })
+    );
+    patchBodies.length = 0;
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await waitFor(() => expect(patchBodies.length).toBeGreaterThan(0));
+    for (const body of patchBodies) {
+      expect(body.petition_answers).not.toHaveProperty('other_ssn');
+    }
+  });
+
+  it('nine digits that are no ITIN never leave the browser', async () => {
+    // PF2-U2: saved would mean it prints, and a number not starting with 9 prints blank
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await fillDebtorInfoFields();
+    fireEvent.click(
+      document.querySelector('input[name="itin_answer"][value="yes"]') as HTMLElement
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: /ITIN/ }), {
+      target: { value: '666-70-1234' },
+    });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByText('DocumentUploadPage');
+    expect(patchBodies.length).toBeGreaterThan(0);
+    for (const body of patchBodies) {
+      expect(body.petition_answers).not.toHaveProperty('itin');
+    }
+    expect(JSON.stringify(patchBodies)).not.toContain('666701234');
+  });
+
+  it('a typed ITIN is sent once and never echoed', async () => {
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await fillDebtorInfoFields();
+    fireEvent.click(
+      document.querySelector('input[name="itin_answer"][value="yes"]') as HTMLElement
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: /ITIN/ }), {
+      target: { value: '900-70-1234' },
+    });
+    const withItin = () =>
+      patchBodies.filter((body) => 'itin' in (body.petition_answers as Record<string, unknown>));
+    await waitFor(() => expect(withItin()).toHaveLength(1), { timeout: 5000 });
+    expect((withItin()[0].petition_answers as Record<string, unknown>).itin).toBe('900701234');
+    // Saved: the step says so by the server's own rule, and the next save carries no ITIN
+    expect(await screen.findByText(ITIN_SAVED)).toBeInTheDocument();
+    const sentWithItin = patchBodies.length;
+    // Clearing the typed ITIN is no edit: past the 2 s autosave pause, nothing more goes out
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    expect(patchBodies.length).toBe(sentWithItin);
+    fireEvent.change(screen.getByRole('textbox', { name: /first name/i }), {
+      target: { value: 'Janet' },
+    });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByText('DocumentUploadPage');
+    expect(patchBodies.length).toBe(sentWithItin + 1);
+    expect(patchBodies.at(-1)!.petition_answers).not.toHaveProperty('itin');
+    expect(JSON.stringify(patchBodies.slice(sentWithItin))).not.toContain('900701234');
+  });
+
+  it('a typed other Social Security number is sent once and never echoed', async () => {
+    // Form 121 line 2 prints it only once the server holds it
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await fillDebtorInfoFields();
+    fireEvent.click(
+      document.querySelector('input[name="other_ssn_answer"][value="yes"]') as HTMLElement
+    );
+    fireEvent.change(document.querySelector('input[name="other_ssn"]') as HTMLElement, {
+      target: { value: '900-12-3457' },
+    });
+    const withOther = () =>
+      patchBodies.filter(
+        (body) => 'other_ssn' in (body.petition_answers as Record<string, unknown>)
+      );
+    await waitFor(() => expect(withOther()).toHaveLength(1), { timeout: 5000 });
+    expect((withOther()[0].petition_answers as Record<string, unknown>).other_ssn).toBe(
+      '900123457'
+    );
+    expect(await screen.findByText(OTHER_SSN_SAVED)).toBeInTheDocument();
+    const sentWithOther = patchBodies.length;
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    expect(patchBodies.length).toBe(sentWithOther);
+    fireEvent.change(screen.getByRole('textbox', { name: /first name/i }), {
+      target: { value: 'Janet' },
+    });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByText('DocumentUploadPage');
+    expect(patchBodies.length).toBe(sentWithOther + 1);
+    expect(patchBodies.at(-1)!.petition_answers).not.toHaveProperty('other_ssn');
+  });
+
+  it('a replaced ITIN shows as saved again once its save succeeds', async () => {
+    // Replace opens the box; the save that carries the new number closes it again
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(savedStep1)
+      )
+    );
+    renderWizard();
+    await userEvent.click(await screen.findByRole('button', { name: REPLACE_SAVED }));
+    fireEvent.change(screen.getByRole('textbox', { name: /ITIN/ }), {
+      target: { value: '900-70-5678' },
+    });
+    await waitFor(
+      () =>
+        expect(
+          patchBodies.some(
+            (body) => (body.petition_answers as Record<string, unknown>).itin === '900705678'
+          )
+        ).toBe(true),
+      { timeout: 5000 }
+    );
+    expect(await screen.findByText(ITIN_SAVED)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /ITIN/ })).not.toBeInTheDocument();
+  });
+
+  it('a typed name row goes without its browser key, and a blank row stays home', async () => {
+    // PF2-T8-7: every `_`-prefixed key stays out of the request, and an all-blank new row out
+    // of the body
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await fillDebtorInfoFields();
+    fireEvent.click(
+      document.querySelector('input[name="other_names_answer"][value="yes"]') as HTMLElement
+    );
+    await userEvent.click(screen.getByRole('button', { name: PETITION_ADD_OTHER_NAME }));
+    await userEvent.click(screen.getByRole('button', { name: PETITION_ADD_OTHER_NAME }));
+    fireEvent.change(document.querySelector('input[name="other_names_0_first"]') as HTMLElement, {
+      target: { value: 'Demo' },
+    });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByText('DocumentUploadPage');
+    const petition = patchBodies.at(-1)!.petition_answers as Record<string, unknown>;
+    expect(petition.other_names_answer).toBe('yes');
+    expect(petition.other_names).toEqual([{ first: 'Demo' }]);
   });
 
   it('no spouse SSN leaves the browser', async () => {
@@ -3649,6 +4044,7 @@ function serveListSaves(
       community_lived: 'no',
       ...claimAnswers,
     },
+    petition_answers: LATER_PETITION_GATES,
   };
   const otherList = list === 'contracts' ? 'codebtors' : 'contracts';
   let held = loaded;
@@ -3940,7 +4336,8 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     step: number,
     contracts: Record<string, unknown>[] = [],
     codebtors: Record<string, unknown>[] = [],
-    claimAnswers: Record<string, unknown> = {}
+    claimAnswers: Record<string, unknown> = {},
+    petitionAnswers: Record<string, unknown> = LATER_PETITION_GATES
   ) {
     const session = {
       ...sessionAtStep1,
@@ -3954,6 +4351,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
         community_lived: 'no',
         ...claimAnswers,
       },
+      petition_answers: petitionAnswers,
     };
     // The server gives each new row the next id, as the list save does
     let nextId = 10;
@@ -4326,6 +4724,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       ...sessionAtStep1,
       current_step: 6,
       claim_answers: { contracts_answer: 'no', codebtors_answer: 'no', community_lived: 'no' },
+      petition_answers: LATER_PETITION_GATES,
     });
     renderWizard();
     await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
@@ -4536,8 +4935,12 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     expect(contractSaves.length).toBeGreaterThanOrEqual(2);
     expect((contractSaves[1] as Record<string, unknown>[])[0].id).toBe(4);
     expect(sessionPatches.length).toBeGreaterThanOrEqual(2);
+    // Form 101 line 11's keys ride in the same PATCH, so they are sent again with G's answer
     for (const patch of sessionPatches) {
-      expect(patch).toEqual({ claim_answers: { contracts_answer: 'yes' } });
+      expect(patch).toEqual({
+        claim_answers: { contracts_answer: 'yes' },
+        petition_answers: { rents_residence: 'no', eviction_judgment: null },
+      });
     }
   });
 
@@ -4879,7 +5282,100 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
     await waitFor(() => expect(stepUpdates).toEqual([8]));
 
-    expect(sessionPatches).toEqual([{ claim_answers: { contracts_answer: 'yes' } }]);
+    // G's answer and Form 101 line 11's keys, in one PATCH (PF2-T9-5), and no other step's
+    expect(sessionPatches).toEqual([
+      {
+        claim_answers: { contracts_answer: 'yes' },
+        petition_answers: { rents_residence: 'no', eviction_judgment: null },
+      },
+    ]);
+  });
+
+  it('the Contracts body carries only the rent keys', async () => {
+    serveFiler(
+      7,
+      [storedLease],
+      [],
+      {},
+      { name_suffix: 'Jr.', other_names_answer: 'no', hazard_answer: 'no' }
+    );
+    renderWizard();
+    await expectStep('Contracts & Leases');
+    const next = screen.getByRole('button', { name: /continue/i });
+    // Line 11 unanswered holds Continue; once touched, the step's one region says why
+    await waitFor(() =>
+      expect(document.querySelector('[name="counterparty_name_0"]')).toHaveValue(
+        String(storedLease.counterparty_name)
+      )
+    );
+    expect(next).toBeDisabled();
+
+    const pick = (name: string, value: string) =>
+      userEvent.click(document.querySelector(`input[name="${name}"][value="${value}"]`)!);
+    await pick('rents_residence', 'yes');
+    const step = document.querySelector('.contracts-step') as HTMLElement;
+    expect(within(step).getByRole('status')).toHaveTextContent(PETITION_GATE_EVICTION);
+    await pick('eviction_judgment', 'no');
+    await waitFor(() => expect(next).toBeEnabled());
+    await userEvent.click(next);
+    await waitFor(() => expect(stepUpdates).toEqual([8]));
+
+    // Step 1's keys and the hazard stay out: each step's body names only its own (spec §5.6)
+    expect(sessionPatches.length).toBeGreaterThanOrEqual(1);
+    for (const patch of sessionPatches) {
+      expect(Object.keys(patch.petition_answers as object)).toEqual([
+        'rents_residence',
+        'eviction_judgment',
+      ]);
+    }
+    expect(sessionPatches.at(-1)).toEqual({
+      claim_answers: { contracts_answer: 'yes' },
+      petition_answers: { rents_residence: 'yes', eviction_judgment: 'no' },
+    });
+  });
+
+  it('saves Contracts & Leases once per edit, one PUT and one PATCH, and nothing on a visit', async () => {
+    serveFiler(
+      7,
+      [],
+      [],
+      { contracts_answer: 'yes' },
+      { rents_residence: 'yes', eviction_judgment: 'yes' }
+    );
+    renderWizard();
+    await expectStep('Contracts & Leases');
+    expect(document.querySelector('.eviction-notice')).not.toBeNull();
+
+    vi.useFakeTimers();
+    try {
+      await waitSeconds(4);
+      // PF2-7: the widened body is built the same way from loaded and edited answers
+      expect(contractSaves).toEqual([]);
+      expect(sessionPatches).toEqual([]);
+
+      // A new row, whose id the save writes back into it, and the rent moved to No
+      fireEvent.click(screen.getByRole('button', { name: /add contract/i }));
+      fireEvent.change(document.querySelector('[name="counterparty_name_0"]')!, {
+        target: { value: 'Lakeview Storage' },
+      });
+      fireEvent.click(document.querySelector('input[name="rents_residence"][value="no"]')!);
+      await waitSeconds(3);
+      // PF2-T9-5: the copy the save returns matches the body once the id is in the row, so no
+      // second save follows
+      await waitSeconds(5);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(contractSaves).toHaveLength(1);
+    // A stored eviction Yes under a rent No stays stored and is sent as it is (spec §6.7)
+    expect(sessionPatches).toEqual([
+      {
+        claim_answers: { contracts_answer: 'yes' },
+        petition_answers: { rents_residence: 'no', eviction_judgment: 'yes' },
+      },
+    ]);
+    expect(document.querySelector('.eviction-notice')).toBeNull();
   });
 
   it("sends every line 2 answer of Schedule H with step 8's list", async () => {

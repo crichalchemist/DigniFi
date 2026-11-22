@@ -14710,6 +14710,136 @@
     "evidence": "Field index: undefined_10 p2 line 9 'Line 9 Yes. Explain (expected >10% expense change)' (adjudicated). 3f spec §6.4 and §8.2: line 9's explanation, printed only beside a Yes."
   },
   {
+    "schema": "form_103b",
+    "pdf_field": "check_20",
+    "producer": "asked:petition.prior_bankruptcy_answer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check_20",
+    "evidence": "Field index: check_20 p3 T40 line 20 'Have you filed for bankruptcy within the last 8 years?', state /no ('No', rect y 517.6), and p3 T44, state /yes ('Yes.', rect y 531.8, beside row 1), both adjudicated. Spec §13.1 and Ruling PF2-T10-4: step 1's petition.prior_bankruptcy_answer, never asked twice; the filer's No or Yes picks its own state, an unanswered question neither (§5.3)."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "undefined_37",
+    "producer": "asked:petition.prior_cases[].district",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_37",
+    "evidence": "Field index: undefined_37 p3 T41 line 20 'District' (sampled_ok), rect [251.6, 529.8, 364.4, 543.7], on row 1's baseline with When and Case number_2 (y 529.8). Row 1 of group prior_cases_103b prints petition.prior_cases[].district here, paired by rectangle, not by name suffix (spec correction 6; F-1, E-1). Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_103b_schema.py."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "When",
+    "producer": "asked:petition.prior_cases[].filed_on",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "When",
+    "evidence": "Field index: When p3 T42 line 20 'When' (sampled_ok), rect [388.1, 529.8, 447.9, 543.7], on row 1's baseline (y 529.8). Row 1 of group prior_cases_103b prints petition.prior_cases[].filed_on here, blank unless MM/DD/YYYY (PF2-2). Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_103b_schema.py."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "Case number_2",
+    "producer": "asked:petition.prior_cases[].case_number",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Case number_2",
+    "evidence": "Field index: Case number_2 p3 T43 line 20 'Case number' (sampled_ok), rect [486.0, 529.8, 580.9, 543.7], on row 1's baseline (y 529.8). Row 1 of group prior_cases_103b prints petition.prior_cases[].case_number here. Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_103b_schema.py."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "District",
+    "producer": "asked:petition.prior_cases[].district",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "District",
+    "evidence": "Field index: District p3 T45 line 20 'District' (sampled_ok), rect [251.6, 557.1, 364.4, 571.1], on row 2's baseline with When_2 and Case number_3 (y 557.1). Row 2 of group prior_cases_103b prints petition.prior_cases[].district here, paired by rectangle, not by name suffix (spec correction 6; F-1, E-1). Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_103b_schema.py."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "When_2",
+    "producer": "asked:petition.prior_cases[].filed_on",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "When_2",
+    "evidence": "Field index: When_2 p3 T46 line 20 'When' (sampled_ok), rect [388.1, 557.1, 447.9, 571.1], on row 2's baseline (y 557.1). Row 2 of group prior_cases_103b prints petition.prior_cases[].filed_on here, blank unless MM/DD/YYYY (PF2-2). Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_103b_schema.py."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "Case number_3",
+    "producer": "asked:petition.prior_cases[].case_number",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Case number_3",
+    "evidence": "Field index: Case number_3 p3 T47 line 20 'Case number' (sampled_ok), rect [486.0, 557.1, 580.9, 571.1], on row 2's baseline (y 557.1). Row 2 of group prior_cases_103b prints petition.prior_cases[].case_number here. Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_103b_schema.py."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "District_2",
+    "producer": "asked:petition.prior_cases[].district",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "District_2",
+    "evidence": "Field index: District_2 p3 T48 line 20 'District' (sampled_ok), rect [251.6, 585.2, 364.4, 599.1], on row 3's baseline with When_3 and Case number_4 (y 585.2). Row 3 of group prior_cases_103b prints petition.prior_cases[].district here, paired by rectangle, not by name suffix (spec correction 6; F-1, E-1); undefined_20 is a page 2 mortgage box and stays unbound. Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_103b_schema.py."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "When_3",
+    "producer": "asked:petition.prior_cases[].filed_on",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "When_3",
+    "evidence": "Field index: When_3 p3 T49 line 20 'When' (sampled_ok), rect [388.1, 585.2, 447.9, 599.1], on row 3's baseline (y 585.2). Row 3 of group prior_cases_103b prints petition.prior_cases[].filed_on here, blank unless MM/DD/YYYY (PF2-2). Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_103b_schema.py."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "Case number_4",
+    "producer": "asked:petition.prior_cases[].case_number",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Case number_4",
+    "evidence": "Field index: Case number_4 p3 T50 line 20 'Case number' (sampled_ok), rect [486.0, 585.2, 580.9, 599.1], on row 3's baseline (y 585.2). Row 3 of group prior_cases_103b prints petition.prior_cases[].case_number here. Printed only while petition_prior_bankruptcy_yes holds. Read by test_form_103b_schema.py."
+  },
+  {
+    "schema": "form_121",
+    "pdf_field": "Debtor1b.SSNum",
+    "producer": "derived:other_ssn_whole",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor1b.SSNum",
+    "evidence": "Field index: Debtor1b.SSNum p1 T11 line 2 'All Social Security Numbers you have used', column 'For Debtor 1:' (sampled_ok), the second box under Debtor1a.SSNum: a comb of 11 cells (/MaxLen 11) over the printed blanks ___ ___ ___ - ___ ___ - ___ ___ ___ ___. Spec §13.4 and Ruling PF2-T10-1: other_ssn_whole prints petition.other_ssn as NNN-NN-NNNN, as ssn_formatted prints the first box, blank unless nine digits. Printed only while petition_other_ssn_yes holds (PF2-T10-2). Read by test_form_121_schema.py."
+  },
+  {
+    "schema": "form_121",
+    "pdf_field": "Debtor1a.ITINNum",
+    "producer": "derived:itin_whole",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor1a.ITINNum",
+    "evidence": "Field index: Debtor1a.ITINNum p1 T15 line 3 'All federal Individual Taxpayer Identification Numbers (ITIN) you have used', column 'Debtor 1' (sampled_ok): a comb of 10 cells (/MaxLen 10), rect from x 159.7, right of the 9 the page prints at x 153.0, over the blanks __ __ - __ __ - __ __ __ __. Spec §13.4, owner answer [Q2A] (the ITIN asked as an addition while the SSN stays required) and Rulings PF2-U2 and PF2-T10-1: itin_whole prints the eight digits after the leading 9 as NN-NN-NNNN (900-70-1234 prints 00-70-1234), blank unless the stored ITIN is nine digits starting with 9. Printed only while petition_itin_yes holds (PF2-T10-2). Read by test_form_121_schema.py."
+  },
+  {
+    "schema": "form_121",
+    "pdf_field": "Check Box3",
+    "producer": "derived:itin_answer_no",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check Box3",
+    "evidence": "Field index: Check Box3 p1 T19 line 3 'You do not have an ITIN.', column 'Debtor 1', on_state On (sampled_ok). Spec §13.4, owner answer [Q2A] and §5.3: itin_answer_no ticks the single box {\"true\": \"/On\"} only for the filer's explicit No to petition.itin_answer; a Yes prints the number and an unanswered question neither. Read by test_form_121_schema.py."
+  },
+  {
     "schema": "schedule_c",
     "pdf_field": "Debtor 1",
     "producer": "derived:full_name",

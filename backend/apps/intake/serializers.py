@@ -16,6 +16,8 @@ from rest_framework import serializers
 from apps.districts.counties import ILND_COUNTIES
 from apps.districts.dated_tables import fill_date
 from apps.eligibility.cmi import answered_window, income_step_gaps, income_window
+from apps.forms.registry import SSN_PATTERN
+from apps.forms.services.answer_records import is_itin, is_nine_digits
 from apps.forms.services.exemption_items import fits_description, fits_law
 from apps.forms.services.means_fit import LIST_ANSWERS, merge_row_errors, shown_box_refusals
 
@@ -68,6 +70,10 @@ User = get_user_model()
 class DebtorInfoSerializer(serializers.ModelSerializer):
     """Serializer for debtor personal information (PII encrypted)."""
 
+    # The SSN never comes back: the read says only whether the stored one is what Form 101 and
+    # Complete take (`_needs_ssn`'s own pattern), so a loaded step 1 needn't ask for it again.
+    ssn_saved = serializers.SerializerMethodField()
+
     class Meta:
         model = DebtorInfo
         fields = [
@@ -82,10 +88,14 @@ class DebtorInfoSerializer(serializers.ModelSerializer):
             "city",
             "state",
             "zip_code",
+            "ssn_saved",
         ]
         extra_kwargs = {
             "ssn": {"write_only": True},  # Never return SSN in API responses
         }
+
+    def get_ssn_saved(self, instance) -> bool:
+        return bool(SSN_PATTERN.fullmatch((instance.ssn or "").strip()))
 
     def validate_ssn(self, value):
         """Validate SSN format (9 digits, no hyphens for storage)."""
@@ -1044,7 +1054,11 @@ class PetitionAnswersField(serializers.DictField):
     def get_attribute(self, instance):
         record = getattr(instance, "petition_answers", None)
         answers = record.get_answers() if record else {}
-        saved = {f"{key}_saved": key in answers for key in PetitionAnswers.SECRET_KEYS}
+        # "Saved" means it will print and no detail is listed: the same predicates (PF2-5).
+        saved = {
+            "itin_saved": is_itin(answers.get("itin")),
+            "other_ssn_saved": is_nine_digits(answers.get("other_ssn")),
+        }
         return {
             **{k: v for k, v in answers.items() if k not in PetitionAnswers.SECRET_KEYS},
             **saved,
@@ -1330,7 +1344,10 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
         # Update or create nested objects
         if debtor_data:
-            DebtorInfo.objects.update_or_create(session=instance, defaults=debtor_data)
+            # The reply reads the row just saved, not the copy loaded with the session
+            instance.debtor_info, _ = DebtorInfo.objects.update_or_create(
+                session=instance, defaults=debtor_data
+            )
 
         if income_data:
             _save_income(instance, income_data)

@@ -75,6 +75,8 @@ You ARE Maria Torres. Navigate DigniFi as she would.
 | 103B line 7 ("Do these expenses cover anyone who is not included in your family as reported in line 1?")                                  | No                                                                                                                                                              |
 | 103B line 9 ("Do you expect your average monthly expenses to increase or decrease by more than 10% during the next 6 months?")            | No                                                                                                                                                              |
 
+**Form 101 questions (step 1, below the county):** Leave "Suffix (Sr., Jr., II, III)" and the EIN blank. Answer No to "All other names you have used in the last 8 years", "Do you have an ITIN?", "Have you used any other Social Security number? Answer Yes or No.", "Is your mailing address different from where you live?", "Have you filed for bankruptcy within the last 8 years?" and the question about bankruptcy cases pending or being filed by a spouse, a business partner or an affiliate. For why you are filing in this district, choose "Over the last 180 days before filing this petition, I have lived in this district longer than in any other district." Answer No to "Are you a sole proprietor of any full- or part-time business?"
+
 **Assets:**
 
 Each item goes on the Schedule A/B line shown. Where the form asks who has an interest, you are the only one, and the entire value is the portion you own. Answer No to every other line the Assets step shows.
@@ -87,6 +89,8 @@ Each item goes on the Schedule A/B line shown. Where the form asks who has an in
 - Line 17, checking: JPMorgan Chase — $340
 - Line 31, company name: Millbrook Mutual Life (your insurance policy, no cash value) — $0
 
+**Form 101 hazard question (Assets step, Part 7):** Answer No to "Do you own or have any property that poses or is alleged to pose a threat of imminent and identifiable hazard to public health or safety? Or do you own any property that needs immediate attention?"
+
 **Amounts Owed:**
 
 - Brightwater Card Services credit card — $4,200, paying $85/mo (in collections). Address: 1 Demo Way, Richmond, VA 23238. Account ends 1001. Since 2019–2025. Someone else is contacting you: Lakefront Demo Recovery LLC, 10 Demo Ct, Chicago, IL 60604, account ends 4004.
@@ -96,6 +100,8 @@ Each item goes on the Schedule A/B line shown. Where the form asks who has an in
 **For every amount owed:** none is secured; none is contingent, unliquidated or disputed; none is subject to offset.
 
 **Contracts and leases:** Yes. Division Demo Properties LLC, 30 Demo St, Chicago, IL 60622. Kind: lease, residential. For: Residential lease for 2145 W Division St Apt 3, 07/01/2026–06/30/2027, $1,100 a month. You do not owe money on it now.
+
+**Form 101 rent question (Contracts & Leases step):** Answer Yes to "Do you rent your residence?" and No to "Has your landlord obtained an eviction judgment against you?"
 
 **Codebtors:** No. You did not live in a community property state in the last 8 years.
 

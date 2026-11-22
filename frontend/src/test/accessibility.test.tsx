@@ -202,6 +202,14 @@ describe('Accessibility: Form Components', () => {
         <FormCard
           formType="form_101"
           generatedForm={mockForm}
+          details={[
+            {
+              message: 'Choose why you are filing in this district.',
+              step: 'debtor_info',
+              kind: 'detail',
+              forms: ['form_101'],
+            },
+          ]}
           onGenerate={async () => {}}
           onMarkDownloaded={async () => {}}
           onMarkFiled={async () => {}}

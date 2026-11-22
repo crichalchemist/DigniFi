@@ -11,13 +11,16 @@ interface YesNoThenDetailsProps {
   /** Nothing is checked while this is null */
   value: YesNo | null;
   onChange: (next: YesNo) => void;
-  note?: string;
+  /** Help under the question; several strings are several paragraphs */
+  note?: string | readonly string[];
   /** Goes on the fieldset, so a link can name it */
   id?: string;
   /** With a ref, the legend takes focus (tabIndex -1) so the page can move it there */
   legendRef?: Ref<HTMLLegendElement>;
   /** Says "Not answered yet" under the radios, for a caller that has seen the filer skip it */
   unanswered?: boolean;
+  /** False for a question shown only to be read or changed, which nothing requires (default true) */
+  required?: boolean;
   /** The details: drawn inside the fieldset, under the answer */
   children?: ReactNode;
 }
@@ -35,6 +38,7 @@ export function YesNoThenDetails({
   id,
   legendRef,
   unanswered,
+  required = true,
   children,
 }: YesNoThenDetailsProps) {
   return (
@@ -45,9 +49,13 @@ export function YesNoThenDetails({
         tabIndex={legendRef === undefined ? undefined : -1}
       >
         {question}
-        {REQUIRED_MARK}
+        {required && REQUIRED_MARK}
       </legend>
-      {note && <p className="form-help-text">{note}</p>}
+      {(typeof note === 'string' ? [note] : (note ?? [])).map((paragraph) => (
+        <p key={paragraph} className="form-help-text">
+          {paragraph}
+        </p>
+      ))}
       <div className="ab-yes-no">
         {YES_NO.map((choice) => (
           <label key={choice} className="ab-choice ab-answer">
@@ -55,7 +63,7 @@ export function YesNoThenDetails({
               type="radio"
               name={name}
               value={choice}
-              aria-required
+              aria-required={required || undefined}
               checked={value === choice}
               onChange={() => onChange(choice)}
             />

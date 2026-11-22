@@ -37,12 +37,14 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
     MeansTestAnswers,
+    PetitionAnswers,
     SecuredDebtAnswers,
     SOFACreditorPayment,
     SOFAPriorIncome,
     SOFAReport,
     SpouseIncome,
 )
+from apps.intake.petition import STEP_1_GATES
 
 User = get_user_model()
 
@@ -169,6 +171,23 @@ def _exempt(position: str, law: str, amount=None, short: str | None = None) -> d
     asset_at and writes one ExemptionClaim.
     """
     return {"position": position, "law": law, "amount": amount, "short": short}
+
+
+def _petition(rents_residence: str, **more) -> dict:
+    """Form 101's asked answers (4b-ii): every step 1 question No, filing here because the
+    persona lived here, no hazardous property, and the rent answer (with no eviction judgment
+    under a Yes). Nothing for 4d's or 4i's keys, which no step asks yet; `more` adds a persona's
+    own answers.
+    """
+    answers = {
+        **dict.fromkeys(STEP_1_GATES, "no"),
+        "venue_choice": "lived_here",
+        "hazard_answer": "no",
+        "rents_residence": rents_residence,
+    }
+    if rents_residence == "yes":
+        answers["eviction_judgment"] = "no"
+    return {**answers, **more}
 
 
 def claim_links(session, pairs) -> list[dict]:
@@ -344,6 +363,8 @@ def _maria_torres() -> dict:
         ],
         "codebtors": [],
         "claims": {"contracts_answer": "yes", "codebtors_answer": "no", "community_lived": "no"},
+        # Form 101's own questions on steps 1, 5 and 7 (4b-ii): she rents.
+        "petition": _petition("yes"),
         # Schedule C, asked on the page after the filing-fee page (3g1)
         "exemptions": {
             "line_1": "state_and_federal",
@@ -509,6 +530,8 @@ def _james_washington() -> dict:
         ],
         "codebtors": [],
         "claims": {"contracts_answer": "yes", "codebtors_answer": "no", "community_lived": "no"},
+        # Form 101's own questions on steps 1, 5 and 7 (4b-ii): he rents.
+        "petition": _petition("yes"),
         # Schedule C, asked on the page after the filing-fee page (3g1)
         "exemptions": {
             "line_1": "state_and_federal",
@@ -728,6 +751,8 @@ def _priya_sharma() -> dict:
             },
         ],
         "claims": {"contracts_answer": "yes", "codebtors_answer": "yes", "community_lived": "no"},
+        # Form 101's own questions on steps 1, 5 and 7 (4b-ii): she rents.
+        "petition": _petition("yes"),
         # Schedule C, asked on the page after the filing-fee page (3g1)
         "exemptions": {
             "line_1": "state_and_federal",
@@ -952,6 +977,8 @@ def _deshawn_mitchell() -> dict:
         "contracts": [],
         "codebtors": [],
         "claims": {"contracts_answer": "no", "codebtors_answer": "no", "community_lived": "no"},
+        # Form 101's own questions on steps 1, 5 and 7 (4b-ii): he owns the home he lives in.
+        "petition": _petition("no"),
         # Schedule C, asked on the page after the filing-fee page (3g1)
         "exemptions": {
             "line_1": "state_and_federal",
@@ -1081,6 +1108,8 @@ def _sarah_chen() -> dict:
         ],
         "codebtors": [],
         "claims": {"contracts_answer": "yes", "codebtors_answer": "no", "community_lived": "no"},
+        # Form 101's own questions on steps 1, 5 and 7 (4b-ii): she rents.
+        "petition": _petition("yes"),
         # Schedule C, asked on the page after the filing-fee page (3g1)
         "exemptions": {
             "line_1": "state_and_federal",
@@ -1379,6 +1408,18 @@ def _andres_kettleby() -> dict:
             },
         ],
         "claims": {"contracts_answer": "yes", "codebtors_answer": "yes", "community_lived": "no"},
+        # Form 101's own questions on steps 1, 5 and 7 (4b-ii): he rents, and his driving is a
+        # business he runs alone from home, of none of line 13's kinds.
+        "petition": _petition(
+            "yes",
+            sole_proprietor_answer="yes",
+            business_name="Rideshare and delivery driving",
+            business_street="1418 Marquette Ave Apt 2",
+            business_city="Aurora",
+            business_state="IL",
+            business_zip="60505",
+            business_kind="none",
+        ),
         # Schedule C, asked on the page after the filing-fee page (3g1)
         "exemptions": {
             "line_1": "state_and_federal",
@@ -1563,6 +1604,11 @@ class Command(BaseCommand):
             )
 
         ClaimAnswers.objects.create(session=session, answers=json.dumps(data["claims"]))
+        PetitionAnswers.objects.create(
+            session=session,
+            answers=json.dumps(data["petition"]),
+            answered_on=fill_date().isoformat(),
+        )
 
         # Create SOFA report and related data (Form 107)
         sofa_data = dict(data.get("sofa", {}))

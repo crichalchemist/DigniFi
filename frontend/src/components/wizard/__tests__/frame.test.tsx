@@ -6,7 +6,10 @@ import { FramingLine } from '../FramingLine';
 import { PublicRecordNotice } from '../PublicRecordNotice';
 import { WhatDoesThisMean } from '../WhatDoesThisMean';
 import {
+  CLERK_PHONE_EASTERN,
+  CLERK_PHONE_WESTERN,
   PUBLIC_RECORD_NOTICE,
+  PUBLIC_RECORD_NOTICE_WITH_CLERK,
   SECTION_INTRO_PAUSE,
   WHAT_DOES_THIS_MEAN,
 } from '../../../constants/copy';
@@ -30,8 +33,29 @@ describe('the frame components', () => {
   });
 
   it('PublicRecordNotice renders the notice as a note', () => {
-    render(<PublicRecordNotice />);
+    render(<PublicRecordNotice division={null} />);
     expect(screen.getByRole('note')).toHaveTextContent(PUBLIC_RECORD_NOTICE);
+  });
+
+  it('PublicRecordNotice names the clerk by division and no number before a county is chosen', () => {
+    // A Boone County filer files in Rockford, so the Chicago clerk's number would send them to
+    // the wrong office (Review Focus 8)
+    const { rerender } = render(<PublicRecordNotice division="Western" />);
+    expect(screen.getByRole('note')).toHaveTextContent(
+      `${PUBLIC_RECORD_NOTICE_WITH_CLERK} ${CLERK_PHONE_WESTERN}.`
+    );
+    expect(screen.getByRole('note')).not.toHaveTextContent(CLERK_PHONE_EASTERN);
+
+    rerender(<PublicRecordNotice division="Eastern" />);
+    expect(screen.getByRole('note')).toHaveTextContent(
+      `${PUBLIC_RECORD_NOTICE_WITH_CLERK} ${CLERK_PHONE_EASTERN}.`
+    );
+
+    rerender(<PublicRecordNotice division={null} />);
+    const note = screen.getByRole('note');
+    expect(note.textContent).toBe(PUBLIC_RECORD_NOTICE);
+    expect(note.textContent).toMatch(/options exist\.$/);
+    expect(note.textContent).not.toMatch(/\(\d{3}\)/);
   });
 
   it('WhatDoesThisMean is collapsed until the filer opens it, then shows the words and citation', async () => {
@@ -57,7 +81,7 @@ describe('the frame components', () => {
           minutes={5}
         />
         <FramingLine>The court asks every filer this.</FramingLine>
-        <PublicRecordNotice />
+        <PublicRecordNotice division={null} />
         <WhatDoesThisMean citation="11 U.S.C. section 101">
           The words of the statute.
         </WhatDoesThisMean>

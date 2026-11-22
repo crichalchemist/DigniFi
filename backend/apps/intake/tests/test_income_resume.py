@@ -17,7 +17,7 @@ from rest_framework.test import APIClient
 
 from apps.districts.models import District
 from apps.intake.models import DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
-from apps.intake.tests.builders import answer_household
+from apps.intake.tests.builders import answer_household, answer_petition
 from apps.users.models import User
 
 SPLIT_BY_SOURCE = "Enter your income by source on the Income step."
@@ -215,6 +215,7 @@ def test_legacy_income_total_must_be_split_before_forms_print(filer_session):
     client, session = filer_session
     IncomeInfo.objects.create(session=session, monthly_income=json.dumps([3000] * 6))
     answer_household(session)
+    answer_petition(session)
     _complete(session)
     generate = {"session_id": session.pk, "form_type": "schedule_i"}
 

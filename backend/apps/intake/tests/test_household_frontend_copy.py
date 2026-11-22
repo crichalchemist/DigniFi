@@ -23,6 +23,20 @@ def test_step_one_offers_the_counties_the_server_takes():
     assert re.findall(r"^  '([^']+)',$", text, re.M) == list(ILND_COUNTIES)
 
 
+def test_step_one_names_each_countys_division_as_the_server_does():
+    # The public-record notice and line 6's information name the clerk and the division from it
+    # (4b-R6). A key may be quoted ('Jo Daviess'), so a plain-key reader would miss one (PF2-T8-9).
+    if not FRONTEND.is_dir():
+        pytest.skip("the frontend's source isn't here (compose's backend mounts backend/ only)")
+    text = (FRONTEND / "constants" / "counties.ts").read_text()
+    match = re.search(r"^export const COUNTY_DIVISION\b[^\n]*= \{\n(.*?)^\};", text, re.M | re.S)
+    assert match, "counties.ts has no COUNTY_DIVISION"
+    pairs = re.findall(r"^  (?:'([^']+)'|(\w+)): '(\w+)',$", match.group(1), re.M)
+    assert [(quoted or plain, division) for quoted, plain, division in pairs] == list(
+        ILND_COUNTIES.items()
+    )
+
+
 def test_the_income_step_offers_the_words_the_forms_print():
     if not FRONTEND.is_dir():
         pytest.skip("the frontend's source isn't here (compose's backend mounts backend/ only)")

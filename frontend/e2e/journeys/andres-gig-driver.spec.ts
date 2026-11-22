@@ -41,6 +41,7 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
 
     // Step 1: Debtor Info
     await wizard.fillDebtorInfo(ANDRES.debtor);
+    await wizard.fillPetitionQuestions(ANDRES.petition);
     await wizard.nextStep();
 
     // Uploads come between basic info and Income; this journey types everything in

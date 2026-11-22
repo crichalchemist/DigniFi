@@ -25,7 +25,8 @@ from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
 from apps.forms.schema import load_schema
-from apps.forms.services.fill_resolver import resolve, resolve_parts
+from apps.forms.services.answer_records import PETITION_STEP_OF_KEY
+from apps.forms.services.fill_resolver import _section_applies, resolve, resolve_parts
 from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import (
@@ -37,6 +38,7 @@ from apps.intake.models import (
     IntakeSession,
     PetitionAnswers,
 )
+from apps.intake.petition import text_shows
 
 User = get_user_model()
 
@@ -576,6 +578,23 @@ RADIOS = [
     ("aware_consequences", "Notice page: aware of the consequences, No", "/No_8", "/Yes_6"),
     ("aware_fraud", "Notice page: aware that fraud is a crime, No", "/No_9", "/Yes_7"),
 ]
+
+
+def test_the_radios_this_file_pins_are_form_101s_own_radios_and_the_radio_keys():
+    # PF2-12 (a): a radio bound without a RADIOS row is unpinned, and one in RADIO_KEYS
+    # with no radio guards nothing. Judged on Form 101's own schema too, not only through
+    # RADIO_KEYS, which covers every form's radios.
+    from apps.intake.models import PetitionAnswers
+
+    bound = {
+        field.binding.removeprefix("petition.")
+        for field in load_schema("form_101").fields
+        if (field.binding or "").startswith("petition.")
+        and field.type == "radio"
+        and set(field.choices or {}) != {"true"}
+    }
+    assert {key for key, *_ in RADIOS} == bound
+    assert {key for key, *_ in RADIOS} == set(PetitionAnswers.RADIO_KEYS)
 
 
 @pytest.mark.parametrize("key,label,no,yes", RADIOS)
@@ -1127,3 +1146,129 @@ def test_no_binding_reads_the_retired_form_answers():
     # 4b-R2: every asked box reads PetitionAnswers; FormAnswer is written by nothing.
     bindings = [f.binding for f in load_schema("form_101").fields if f.binding]
     assert [b for b in bindings if not b.startswith("petition.")] == []
+
+
+def test_a_malformed_case_date_prints_blank_and_the_rest_of_its_row_prints(session):
+    # A date the court can't read is blank, never a guess; the stored text stays as typed.
+    prior = [
+        {"district": "District 1", "filed_on": "01/01/2020", "case_number": "20-1"},
+        {"district": "District 2", "filed_on": "13/45/2020", "case_number": "20-2"},
+    ]
+    pending = [
+        {
+            "debtor": "Demo Partner",
+            "relationship": "Business partner",
+            "district": "Northern Illinois",
+            "filed_on": "2025-01-15",
+            "case_number": "25-bk-1",
+        }
+    ]
+    record = _petition_row(
+        session,
+        prior_bankruptcy_answer="yes",
+        prior_cases=prior,
+        pending_case_answer="yes",
+        pending_cases=pending,
+    )
+    form = _petition(session)
+    assert not form.get("When_2")
+    assert (form["District_2"], form["Case number_2"]) == ("District 2", "20-2")
+    assert form["District@3:T11"] == "District 1"
+    debtor, _, district, when, case_number = _line_10_row(form, 1)
+    assert not when
+    assert (debtor, district, case_number) == ("Demo Partner", "Northern Illinois", "25-bk-1")
+    answers = PetitionAnswers.objects.get(pk=record.pk).get_answers()
+    assert answers["prior_cases"][1]["filed_on"] == "13/45/2020"
+    assert answers["pending_cases"][0]["filed_on"] == "2025-01-15"
+
+
+# Every key whose too-long line is gated by its box's visibility (PF2-3). The schema's
+# `conditional_on` for the key's boxes decides, so petition.text_shows can't drift from it.
+GATED_KEYS = sorted(
+    key
+    for key in PetitionAnswers.TEXT_LIMITS
+    if PETITION_STEP_OF_KEY.get(key) in ("debtor_info", "assets")
+)
+GATE_STATES = [
+    {},
+    {"mailing_answer": "no"},
+    {"mailing_answer": "yes"},
+    {"sole_proprietor_answer": "no"},
+    {"sole_proprietor_answer": "yes"},
+    {"hazard_answer": "no"},
+    {"hazard_answer": "yes"},
+    {"venue_choice": "lived_here"},
+    {"venue_choice": "other"},
+]
+
+
+def _boxes_of(key):
+    """The schema fields that print `key`: bound to it, or a rule built from it."""
+    names = {f"petition.{key}", key}
+    if key.endswith("_street"):
+        names.add(key.replace("_street", "_number"))
+    return [
+        f
+        for f in load_schema("form_101").fields
+        if f.binding in names or f.rule in names or (f.rule or "").startswith(f"{key}_line_")
+    ]
+
+
+def test_eighteen_keys_are_gated_by_their_boxes_visibility():
+    assert len(GATED_KEYS) == 18
+
+
+@pytest.mark.parametrize("answers", GATE_STATES)
+@pytest.mark.parametrize("key", GATED_KEYS)
+def test_a_too_long_text_is_gated_as_the_schema_gates_its_boxes(session, key, answers):
+    fields = _boxes_of(key)
+    assert fields, key
+    _petition_row(session, **answers)
+    session.refresh_from_db()
+    printed = all(_section_applies(f, session) for f in fields)
+    assert text_shows(answers, key) == printed
+
+
+# The four lists whose row cells Review measures (PF2-10a), each printed under its line's Yes.
+ROW_LISTS = ["other_names", "other_business_names", "prior_cases", "pending_cases"]
+LIST_GATE_STATES = [
+    {},
+    {"other_names_answer": "no"},
+    {"other_names_answer": "yes"},
+    {"prior_bankruptcy_answer": "no"},
+    {"prior_bankruptcy_answer": "yes"},
+    {"pending_case_answer": "no"},
+    {"pending_case_answer": "yes"},
+]
+
+
+def _row_bindings():
+    """Every (list, attr) Form 101 prints a row cell of, in a slot box or a sheet column."""
+    schema = load_schema("form_101")
+    bindings = [f.binding for f in schema.fields if f.repeat and f.binding]
+    for group in schema.groups.values():
+        if group.sheet is not None:
+            bindings += [column.binding for column in group.sheet.columns]
+    return {tuple(b[len("petition.") :].split("[].")) for b in bindings}
+
+
+@pytest.mark.parametrize("answers", LIST_GATE_STATES)
+@pytest.mark.parametrize("key", ROW_LISTS)
+def test_a_row_cells_too_long_line_is_gated_as_the_schema_gates_its_slots(session, key, answers):
+    fields = [f for f in load_schema("form_101").fields if f.repeat == key]
+    assert fields, key
+    _petition_row(session, **answers)
+    session.refresh_from_db()
+    printed = all(_section_applies(f, session) for f in fields)
+    assert text_shows(answers, key) == printed
+
+
+def test_every_row_cell_form_101_prints_has_the_label_review_names_it_by():
+    # A cell with no label would leave Review a too-long line naming nothing (PF2-10a).
+    from apps.intake.petition import CELL_LABELS
+
+    limits = json.loads(LIMITS.read_text())
+    assert CELL_LABELS == limits["cell_labels"]
+    labelled = {(key, attr) for key, cells in CELL_LABELS.items() for attr in cells}
+    assert labelled == _row_bindings()
+    assert set(CELL_LABELS) == set(ROW_LISTS)

@@ -11,7 +11,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../common';
 import { UPLConfirmationModal } from '../compliance';
 import { FormStatusBadge } from './FormStatusBadge';
-import type { GeneratedForm, FormType } from '../../types/api';
+import { GapLink } from './GapsNotice';
+import type { CompletionGap, GeneratedForm, FormType } from '../../types/api';
 import { FORM_TYPE_METADATA } from '../../types/api';
 import {
   MEANS_PAIR_CANCEL,
@@ -42,6 +43,8 @@ interface FormCardProps {
   leftPacket?: boolean;
   /** Information about this form, shown before any refusal (never a refusal itself) */
   notice?: string;
+  /** The details (answers the form leaves blank or can't print) that concern this form */
+  details?: CompletionGap[];
   /**
    * Where a pending card's Answer Questions goes; `/ask/<form type>` without one. A refusal's
    * link, and its label, come first.
@@ -60,6 +63,7 @@ export function FormCard({
   generatedForm,
   leftPacket = false,
   notice,
+  details = [],
   answerPath,
   refusal,
   onGenerate,
@@ -258,6 +262,20 @@ export function FormCard({
           {notice}
         </p>
       )}
+
+      {/* The gap's own sentences, then one way to each step. Plain lines, no live region: the gaps
+          arrive after the cards, and every card would read its line out again. A step the card's
+          refusal already links to gets no second link. */}
+      {details.map((detail, index) => (
+        <p key={index} className="form-card-notice">
+          {detail.message}
+        </p>
+      ))}
+      {[...new Set(details.map((detail) => detail.step))]
+        .filter((step) => refusal?.link?.to !== `/intake?step=${step}`)
+        .map((step) => (
+          <GapLink key={step} step={step} />
+        ))}
 
       {/* A polite live region from the start, so a screen reader reads out a refusal that
           Generate or Download adds to it (step 3a2 spec §4.5) */}

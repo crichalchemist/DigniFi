@@ -8,7 +8,7 @@ from apps.eligibility.cmi import counted_spouse_income, income_step_gaps
 from apps.forms.registry import PreconditionMissing, _needs_county, _needs_ssn
 
 from .asset_lines import asset_step_gaps
-from .claims import claim_step_gaps
+from .claims import claim_gap_parts
 from .income import deductions_blank, schedule_i_line4
 
 # The wizard's last step is Review, step 9: the length of WIZARD_STEPS in
@@ -33,8 +33,10 @@ class Gap(Exception):
     """One thing an intake still lacks, in the filer's words.
 
     `step` is the WIZARD_STEPS key that fixes it. `kind` is "gate" (Complete refuses while it
-    is open) or "detail" (the forms print it blank). str(gap) is the sentence. `forms` lists the
-    form types that print a detail's box blank; a gate leaves it empty.
+    is open) or "detail" (Complete lets it through). str(gap) is the sentence. `forms` lists the
+    form types a detail concerns: a missing answer prints its box blank there. A text over its
+    character cap, or one its box can't take, is listed too long; Generate refuses that form only
+    while the box can't take it. A gate leaves it empty.
     """
 
     GATE = "gate"
@@ -58,7 +60,15 @@ def completion_gaps(session) -> list[Gap]:
     The claims tail (the legacy gaps, then the line 4 question) comes after Codebtors' gaps, out
     of wizard order on purpose (3c4). Reads only: never the packet, a form's preconditions or
     the means test.
+
+    Form 101's own questions (petition_step_gaps, both kinds) go where their steps ask them: step
+    1's after the county, the hazard after the Assets step's gaps, and the rent and eviction after
+    the Contracts gaps, before Codebtors' (4b-R4).
     """
+    # Imported here: petition.py imports Gap from this module, so a top-level import is a cycle.
+    from .petition import petition_step_gaps
+
+    petition = petition_step_gaps(session)
     gaps = []
 
     # The forms' own identity checks, so Complete and the forms say the same thing.
@@ -71,6 +81,8 @@ def completion_gaps(session) -> list[Gap]:
         _needs_county(session)
     except PreconditionMissing as exc:
         gaps.append(Gap(str(exc), exc.step, GATE))
+
+    gaps.extend(g for g in petition if g.step == "debtor_info")
 
     # Every gap the Income step leaves, in order: the same check the means test refuses
     # with (3e1 spec §9.1).
@@ -93,10 +105,17 @@ def completion_gaps(session) -> list[Gap]:
     # Schedule A/B's walk: every gap, after Schedule J line 3 and before the scanned debts,
     # which is wizard order (3b spec §7).
     gaps.extend(Gap(str(gap), gap.step, GATE) for gap in asset_step_gaps(session))
+    gaps.extend(g for g in petition if g.step == "assets")
 
     # The claims steps' walk (3c3): Assets' "Do you live here?" first, then the Debts block
     # (a scanned debt the filer hasn't confirmed first, DIG-163), Contracts and Codebtors; then,
     # out of wizard order on purpose (3c4), the legacy gaps and the line 4 question.
-    gaps.extend(Gap(str(gap), gap.step, GATE) for gap in claim_step_gaps(session))
+    head, tail = claim_gap_parts(session)
+    claims = [Gap(str(gap), gap.step, GATE) for gap in head]
+    # Before Codebtors' first gap; with none, at the end, since the head ends with Codebtors'
+    at = next((i for i, g in enumerate(claims) if g.step == "codebtors"), len(claims))
+    claims[at:at] = [g for g in petition if g.step == "contracts"]
+    gaps.extend(claims)
+    gaps.extend(Gap(str(gap), gap.step, GATE) for gap in tail)
 
     return gaps

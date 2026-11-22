@@ -1,8 +1,10 @@
 /**
  * GapsNotice - What the server finds missing from the intake, above Generate All
  *
- * A `gate` is an answer the forms can't be prepared without, so it is named as missing; a `detail`
- * is one the forms print blank. Each affected step gets its messages and one way to it.
+ * A `gate` is an answer the forms can't be prepared without, so it is named as missing. A `detail`
+ * is one Complete lets through: a missing answer, which the forms print blank and the count names
+ * as blank, or a too-long answer, listed with its words but never counted as blank (isTooLong).
+ * Each affected step gets its messages and one way to it.
  */
 
 import { Link } from 'react-router-dom';
@@ -11,6 +13,8 @@ import {
   DASHBOARD_GAPS_ONE,
   DASHBOARD_GATES_MANY,
   DASHBOARD_GATES_ONE,
+  PETITION_DETAIL_TOO_LONG,
+  PETITION_DETAIL_TOO_LONG_ROW,
 } from '../../constants/copy';
 import { WIZARD_STEPS } from '../../constants/wizardSteps';
 import type { CompletionGap } from '../../types/api';
@@ -21,9 +25,40 @@ function wizardIndex(key: string): number {
   return index === -1 ? WIZARD_STEPS.length : index;
 }
 
+/** The one way to a gap's step, "Go to {label}"; nothing for a step this browser doesn't know */
+export function GapLink({ step }: { step: string }) {
+  const wizardStep = WIZARD_STEPS.find((candidate) => candidate.key === step);
+  if (!wizardStep) return null;
+  return (
+    <Link to={`/intake?step=${step}`} className="button button--primary">
+      Go to {wizardStep.label}
+    </Link>
+  );
+}
+
+/** A sentence template as a pattern: each {placeholder} matches any text */
+function patternOf(template: string): RegExp {
+  const escaped = template.replace(/[.*+?^$()|[\]\\]/g, '\\$&');
+  return new RegExp(`^${escaped.replace(/\{[a-z]+\}/g, '.+')}$`);
+}
+
+const TOO_LONG_SENTENCES = [
+  patternOf(PETITION_DETAIL_TOO_LONG),
+  patternOf(PETITION_DETAIL_TOO_LONG_ROW),
+];
+
+/**
+ * A too-long answer never prints blank: Generate refuses the form whose box can't take it (Form
+ * 101, Form 103B or both, which a row's {forms} names), and a text over its character cap that its
+ * box still takes prints whole. So the blank count leaves it out
+ */
+function isTooLong(gap: CompletionGap): boolean {
+  return TOO_LONG_SENTENCES.some((pattern) => pattern.test(gap.message));
+}
+
 export function GapsNotice({ gaps }: { gaps: CompletionGap[] }) {
   const gateCount = gaps.filter((gap) => gap.kind === 'gate').length;
-  const detailCount = gaps.filter((gap) => gap.kind === 'detail').length;
+  const detailCount = gaps.filter((gap) => gap.kind === 'detail' && !isTooLong(gap)).length;
 
   // One entry per distinct step, in first-seen order; the sort is stable, so unknown steps keep it
   const steps = [...new Set(gaps.map((gap) => gap.step))].sort(
@@ -50,23 +85,16 @@ export function GapsNotice({ gaps }: { gaps: CompletionGap[] }) {
       )}
       {steps.length > 0 && (
         <ul>
-          {steps.map((key) => {
-            const wizardStep = WIZARD_STEPS.find((step) => step.key === key);
-            return (
-              <li key={key}>
-                {gaps
-                  .filter((gap) => gap.step === key)
-                  .map((gap, index) => (
-                    <p key={index}>{gap.message}</p>
-                  ))}
-                {wizardStep && (
-                  <Link to={`/intake?step=${key}`} className="button button--primary">
-                    Go to {wizardStep.label}
-                  </Link>
-                )}
-              </li>
-            );
-          })}
+          {steps.map((key) => (
+            <li key={key}>
+              {gaps
+                .filter((gap) => gap.step === key)
+                .map((gap, index) => (
+                  <p key={index}>{gap.message}</p>
+                ))}
+              <GapLink step={key} />
+            </li>
+          ))}
         </ul>
       )}
     </section>

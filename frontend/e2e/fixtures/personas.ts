@@ -249,6 +249,51 @@ export type DeductionField =
   | 'payroll_union_dues'
   | 'payroll_other';
 
+/**
+ * Form 101's asked answers (forms step 4b), as the wizard's controls name them (each `name` is the
+ * PetitionAnswers key). Every persona answers No to every step 1 gate but line 12, files where
+ * they lived and owns no hazardous property. Andrés alone answers line 12 (sole proprietor) Yes,
+ * with his business block; `rents_residence` follows the persona's contracts. Both as
+ * seed_demo_data's `_petition` has it.
+ */
+export interface PersonaPetition {
+  other_names_answer: 'no';
+  itin_answer: 'no';
+  other_ssn_answer: 'no';
+  mailing_answer: 'no';
+  venue_choice: 'lived_here';
+  prior_bankruptcy_answer: 'no';
+  pending_case_answer: 'no';
+  sole_proprietor_answer: 'yes' | 'no';
+  // Form 101 line 12, typed only under a Yes
+  business?: { name: string; address: PersonaAddress; kind: 'none' };
+  hazard_answer: 'no';
+  rents_residence: 'yes' | 'no';
+  // Asked only under a rent Yes
+  eviction_judgment?: 'no';
+}
+
+/**
+ * A persona's Form 101 answers on every step that asks them: step 1's seven gates No (a persona
+ * with a business sets line 12's Yes and its block over these), the venue "lived here", the
+ * Assets step's hazard No, and Contracts & Leases' rent answer (an eviction No under a rent Yes)
+ */
+function gates(rents_residence: 'yes' | 'no'): PersonaPetition {
+  return {
+    other_names_answer: 'no',
+    itin_answer: 'no',
+    other_ssn_answer: 'no',
+    mailing_answer: 'no',
+    venue_choice: 'lived_here',
+    prior_bankruptcy_answer: 'no',
+    pending_case_answer: 'no',
+    sole_proprietor_answer: 'no',
+    hazard_answer: 'no',
+    rents_residence,
+    ...(rents_residence === 'yes' ? { eviction_judgment: 'no' as const } : {}),
+  };
+}
+
 export interface PersonaData {
   username: string;
   password: string;
@@ -272,6 +317,7 @@ export interface PersonaData {
   contracts: PersonaContract[];
   codebtors: PersonaCodebtor[];
   claim_answers: PersonaClaimAnswers;
+  petition: PersonaPetition;
   filing_fee: PersonaFilingFee;
   exemptions: PersonaExemptions;
   /** Form 122A-2's answers, given only by a persona above the median */
@@ -499,6 +545,7 @@ export const MARIA: PersonaData = {
       expense_change_answer: 'no',
     },
   },
+  petition: gates('yes'),
   exemptions: {
     line_1: 'state_and_federal',
     line_3: 'no',
@@ -633,6 +680,7 @@ export const JAMES: PersonaData = {
   codebtors: [],
   claim_answers: { contracts_answer: 'yes', codebtors_answer: 'no', community_lived: 'no' },
   filing_fee: { payment_choice: 'pay_in_full' },
+  petition: gates('yes'),
   exemptions: {
     line_1: 'state_and_federal',
     line_3: 'no',
@@ -864,6 +912,7 @@ export const PRIYA: PersonaData = {
   ],
   claim_answers: { contracts_answer: 'yes', codebtors_answer: 'yes', community_lived: 'no' },
   filing_fee: { payment_choice: 'pay_in_full' },
+  petition: gates('yes'),
   exemptions: {
     line_1: 'state_and_federal',
     line_3: 'no',
@@ -1097,6 +1146,7 @@ export const DESHAWN: PersonaData = {
   codebtors: [],
   claim_answers: { contracts_answer: 'no', codebtors_answer: 'no', community_lived: 'no' },
   filing_fee: { payment_choice: 'installments' },
+  petition: gates('no'),
   exemptions: {
     line_1: 'state_and_federal',
     line_3: 'no',
@@ -1218,6 +1268,7 @@ export const SARAH: PersonaData = {
       expense_change_answer: 'no',
     },
   },
+  petition: gates('yes'),
   exemptions: {
     line_1: 'state_and_federal',
     line_3: 'no',
@@ -1514,6 +1565,15 @@ export const ANDRES: PersonaData = {
   ],
   claim_answers: { contracts_answer: 'yes', codebtors_answer: 'yes', community_lived: 'no' },
   filing_fee: { payment_choice: 'installments' },
+  petition: {
+    ...gates('yes'),
+    sole_proprietor_answer: 'yes',
+    business: {
+      name: 'Rideshare and delivery driving',
+      address: addr('1418 Marquette Ave Apt 2', 'Aurora', 'IL', '60505'),
+      kind: 'none',
+    },
+  },
   exemptions: {
     line_1: 'state_and_federal',
     line_3: 'no',

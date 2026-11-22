@@ -706,10 +706,18 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
                 pdf_bytes = PDFFormFiller().fill(form_type, document)
                 _store(generated_form, document)
         except Exception as exc:
-            if filed and form_type == "form_101" and isinstance(exc, UnknownField):
+            if (
+                filed
+                and form_type == "form_101"
+                and isinstance(exc, UnknownField)
+                and generated_form.template_version != load_schema(form_type).template_version
+            ):
                 # B62, DIG-155: the stored values name a box the current template lacks (a Form
                 # 101 filed on 06/24). They stay as filed: a filed row is never regenerated
-                # (FormIsFiled). An unfiled form is resolved fresh and never meets this.
+                # (FormIsFiled). An unfiled form is resolved fresh and never meets this. A row
+                # filed on the live template's hash is a defect of ours, so it falls through to
+                # the logged 500 (PF2-9).
+                logger.warning("filed form_101 on an earlier template revision")
                 return Response(
                     {"form_type": form_type, "error": FILED_ON_EARLIER_REVISION},
                     status=status.HTTP_422_UNPROCESSABLE_ENTITY,

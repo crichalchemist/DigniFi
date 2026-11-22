@@ -69,6 +69,8 @@ You ARE Andrés Kettleby. Navigate DigniFi as he would.
 | Every other expense box                                                                             | $0                                                                                             |
 | How you will pay the fee (after Complete, Form 101 line 8)                                          | I need to pay the fee in installments.                                                         |
 
+**Form 101 questions (step 1, below the county):** Leave "Suffix (Sr., Jr., II, III)" and the EIN blank. Answer No to "All other names you have used in the last 8 years", "Do you have an ITIN?", "Have you used any other Social Security number? Answer Yes or No.", "Is your mailing address different from where you live?", "Have you filed for bankruptcy within the last 8 years?" and the question about bankruptcy cases pending or being filed by a spouse, a business partner or an affiliate. For why you are filing in this district, choose "Over the last 180 days before filing this petition, I have lived in this district longer than in any other district." Answer Yes to "Are you a sole proprietor of any full- or part-time business?" and enter the name of the business, Rideshare and delivery driving, with the location 1418 Marquette Ave Apt 2, Aurora, IL 60505. For the kind of business, check "None of the above". You have no EIN.
+
 Your Corolla lease ($389) comes from the Northlight lease on Contracts & Leases.
 
 **Assets:**
@@ -86,6 +88,8 @@ Each item goes on the Schedule A/B line shown. Answer Yes to line 37 (your drivi
 - Line 38: driving payouts already earned, not yet paid by the apps — $310
 - Line 40: insulated delivery bags, phone mount, dash camera — $150
 
+**Form 101 hazard question (Assets step, Part 7):** Answer No to "Do you own or have any property that poses or is alleged to pose a threat of imminent and identifiable hazard to public health or safety? Or do you own any property that needs immediate attention?"
+
 **Amounts Owed.** You pay $0 a month on every one of these.
 
 - Copperline Auto Finance car loan — $7,800, paying $0 (Mateo's Fit loan you co-signed; what secures it: "2017 Honda Fit, co-owned with my brother"). Address: PO Box 48210, Schaumburg, IL 60168. Since 08/15/2022. Secured by the Honda Fit on line 3. Lien: an agreement you made. The lender can take back property: Yes.
@@ -102,6 +106,8 @@ Each item goes on the Schedule A/B line shown. Answer Yes to line 37 (your drivi
 Every other amount owed: not contingent, unliquidated or disputed, and not subject to offset, and no one else is contacting you about it.
 
 **Contracts and codebtors:** Contracts and leases: Yes. Northlight Auto Leasing, PO Box 92650, Itasca, IL 60143: lease of a 2024 Toyota Corolla Hybrid, 36 months, 03/01/2025–02/29/2028, kind vehicle, the Corolla on line 3, $389 a month; you do not owe money on it now. Fox Run Property Management, 2200 W Indian Trail, Aurora, IL 60506: apartment lease, 06/01/2026–05/31/2027, kind residential; you do not owe money on it now. Codebtors: Yes. Mateo Kettleby (your brother), 377 Douglas Ave, Elgin, IL 60120, shares the Copperline Auto Finance amount. Not in a community property state in the last 8 years.
+
+**Form 101 rent question (Contracts & Leases step):** Answer Yes to "Do you rent your residence?" and No to "Has your landlord obtained an eviction judgment against you?"
 
 **Exemptions (Schedule C, on the page after the filing-fee page):** Line 1: You are claiming state and federal nonbankruptcy exemptions. You claim: Honda Fit 2017 (line 3.2): 735 ILCS 5/12-1001(c), 100% of fair market value, up to any applicable statutory limit; Beds, couch, table, kitchen things (line 6): 735 ILCS 5/12-1001(a), $1,200; Phone, TV (line 7): 735 ILCS 5/12-1001(a), $400; Clothes (line 11): 735 ILCS 5/12-1001(a), $300; Cash (line 16): 735 ILCS 5/12-1001(b), $60; Harborline Bank (line 17.1): 735 ILCS 5/12-1001(b), $412; Prairie Line Credit Union (line 17.3): 735 ILCS 5/12-1001(b), $85; Driving payouts already earned, not yet paid by the apps (line 38): 735 ILCS 5/12-1001(b), $310, shorter description "Driving payouts earned"; Insulated delivery bags, phone mount, dash camera (line 40): 735 ILCS 5/12-1001(d), $150, shorter description "Delivery bags, mount, dash cam". Line 3: No.
 

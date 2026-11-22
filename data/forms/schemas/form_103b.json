@@ -2,6 +2,32 @@
   "form_type": "form_103b",
   "template_filename": "form_b103b.pdf",
   "template_version": "87ff07050b06f648370a911183ae68daba982706f786d9b32211264e02586ba0",
+  "groups": {
+    "prior_cases_103b": {
+      "number": "20.{n}",
+      "sheet": {
+        "title": "Official Form 103B, Application to Have the Chapter 7 Filing Fee Waived, line 20",
+        "line_width": 46,
+        "columns": [
+          {
+            "label": "District",
+            "binding": "petition.prior_cases[].district",
+            "width": 190
+          },
+          {
+            "label": "When",
+            "binding": "petition.prior_cases[].filed_on",
+            "width": 90
+          },
+          {
+            "label": "Case number",
+            "binding": "petition.prior_cases[].case_number",
+            "width": 178
+          }
+        ]
+      }
+    }
+  },
   "fields": [
     {
       "pdf_field": "Bankruptcy District Information",
@@ -480,6 +506,180 @@
       "repeat": null,
       "repeat_capacity": null,
       "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check_20",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "no": "/no",
+        "yes": "/yes"
+      },
+      "page": 3,
+      "label": "Have you filed for bankruptcy within the last 8 years?",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "petition.prior_bankruptcy_answer",
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_37",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 20: case 1, district",
+      "required": false,
+      "conditional_on": "petition_prior_bankruptcy_yes",
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "petition.prior_cases[].district",
+      "repeat": "prior_cases_103b",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "When",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 20: case 1, when",
+      "required": false,
+      "conditional_on": "petition_prior_bankruptcy_yes",
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "petition.prior_cases[].filed_on",
+      "repeat": "prior_cases_103b",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Case number_2",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 20: case 1, case number",
+      "required": false,
+      "conditional_on": "petition_prior_bankruptcy_yes",
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "petition.prior_cases[].case_number",
+      "repeat": "prior_cases_103b",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "District",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 20: case 2, district",
+      "required": false,
+      "conditional_on": "petition_prior_bankruptcy_yes",
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "petition.prior_cases[].district",
+      "repeat": "prior_cases_103b",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "When_2",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 20: case 2, when",
+      "required": false,
+      "conditional_on": "petition_prior_bankruptcy_yes",
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "petition.prior_cases[].filed_on",
+      "repeat": "prior_cases_103b",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Case number_3",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 20: case 2, case number",
+      "required": false,
+      "conditional_on": "petition_prior_bankruptcy_yes",
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "petition.prior_cases[].case_number",
+      "repeat": "prior_cases_103b",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "District_2",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 20: case 3, district",
+      "required": false,
+      "conditional_on": "petition_prior_bankruptcy_yes",
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "petition.prior_cases[].district",
+      "repeat": "prior_cases_103b",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "When_3",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 20: case 3, when",
+      "required": false,
+      "conditional_on": "petition_prior_bankruptcy_yes",
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "petition.prior_cases[].filed_on",
+      "repeat": "prior_cases_103b",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Case number_4",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 20: case 3, case number",
+      "required": false,
+      "conditional_on": "petition_prior_bankruptcy_yes",
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "petition.prior_cases[].case_number",
+      "repeat": "prior_cases_103b",
+      "repeat_capacity": 3,
+      "row": 3,
       "legal_review": false
     }
   ]

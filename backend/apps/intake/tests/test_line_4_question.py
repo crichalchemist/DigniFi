@@ -32,6 +32,7 @@ from apps.intake.tests.builders import (
     answer_asset_lines,
     answer_claims,
     answer_household,
+    answer_petition,
     linked_lease,
     linked_loan,
 )
@@ -64,6 +65,7 @@ def filer(db):
     ExpenseInfo.objects.create(
         session=session, expenses_include_others="no", rent_or_mortgage=Decimal("1200.00")
     )
+    answer_petition(session)
     client = APIClient()
     client.force_authenticate(user=user)
     return client, session

@@ -37,7 +37,15 @@ import { AddressFields } from './claims/AddressFields';
 import { AmountBox } from './claims/AmountBox';
 import { assetLabel, claimRowName } from './claims/claimNames';
 import { firstContractGap } from './claims/contractGaps';
-import type { AssetInfo, ContractRow, DebtRow, WizardRow, YesNo } from '../../../types/api';
+import { anyAnswerIn, RENT_KEYS, RentQuestion, rentGap } from './petition';
+import type {
+  AssetInfo,
+  ContractRow,
+  DebtRow,
+  PetitionAnswers,
+  WizardRow,
+  YesNo,
+} from '../../../types/api';
 
 interface ContractsStepProps {
   rows: ContractRow[];
@@ -45,6 +53,9 @@ interface ContractsStepProps {
   /** Schedule G's first question: null while unanswered */
   answer: YesNo | null;
   onAnswerChange: (answer: YesNo) => void;
+  /** Form 101's answers, of which this step asks line 11's rent and eviction after the rows (4b) */
+  rent: PetitionAnswers;
+  onRentChange: (next: PetitionAnswers) => void;
   /** The wizard's amounts owed and assets, for the links a contract can name */
   debts: DebtRow[];
   assets: WizardRow<AssetInfo>[];
@@ -102,6 +113,8 @@ export function ContractsStep({
   onRowsChange,
   answer,
   onAnswerChange,
+  rent,
+  onRentChange,
   debts,
   assets,
   onValidationChange,
@@ -113,9 +126,16 @@ export function ContractsStep({
     (change: 1 | -1) => setPartialBoxes((count) => count + change),
     []
   );
-
   const gap = firstContractGap(rows, answer, debts, assets);
-  const isValid = gap === null && partialBoxes === 0;
+  // Touched once an answer in the block is set, focus has left it, or Schedule G's own gap is gone
+  // (PF2-T8-10, F8): Continue held for the rent always has a sentence saying why
+  const [rentLeft, setRentLeft] = useState(false);
+  const rentTouched = rentLeft || anyAnswerIn(rent, RENT_KEYS) || gap === null;
+
+  const rentGate = rentGap(rent);
+  const isValid = gap === null && partialBoxes === 0 && rentGate === null;
+  // One status region for the step (PF2-T9-6): Schedule G's own gap first, then line 11's gate
+  const shownGap = gap ?? (rentTouched ? rentGate : null);
   useEffect(() => onValidationChange(isValid), [isValid, onValidationChange]);
 
   // No answers hide the rows the filer made: a No beside rows must show them, or the gap that
@@ -337,12 +357,20 @@ export function ContractsStep({
         </Button>
       )}
 
+      {/* Form 101 line 11, after the contracts (forms step 4b spec §6.7) */}
+      <RentQuestion
+        answers={rent}
+        onChange={onRentChange}
+        touched={rentTouched}
+        onLeave={() => setRentLeft(true)}
+      />
+
       {/* A status, not an alert: a sentence can quote a row's name while it's typed. It stays
           mounted because a screen reader may not read a status region that arrives with its text. */}
       <div role="status">
-        {gap !== null && (
+        {shownGap !== null && (
           <div className="info-box">
-            <p className="info-message">{gap}</p>
+            <p className="info-message">{shownGap}</p>
           </div>
         )}
       </div>
