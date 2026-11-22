@@ -45,6 +45,7 @@ import {
   FORM_101A_STAY_SENTENCE_A,
   FORM_101B_STAY_SENTENCE,
 } from '../../../../../constants/formText';
+import { PETITION_TEXT_LIMITS } from '../../../../../constants/petitionLimits';
 import type { ContractRow, PetitionAnswers } from '../../../../../types/api';
 
 function Harness({
@@ -380,8 +381,8 @@ describe('RentQuestion', () => {
     expect(field('landlord_city')).toHaveValue('Chicago');
     expect(field('landlord_state')).toHaveValue('IL');
     expect(field('landlord_zip')).toHaveValue('60610');
-    // The pick goes back to its placeholder, so the same lease can be picked again
-    expect(field('landlord_pick')).toHaveValue('');
+    // The pick keeps the lease it copied (FR-W2), so an arrow key moves on to the next lease
+    expect(field('landlord_pick')).toHaveValue('new-1');
     // Only the pick's own select (the state select keeps its default words)
     const pick = within(field('landlord_pick'));
     expect(pick.getByRole('option', { name: LANDLORD_PICK_PLACEHOLDER })).toHaveValue('');
@@ -505,6 +506,92 @@ describe('RentQuestion', () => {
       eviction_judgment: null,
       ...NO_LANDLORD,
     });
+  });
+
+  // FR-W2: a closed select changes with an arrow key, so the pick keeps its lease selected and
+  // the next arrow press reaches the next lease, not the first one again
+  it('the pick keeps the chosen lease selected, so every lease is reachable one after another', async () => {
+    const user = userEvent.setup();
+    const second: ContractRow = {
+      ...LEASE,
+      _key: 'new-2',
+      counterparty_name: 'Demo Lakeview Residential LLC',
+      street_address: '12 W Demo Ave',
+      street_2: '',
+    };
+    render(<Harness initial={PAIR} leaseRows={[LEASE, second]} />);
+    await user.selectOptions(field('landlord_pick'), 'new-1');
+    expect(field('landlord_pick')).toHaveValue('new-1');
+    await user.selectOptions(field('landlord_pick'), 'new-2');
+    expect(field('landlord_pick')).toHaveValue('new-2');
+    expect(field('landlord_name')).toHaveValue('Demo Lakeview Residential LLC');
+    expect(field('landlord_street')).toHaveValue('12 W Demo Ave');
+  });
+
+  // WIZARD-4 / FR-W4: Show under an eviction No fixes the block's visibility, so backspacing the
+  // last box empty (to retype it) never takes the box away mid-edit
+  it('clearing the last landlord box under Show with an eviction No keeps the block open', async () => {
+    const user = userEvent.setup();
+    render(
+      <Harness
+        initial={{
+          rents_residence: 'yes',
+          eviction_judgment: 'no',
+          landlord_name: 'Demo Property Holdings LLC',
+        }}
+      />
+    );
+    await user.click(screen.getByRole('button', { name: SHOW_HIDDEN }));
+    await user.clear(field('landlord_name'));
+    expect(field('landlord_name')).toHaveValue('');
+    await user.type(field('landlord_name'), 'Demo Holdings');
+    expect(field('landlord_name')).toHaveValue('Demo Holdings');
+  });
+
+  // WIZARD-7 / 4b2-R6: a No never clears a landlord answer, it only hides the block
+  it('an eviction No or a rent No keeps every landlord answer the filer typed, and names them on one line', async () => {
+    const user = userEvent.setup();
+    const changes: PetitionAnswers[] = [];
+    render(<Harness initial={PAIR} onChange={(next) => changes.push(next)} />);
+    await user.type(field('landlord_name'), 'Demo Property Holdings LLC');
+    await user.type(field('landlord_street'), '100 Demo St');
+    await user.type(field('landlord_city'), 'Chicago');
+    await user.selectOptions(field('landlord_state'), 'IL');
+    await user.type(field('landlord_zip'), '60601');
+
+    await user.click(radio('eviction_judgment', 'no'));
+    expect(changes.at(-1)).toEqual({
+      rents_residence: 'yes',
+      eviction_judgment: 'no',
+      ...STORED_LANDLORD,
+    });
+    expect(screen.getAllByText(HIDDEN_ANSWERS)).toHaveLength(1);
+    expect(document.querySelector('input[name="landlord_name"]')).toBeNull();
+
+    await user.click(radio('rents_residence', 'no'));
+    expect(changes.at(-1)).toEqual({
+      rents_residence: 'no',
+      eviction_judgment: 'no',
+      ...STORED_LANDLORD,
+    });
+    expect(screen.getAllByText(HIDDEN_ANSWERS)).toHaveLength(1);
+  });
+
+  it('a landlord stored under a rent No with no eviction answer still sits behind the hidden line', () => {
+    render(<Harness initial={{ rents_residence: 'no', ...STORED_LANDLORD }} />);
+    expect(screen.getAllByText(HIDDEN_ANSWERS)).toHaveLength(1);
+    expect(document.querySelector('input[name="landlord_name"]')).toBeNull();
+  });
+
+  it('the landlord boxes stop at the caps the server measures', () => {
+    render(<Harness initial={PAIR} />);
+    for (const [name, cap] of [
+      ['landlord_name', PETITION_TEXT_LIMITS.landlord_name],
+      ['landlord_street', PETITION_TEXT_LIMITS.landlord_street],
+      ['landlord_city', PETITION_TEXT_LIMITS.landlord_city],
+    ] as const) {
+      expect(field(name)).toHaveAttribute('maxlength', String(cap));
+    }
   });
 
   it('has no accessibility violations with the notice open', async () => {

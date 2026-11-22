@@ -163,6 +163,12 @@ export function RentQuestion({
   division,
 }: RentQuestionProps) {
   const [shown, setShown] = useState(false);
+  // Whether a landlord answer was stored when Show was pressed: under an eviction No it keeps the
+  // block open for the visit, so clearing the last box never takes the box away mid-edit (FR-W4)
+  const [landlordShown, setLandlordShown] = useState(false);
+  // The lease last picked stays selected, so an arrow key on the closed select reaches the next
+  // lease and not the first again (FR-W2)
+  const [pickedLease, setPickedLease] = useState('');
   const set = (changes: Partial<PetitionAnswers>) => onChange({ ...answers, ...changes });
   const rent = yesNo(answers.rents_residence);
   const eviction = yesNo(answers.eviction_judgment);
@@ -186,6 +192,7 @@ export function RentQuestion({
         onChange={(next) => {
           // Show opens a hidden eviction answer once: a new rent answer hides it again
           setShown(false);
+          setLandlordShown(false);
           set({ rents_residence: next });
         }}
         unanswered={touched && rent === null}
@@ -200,7 +207,7 @@ export function RentQuestion({
             required={rent === 'yes'}
           >
             {pair && <NoticeHead />}
-            {(pair || (shown && (eviction === 'yes' || hasLandlord))) && (
+            {(pair || (shown && (eviction === 'yes' || landlordShown))) && (
               // DRAFT: counsel C-46
               <div className="landlord-block">
                 {leases.length > 0 && (
@@ -210,8 +217,9 @@ export function RentQuestion({
                     options={leases.map((lease) => ({ value: lease.key, label: lease.label }))}
                     placeholder={LANDLORD_PICK_PLACEHOLDER}
                     helpText={LANDLORD_PICK_HINT}
-                    value=""
+                    value={pickedLease}
                     onChange={(key) => {
+                      setPickedLease(key);
                       const lease = leases.find((candidate) => candidate.key === key);
                       if (lease) set(landlordFromLease(lease.row));
                     }}
@@ -244,7 +252,10 @@ export function RentQuestion({
             {rent === 'yes' && eviction === 'no' && hasLandlord && !shown && (
               <HiddenLine
                 sentence={HIDDEN_ANSWERS}
-                onShow={() => setShown(true)}
+                onShow={() => {
+                  setShown(true);
+                  setLandlordShown(true);
+                }}
                 onDelete={() => set(NO_LANDLORD)}
               />
             )}
@@ -254,7 +265,10 @@ export function RentQuestion({
           (eviction !== null || hasLandlord) && (
             <HiddenLine
               sentence={HIDDEN_ANSWERS}
-              onShow={() => setShown(true)}
+              onShow={() => {
+                setShown(true);
+                setLandlordShown(hasLandlord);
+              }}
               onDelete={() => set({ eviction_judgment: null, ...NO_LANDLORD })}
             />
           )
