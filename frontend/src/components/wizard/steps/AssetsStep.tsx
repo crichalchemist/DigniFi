@@ -104,16 +104,16 @@ export function AssetsStep({
   // The hazard is asked on the last Part alone, after its lines, so only that Part's Continue waits
   // for it (PF2-T9-1)
   const asksHazard = part === AB_PARTS.length;
+  const linesComplete = partIsComplete(part, rows, answers);
   const isValid =
     oldRows.length === 0 &&
     partialBoxes === 0 &&
-    partIsComplete(part, rows, answers) &&
+    linesComplete &&
     (!asksHazard || hazardGap(hazard) === null);
   // Touched once an answer in the block is set, focus has left it, or the Part's lines are done
   // (PF2-T8-10): until then the region says nothing about it
   const [hazardLeft, setHazardLeft] = useState(false);
-  const hazardTouched =
-    hazardLeft || anyAnswerIn(hazard, HAZARD_KEYS) || partIsComplete(part, rows, answers);
+  const hazardTouched = hazardLeft || anyAnswerIn(hazard, HAZARD_KEYS) || linesComplete;
   // Continue and Go Back keep this step mounted, so the wizard's own focus move doesn't happen
   const partHeadingRef = useFocusManagement(part);
 

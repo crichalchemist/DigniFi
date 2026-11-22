@@ -917,6 +917,20 @@ export const FORM_101A_SERVICE_CONDITIONS = [
   'you rent your residence; and',
   'your landlord has obtained a judgment for possession in an eviction, unlawful detainer action, or similar proceeding (called eviction judgment) against you to possess your residence.',
 ];
+// Form 101A (12/15) page 1, the certification's heading as printed. Owner ruling Q11: quoted
+// before paragraph (a), so (a)'s "both boxes above" has its two boxes
+export const FORM_101A_CERTIFICATION_HEADING =
+  'Certification About Applicable Law and Deposit of Rent';
+// Form 101A (12/15) page 1, the certification's sentence under its heading, as printed
+export const FORM_101A_CERTIFICATION_SENTENCE = 'I certify under penalty of perjury that:';
+// Form 101A (12/15) page 1, the certification's first box, without its check box, line breaks
+// joined
+export const FORM_101A_CERTIFICATION_BOX_1 =
+  'Under the state or other nonbankruptcy law that applies to the judgment for possession (eviction judgment), I have the right to stay in my residence by paying my landlord the entire delinquent amount.';
+// Form 101A (12/15) page 1, the certification's second box, without its check box, line breaks
+// joined
+export const FORM_101A_CERTIFICATION_BOX_2 =
+  'I have given the bankruptcy court clerk a deposit for the rent that would be due during the 30 days after I file the Voluntary Petition for Individuals Filing for Bankruptcy (Official Form 101).';
 // Form 101A (12/15) page 1, "Stay of Eviction:", paragraph (a)'s heading as printed (owner ruling
 // Q9: (b)'s "that 30-day period" starts here)
 export const FORM_101A_STAY_HEADING_A = '(a) First 30 days after bankruptcy.';

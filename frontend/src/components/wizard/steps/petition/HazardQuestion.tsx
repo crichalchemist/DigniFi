@@ -74,15 +74,17 @@ export function HazardQuestion({ answers, onChange, touched, onLeave }: HazardQu
           <>
             {text('hazard_what', FORM_101_LINE_14_PROMPTS.what)}
             {text('hazard_why', FORM_101_LINE_14_PROMPTS.why)}
-            <p className="form-label">{FORM_101_LINE_14_PROMPTS.where}</p>
-            <PartyAddressFields
-              answers={answers}
-              onChange={set}
-              streetKey="hazard_street"
-              cityKey="hazard_city"
-              stateKey="hazard_state"
-              zipKey="hazard_zip"
-            />
+            <fieldset className="form-field">
+              <legend className="form-label">{FORM_101_LINE_14_PROMPTS.where}</legend>
+              <PartyAddressFields
+                answers={answers}
+                onChange={set}
+                streetKey="hazard_street"
+                cityKey="hazard_city"
+                stateKey="hazard_state"
+                zipKey="hazard_zip"
+              />
+            </fieldset>
           </>
         ) : (
           answer === 'no' &&

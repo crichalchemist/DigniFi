@@ -80,7 +80,11 @@ describe('HazardQuestion', () => {
     await user.click(radio('hazard_answer', 'yes'));
     expect(screen.getByLabelText(FORM_101_LINE_14_PROMPTS.what)).toBeInTheDocument();
     expect(screen.getByLabelText(FORM_101_LINE_14_PROMPTS.why)).toBeInTheDocument();
-    expect(screen.getByText(FORM_101_LINE_14_PROMPTS.where)).toBeInTheDocument();
+    // "Where is the property?" names the address boxes as one group, so a screen reader reads the
+    // question with each box
+    const where = screen.getByRole('group', { name: FORM_101_LINE_14_PROMPTS.where });
+    expect(where.querySelector('input[name="hazard_street"]')).not.toBeNull();
+    expect(where.querySelector('input[name="hazard_zip"]')).not.toBeNull();
     // Every box is named by its PetitionAnswers key (PF2-T8-5), and the address has no name box
     for (const key of [...TEXT_KEYS, 'hazard_state']) {
       expect(document.querySelector(`[name="${key}"]`), key).not.toBeNull();

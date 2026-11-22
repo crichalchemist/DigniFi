@@ -3,7 +3,8 @@
  * the form's words: whether the filer rents their residence and, under its Yes, whether the
  * landlord has an eviction judgment. Under both Yes answers, the notice: the forms' own sentences,
  * quoted (formText.ts, owner answer Q2), DigniFi's own sentences and the court's two pages, in
- * PF2-T9-4's order. Information, never advice: nothing here says whether to stay or to pay. An
+ * PF2-T9-4's order. Form 101A's certification and its two boxes come before paragraph (a), so (a)'s
+ * "both boxes above" has them (owner ruling Q11). Information, never advice: nothing here says whether to stay or to pay. An
  * eviction answer stored under a rent No stays stored and never shows the notice (spec §6.7); it is
  * hidden with a line that offers Show and Delete (T9-eviction-hidden). The step's one status region
  * names the gate (rentGap, PF2-T9-6).
@@ -26,6 +27,10 @@ import {
   FORM_101_LINE_11_EVICTION,
   FORM_101_LINE_11_NOTICE,
   FORM_101_LINE_11_RENT,
+  FORM_101A_CERTIFICATION_BOX_1,
+  FORM_101A_CERTIFICATION_BOX_2,
+  FORM_101A_CERTIFICATION_HEADING,
+  FORM_101A_CERTIFICATION_SENTENCE,
   FORM_101A_SERVICE_CONDITIONS,
   FORM_101A_SERVICE_SENTENCE,
   FORM_101A_STAY_HEADING_A,
@@ -75,6 +80,12 @@ function EvictionNotice() {
         </p>
         <p className="info-message">{FORM_101A_SAYS}</p>
         <blockquote>
+          <p className="info-message">{FORM_101A_CERTIFICATION_HEADING}</p>
+          <p className="info-message">{FORM_101A_CERTIFICATION_SENTENCE}</p>
+          <ul>
+            <li>{FORM_101A_CERTIFICATION_BOX_1}</li>
+            <li>{FORM_101A_CERTIFICATION_BOX_2}</li>
+          </ul>
           <p className="info-message">{FORM_101A_STAY_HEADING_A}</p>
           <p className="info-message">{FORM_101A_STAY_SENTENCE_A}</p>
           <p className="info-message">{FORM_101A_STAY_HEADING_B}</p>
@@ -107,7 +118,11 @@ export function RentQuestion({ answers, onChange, touched, onLeave }: RentQuesti
         question={FORM_101_LINE_11_RENT}
         name="rents_residence"
         value={rent}
-        onChange={(next) => set({ rents_residence: next })}
+        onChange={(next) => {
+          // Show opens a hidden eviction answer once: a new rent answer hides it again
+          setShown(false);
+          set({ rents_residence: next });
+        }}
         unanswered={touched && rent === null}
       >
         {rent === 'yes' || (rent === 'no' && shown) ? (
@@ -117,6 +132,7 @@ export function RentQuestion({ answers, onChange, touched, onLeave }: RentQuesti
             value={eviction}
             onChange={(next) => set({ eviction_judgment: next })}
             unanswered={rent === 'yes' && touched && eviction === null}
+            required={rent === 'yes'}
           >
             {rent === 'yes' && eviction === 'yes' && <EvictionNotice />}
           </YesNoThenDetails>
