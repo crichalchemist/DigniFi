@@ -9,10 +9,11 @@ From the repo root:
     python data/forms/field_index/tools/build_form_101a.py
 
 It puts `backend/` on the path and sets up Django itself (`config.settings.test` unless
-DJANGO_SETTINGS_MODULE names another), so it needs no database and no other setup. In this repo
-run it through the backend settings (`py.sh ../data/forms/field_index/tools/build_form_101a.py`),
-because the backend imports `form_101a.limits.json` at start-up: a missing or overlapping
-`form_101a.limits.json` is restored from git, never rebuilt by hand (PF-4b2-8).
+DJANGO_SETTINGS_MODULE names another), so it needs no database. It does need the backend's
+environment (the secret key and the field encryption key the test settings read, as for
+pytest) set before it runs. The backend imports `form_101a.limits.json` at start-up, so the tool
+can't bootstrap its own output: a missing or overlapping `form_101a.limits.json` is restored from
+git, never rebuilt by hand (PF-4b2-8).
 
 Never hand-edit `form_101a.json`, `form_101a.limits.json` or its rows: change this tool and run it
 again. `test_the_schema_its_rows_and_its_caps_are_what_the_tool_writes` fails on any difference.
@@ -139,11 +140,12 @@ def addendum_rows(index):
     rows = []
     for label in BINDINGS:
         row = _by_label(index, label)
-        printed_from = (
-            "the session's district, not the filer's answer"
-            if _producer(label) == "derived:district_name"
-            else "the filer's own answer"
-        )
+        if _producer(label) == "derived:district_name":
+            printed_from = "the session's district, not the filer's answer"
+        elif _producer(label) == "derived:full_name":
+            printed_from = "the filer's name from their debtor information, not a petition answer"
+        else:
+            printed_from = "the filer's own answer"
         rows.append(
             {
                 "schema": FORM_TYPE,

@@ -19,6 +19,7 @@ from apps.eligibility.cmi import LEGACY_RENTAL as LEGACY
 from apps.eligibility.cmi import SPOUSE_LEGACY_RENTAL as SPOUSE_LEGACY
 from apps.eligibility.cmi import income_step_gaps
 from apps.eligibility.services import MeansTestCalculator
+from apps.forms.models import GeneratedForm
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.intake.models import (
@@ -881,6 +882,45 @@ def test_complete_lets_a_missing_landlord_through_and_names_it(filer, completed)
     assert refused.data["step"] == "contracts"
 
 
+LANDLORD = {
+    "landlord_name": "Demo Property Holdings LLC",
+    "landlord_street": "100 Demo St",
+    "landlord_city": "Chicago",
+    "landlord_state": "IL",
+    "landlord_zip": "60601",
+}
+
+
+def test_generate_all_refuses_only_form_101a_for_a_missing_landlord(filer, completed):
+    # A per-form refusal, never a whole-call one: the other forms of the packet still generate.
+    client, _ = filer
+    answer_petition(completed, rents_residence="yes", eviction_judgment="yes")
+    response = client.post("/api/forms/generate_all/", {"session_id": completed.pk}, format="json")
+    assert response.status_code == 200
+    sentence = "Form 101A asks for your landlord's name and address, on Contracts & Leases."
+    assert response.data["errors"] == [
+        {"form_type": "form_101a", "error": sentence, "step": "contracts"}
+    ]
+    generated = {form["form_type"] for form in response.data["generated"]}
+    assert "form_101" in generated and "form_101a" not in generated
+
+
+def test_generate_all_drops_an_unfiled_form_101a_once_the_pair_is_gone(filer, completed):
+    client, _ = filer
+    answer_petition(completed, rents_residence="yes", eviction_judgment="yes", **LANDLORD)
+    first = client.post("/api/forms/generate_all/", {"session_id": completed.pk}, format="json")
+    assert first.status_code == 200
+    assert "form_101a" in {form["form_type"] for form in first.data["generated"]}
+    assert first.data["errors"] == []
+    assert GeneratedForm.objects.filter(session=completed, form_type="form_101a").exists()
+
+    answer_petition(completed, eviction_judgment="no")
+    second = client.post("/api/forms/generate_all/", {"session_id": completed.pk}, format="json")
+    assert second.status_code == 200
+    assert "form_101a" not in {form["form_type"] for form in second.data["generated"]}
+    assert not GeneratedForm.objects.filter(session=completed, form_type="form_101a").exists()
+
+
 @pytest.mark.parametrize(
     "section,value",
     [
@@ -1206,3 +1246,16 @@ def test_an_unfinished_assets_step_does_not_count_toward_the_intake_being_done(f
         unfinished.data["progress"]["completion_percentage"]
         < finished.data["progress"]["completion_percentage"]
     )
+
+
+def test_the_landlord_detail_sits_after_contracts_gaps_and_before_codebtors(filer, completed):
+    # Wizard order: the landlord is asked on Contracts & Leases, so its detail comes after that
+    # step's own gaps and before Codebtors' first one
+    client, _ = filer
+    answer_petition(completed, rents_residence="yes", eviction_judgment="yes")
+    answer_claims(completed, no_debts=True, contracts_answer=None, codebtors_answer=None)
+    gaps = client.get(_session_url(completed, "gaps/")).data["gaps"]
+    messages = [gap["message"] for gap in gaps]
+    landlord = "Form 101A asks for your landlord's name and address, on Contracts & Leases."
+    assert messages.index(CONTRACT_GAP_NO_ANSWER) < messages.index(landlord)
+    assert messages.index(landlord) < messages.index(CODEBTOR_GAP_NO_ANSWER)

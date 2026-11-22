@@ -26,7 +26,8 @@ from apps.intake.tests.builders import answer_petition
 
 # Each form's Debtor 1 signature line and signing date, left blank for wet ink. Form 101's
 # six are its 11/26 Part 7 date and its notice page's signature line and date.
-# Priya's packet holds all five forms, 122A-2 included.
+# Priya's packet holds every form below, 122A-2 included, and Form 101A once the test answers
+# the eviction pair.
 SIGNING_LINES = {
     "form_101": ["MM", "DD", " YYYY", "MM  DD_2", " YYYY_4", "undefined_23"],
     "form_106dec": ["Debtor1.signature", "Executed on"],
@@ -69,7 +70,7 @@ def _printed():
     call_command("seed_demo_data", persona="priya", verbosity=0)
     session = IntakeSession.objects.get(user__username="demo_priya")
     printed = {}
-    # Form 101A needs the eviction pair, which changes other forms (Form 101's notice), so every
+    # Form 101A needs the eviction pair, which changes other forms (Form 101's line 11 eviction box), so every
     # other form is built first and 101A last.
     for form_type in sorted(SIGNING_LINES, key=lambda form_type: form_type == "form_101a"):
         if form_type == "form_101a":

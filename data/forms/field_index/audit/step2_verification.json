@@ -15797,7 +15797,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Debtor 1",
-    "evidence": "Field index: Debtor 1 p1 T1, \"Caption: Debtor 1's name\" (adjudicated). Printed from the filer's own answer; Form 101A's certification boxes stay unbound. Read by test_form_101a_schema.py and tier 1."
+    "evidence": "Field index: Debtor 1 p1 T1, \"Caption: Debtor 1's name\" (adjudicated). Printed from the filer's name from their debtor information, not a petition answer; Form 101A's certification boxes stay unbound. Read by test_form_101a_schema.py and tier 1."
   },
   {
     "schema": "form_101a",

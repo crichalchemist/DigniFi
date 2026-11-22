@@ -339,6 +339,28 @@ def test_a_key_capped_in_both_files_fails_loudly(settings, tmp_path):
         _read_text_limits()
 
 
+def test_a_label_in_both_files_fails_loudly(settings, tmp_path):
+    # Form 101A's label would override Form 101's silently, so the sentence naming a box changes
+    shutil.copy(LIMITS_DIR / "form_101.limits.json", tmp_path)
+    key = next(iter(json.loads((tmp_path / "form_101.limits.json").read_text())["labels"]))
+    (tmp_path / "form_101a.limits.json").write_text(
+        json.dumps({"limits": {"landlord_name": 65}, "labels": {key: "x"}})
+    )
+    settings.FORM_SCHEMAS_DIRECTORY = tmp_path
+    with pytest.raises(ImproperlyConfigured):
+        _read_text_limits()
+
+
+@pytest.mark.parametrize("body", [{}, {"limits": {}, "labels": {}}])
+def test_an_empty_form_101a_caps_file_fails_loudly(settings, tmp_path, body):
+    # The landlord keys would be text with no caps, which the import must never allow
+    shutil.copy(LIMITS_DIR / "form_101.limits.json", tmp_path)
+    (tmp_path / "form_101a.limits.json").write_text(json.dumps(body))
+    settings.FORM_SCHEMAS_DIRECTORY = tmp_path
+    with pytest.raises(ImproperlyConfigured):
+        _read_text_limits()
+
+
 @pytest.mark.parametrize("key", PetitionAnswers.RADIO_KEYS)
 def test_every_radio_key_is_a_yes_no_key(key):
     assert key in PetitionAnswers.YES_NO_KEYS

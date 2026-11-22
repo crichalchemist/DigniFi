@@ -184,7 +184,7 @@ def test_form_101a_is_measured_only_while_it_is_in_the_packet(session):
     assert too_long(session, ["landlord_name"]) == {}
 
 
-def test_the_five_landlord_keys_are_measured():
+def test_the_landlord_parity_cases_cover_all_five_keys():
     assert LANDLORD_KEYS == [
         "landlord_city",
         "landlord_name",
@@ -192,6 +192,25 @@ def test_the_five_landlord_keys_are_measured():
         "landlord_street",
         "landlord_zip",
     ]
+
+
+@pytest.mark.parametrize("key", LANDLORD_KEYS)
+def test_the_landlord_texts_are_measured_on_form_101a_boxes(session, key):
+    # Parity could hold with nothing ever listed: capitals at the cap don't fit their box, digits
+    # at a ZIP's or state's cap do, and the list and Form 101A's own check agree on each
+    cap = PetitionAnswers.TEXT_LIMITS[key]
+    fits = key in ("landlord_zip", "landlord_state")
+    text = ("0" if key == "landlord_zip" else "W") * cap
+    _answer(session, {**PAIR, key: text})
+    label = DETAIL_TOO_LONG_101A.format(label=PetitionAnswers.TEXT_LABELS[key])
+    listed = label in [str(g) for g in petition_step_gaps(session)]
+    refusal = _refusal_101a(session)
+    if key == "landlord_state":
+        # Capitals at the state cap: the box's two characters
+        assert listed == (refusal is not None)
+    else:
+        assert listed is (not fits)
+        assert (refusal is not None) is (not fits)
 
 
 @pytest.mark.parametrize("key,text", LANDLORD_PARITY_CASES)

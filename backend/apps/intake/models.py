@@ -830,7 +830,7 @@ class PetitionAnswers(models.Model):
     """The filer's own answers to Form 101's and Form 121's questions (step 4 spec §7.1).
 
     A JSON object of key to answer, encrypted. A key that is absent is unanswered. Form 101's
-    and Form 121's asked answers wherever they are asked; `landlord_*` from 4b2.
+    and Form 121's asked answers wherever they are asked, and Form 101A's landlord (`landlord_*`).
     """
 
     YES_NO_KEYS: ClassVar[tuple[str, ...]] = (
@@ -985,9 +985,12 @@ def _read_text_limits() -> dict:
     directory = Path(settings.FORM_SCHEMAS_DIRECTORY)
     first = json.loads((directory / "form_101.limits.json").read_text())
     second = json.loads((directory / "form_101a.limits.json").read_text())
-    for key in first.get("limits", {}):
-        if key in second.get("limits", {}):
-            raise ImproperlyConfigured(f"{key} has a cap in both limits files")
+    if not second.get("limits") or not second.get("labels"):
+        raise ImproperlyConfigured("form_101a.limits.json holds no landlord caps or labels")
+    for part in ("limits", "labels"):
+        for key in first.get(part, {}):
+            if key in second[part]:
+                raise ImproperlyConfigured(f"{key} has a {part[:-1]} in both limits files")
     return {
         "limits": {**first.get("limits", {}), **second.get("limits", {})},
         "labels": {**first.get("labels", {}), **second.get("labels", {})},

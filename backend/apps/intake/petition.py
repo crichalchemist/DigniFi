@@ -113,7 +113,8 @@ _GATE_SENTENCE = {
     "sole_proprietor_answer": GATE_SOLE_PROPRIETOR,
 }
 
-# Every key a detail can name, to the forms that print its box blank while it is open (4b-R12).
+# Every key a detail can name, to the forms that print its box blank while it is open (4b-R12),
+# except the landlord keys, whose detail refuses Form 101A whole (4b2).
 # Form 101 prints the ITIN's last four but has no box for the other Social Security number, so
 # `itin` names both forms and `other_ssn` names Form 121 alone (PF2-T7-7). Form 103B line 20
 # prints Form 101 line 9's earlier cases (PF2-T10-3).
