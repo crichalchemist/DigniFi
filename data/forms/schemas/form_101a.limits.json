@@ -1,0 +1,16 @@
+{
+  "limits": {
+    "landlord_name": 65,
+    "landlord_street": 65,
+    "landlord_city": 35,
+    "landlord_state": 2,
+    "landlord_zip": 13
+  },
+  "labels": {
+    "landlord_name": "the landlord's name",
+    "landlord_street": "the landlord's street",
+    "landlord_city": "the landlord's city",
+    "landlord_state": "the landlord's state",
+    "landlord_zip": "the landlord's ZIP code"
+  }
+}

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 from encrypted_model_fields.fields import (
     EncryptedBooleanField,
@@ -979,9 +980,19 @@ class PetitionAnswers(models.Model):
 
 
 def _read_text_limits() -> dict:
-    # Read unconditionally: a missing file fails at import, never as text with no caps.
-    path = Path(settings.FORM_SCHEMAS_DIRECTORY) / "form_101.limits.json"
-    return json.loads(path.read_text())
+    # Read unconditionally: a missing file fails at import, never as text with no caps. Form
+    # 101's keys are capped by its own file and Form 101A's landlord keys by theirs (4b2-R1).
+    directory = Path(settings.FORM_SCHEMAS_DIRECTORY)
+    first = json.loads((directory / "form_101.limits.json").read_text())
+    second = json.loads((directory / "form_101a.limits.json").read_text())
+    for key in first.get("limits", {}):
+        if key in second.get("limits", {}):
+            raise ImproperlyConfigured(f"{key} has a cap in both limits files")
+    return {
+        "limits": {**first.get("limits", {}), **second.get("limits", {})},
+        "labels": {**first.get("labels", {}), **second.get("labels", {})},
+        "cell_labels": first["cell_labels"],
+    }
 
 
 _LIMITS = _read_text_limits()

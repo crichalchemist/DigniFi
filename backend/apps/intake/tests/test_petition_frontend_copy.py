@@ -20,6 +20,7 @@ from apps.intake.models import PetitionAnswers
 
 FRONTEND = settings.BASE_DIR.parent / "frontend" / "src"
 LIMITS = settings.BASE_DIR.parent / "data" / "forms" / "schemas" / "form_101.limits.json"
+LIMITS_101A = settings.BASE_DIR.parent / "data" / "forms" / "schemas" / "form_101a.limits.json"
 TEMPLATE = settings.BASE_DIR.parent / "data" / "forms" / "pdfs" / "form_b101.pdf"
 PETITION_DIR = FRONTEND / "components" / "wizard" / "steps" / "petition"
 
@@ -106,10 +107,21 @@ def test_the_row_nouns_the_browser_names_are_the_servers():
 
 
 def test_each_text_box_stops_at_the_cap_the_server_measures():
-    limits = json.loads(LIMITS.read_text())["limits"]
+    # The union of both forms' caps (4b2-R1): Form 101's file and Form 101A's.
+    limits = (
+        json.loads(LIMITS.read_text())["limits"] | json.loads(LIMITS_101A.read_text())["limits"]
+    )
     path = FRONTEND / "constants" / "petitionLimits.ts"
     assert _numeric_record(path, "PETITION_TEXT_LIMITS") == limits
     assert limits == PetitionAnswers.TEXT_LIMITS
+
+
+def test_no_key_has_a_cap_in_both_limits_files():
+    # A key measured on two forms' boxes would have two caps and one record (4b2-R1).
+    first = set(json.loads(LIMITS.read_text())["limits"])
+    second = set(json.loads(LIMITS_101A.read_text())["limits"])
+    assert first and second
+    assert first & second == set()
 
 
 def test_a_row_cell_stops_at_the_servers_ceiling():
