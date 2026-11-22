@@ -182,6 +182,23 @@ const STEP_1_GATES = [
   'sole_proprietor_answer',
 ] as const;
 
+// Form 101A's five landlord keys, which step 7's body sends with the rent keys, null until typed
+const NO_LANDLORD = {
+  landlord_name: null,
+  landlord_street: null,
+  landlord_city: null,
+  landlord_state: null,
+  landlord_zip: null,
+};
+// The same five keys answered, which a rent or eviction No keeps and sends
+const STORED_LANDLORD = {
+  landlord_name: 'Demo Property Holdings LLC',
+  landlord_street: '100 Demo St',
+  landlord_city: 'Chicago',
+  landlord_state: 'IL',
+  landlord_zip: '60601',
+};
+
 // Every key step 1's body sends under `petition_answers`, the secrets aside
 const STEP_1_PETITION_KEYS = [
   'name_suffix',
@@ -4939,7 +4956,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     for (const patch of sessionPatches) {
       expect(patch).toEqual({
         claim_answers: { contracts_answer: 'yes' },
-        petition_answers: { rents_residence: 'no', eviction_judgment: null },
+        petition_answers: { rents_residence: 'no', eviction_judgment: null, ...NO_LANDLORD },
       });
     }
   });
@@ -5286,12 +5303,12 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     expect(sessionPatches).toEqual([
       {
         claim_answers: { contracts_answer: 'yes' },
-        petition_answers: { rents_residence: 'no', eviction_judgment: null },
+        petition_answers: { rents_residence: 'no', eviction_judgment: null, ...NO_LANDLORD },
       },
     ]);
   });
 
-  it('the Contracts body carries only the rent keys', async () => {
+  it('the Contracts body carries the rent and landlord keys and no other petition key', async () => {
     serveFiler(
       7,
       [storedLease],
@@ -5326,11 +5343,12 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       expect(Object.keys(patch.petition_answers as object)).toEqual([
         'rents_residence',
         'eviction_judgment',
+        ...Object.keys(NO_LANDLORD),
       ]);
     }
     expect(sessionPatches.at(-1)).toEqual({
       claim_answers: { contracts_answer: 'yes' },
-      petition_answers: { rents_residence: 'yes', eviction_judgment: 'no' },
+      petition_answers: { rents_residence: 'yes', eviction_judgment: 'no', ...NO_LANDLORD },
     });
   });
 
@@ -5340,7 +5358,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       [],
       [],
       { contracts_answer: 'yes' },
-      { rents_residence: 'yes', eviction_judgment: 'yes' }
+      { rents_residence: 'yes', eviction_judgment: 'yes', ...STORED_LANDLORD }
     );
     renderWizard();
     await expectStep('Contracts & Leases');
@@ -5368,14 +5386,47 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     }
 
     expect(contractSaves).toHaveLength(1);
-    // A stored eviction Yes under a rent No stays stored and is sent as it is (spec §6.7)
+    // A stored eviction Yes under a rent No stays stored and is sent as it is (spec §6.7), the
+    // landlord answers too: a null would remove them on the server (4b2-R6)
     expect(sessionPatches).toEqual([
       {
         claim_answers: { contracts_answer: 'yes' },
-        petition_answers: { rents_residence: 'no', eviction_judgment: 'yes' },
+        petition_answers: { rents_residence: 'no', eviction_judgment: 'yes', ...STORED_LANDLORD },
       },
     ]);
     expect(document.querySelector('.eviction-notice')).toBeNull();
+  });
+
+  it('showing Contracts & Leases again with nothing typed saves nothing', async () => {
+    // A stored landlord reaches the body the same way it was loaded, so a visit alone sends nothing
+    serveFiler(
+      7,
+      [],
+      [],
+      { contracts_answer: 'yes' },
+      {
+        rents_residence: 'yes',
+        eviction_judgment: 'yes',
+        landlord_name: 'Demo Property Holdings LLC',
+        landlord_street: '100 Demo St',
+        landlord_city: 'Chicago',
+        landlord_state: 'IL',
+        landlord_zip: '60601',
+      }
+    );
+    renderWizard();
+    await expectStep('Contracts & Leases');
+    expect(document.querySelector('input[name="landlord_name"]')).toHaveValue(
+      'Demo Property Holdings LLC'
+    );
+    vi.useFakeTimers();
+    try {
+      await waitSeconds(6);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(contractSaves).toEqual([]);
+    expect(sessionPatches).toEqual([]);
   });
 
   it("sends every line 2 answer of Schedule H with step 8's list", async () => {

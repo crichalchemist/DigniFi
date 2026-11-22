@@ -14,13 +14,15 @@ import pypdf
 import pytest
 from django.conf import settings
 
-from apps.forms.services.answer_records import PETITION_STEP_OF_KEY
+from apps.forms.services.answer_records import LANDLORD_KEYS, PETITION_STEP_OF_KEY
 from apps.intake import petition
 from apps.intake.models import PetitionAnswers
 
 FRONTEND = settings.BASE_DIR.parent / "frontend" / "src"
 LIMITS = settings.BASE_DIR.parent / "data" / "forms" / "schemas" / "form_101.limits.json"
+LIMITS_101A = settings.BASE_DIR.parent / "data" / "forms" / "schemas" / "form_101a.limits.json"
 TEMPLATE = settings.BASE_DIR.parent / "data" / "forms" / "pdfs" / "form_b101.pdf"
+TEMPLATE_101A = settings.BASE_DIR.parent / "data" / "forms" / "pdfs" / "form_b101a_fillable.pdf"
 PETITION_DIR = FRONTEND / "components" / "wizard" / "steps" / "petition"
 
 
@@ -75,10 +77,10 @@ def test_every_petition_sentence_the_browser_shows_is_the_servers(kind):
     assert browser == server
 
 
-def test_only_the_two_too_long_templates_take_placeholders_and_each_only_its_own():
-    # The server fills these in and the browser compares the templates (F-16): {label} in both,
-    # {noun} and {n} for the row (owner ruling Q5), and {forms}, the forms whose box refuses the
-    # row's cell (owner ruling Q10).
+def test_only_the_too_long_templates_take_placeholders_and_each_only_its_own():
+    # The server fills these in and the browser compares the templates (F-16): {label} in both
+    # text templates (Form 101's and, 4b2-R3, Form 101A's), {noun} and {n} for the row (owner
+    # ruling Q5), and {forms}, the forms whose box refuses the row's cell (owner ruling Q10).
     found = {
         name: set(re.findall(r"\{(\w+)\}", text))
         for kind in ("GATE_", "DETAIL_")
@@ -87,16 +89,18 @@ def test_only_the_two_too_long_templates_take_placeholders_and_each_only_its_own
     }
     assert found == {
         "DETAIL_TOO_LONG": {"label"},
+        "DETAIL_TOO_LONG_101A": {"label"},
         "DETAIL_TOO_LONG_ROW": {"label", "noun", "n", "forms"},
     }
 
 
 def test_the_mirror_has_every_sentence_the_server_has_today():
-    # The counts as petition.py holds them at Task 8 (10 gates, 16 details with 7c's row
-    # template and owner ruling Q7's DETAIL_ITIN_NINE), so a reader that silently matched
-    # nothing can't pass the test above
+    # The counts as petition.py holds them after 4b2 (10 gates, 18 details: 16 as 4b-ii left
+    # them, with 7c's row template and owner ruling Q7's DETAIL_ITIN_NINE, plus the landlord's
+    # detail and Form 101A's too-long template), so a reader that silently matched nothing can't
+    # pass the test above
     assert len(_server_sentences("GATE_")) == 10
-    assert len(_server_sentences("DETAIL_")) == 16
+    assert len(_server_sentences("DETAIL_")) == 18
 
 
 def test_the_row_nouns_the_browser_names_are_the_servers():
@@ -106,10 +110,21 @@ def test_the_row_nouns_the_browser_names_are_the_servers():
 
 
 def test_each_text_box_stops_at_the_cap_the_server_measures():
-    limits = json.loads(LIMITS.read_text())["limits"]
+    # The union of both forms' caps (4b2-R1): Form 101's file and Form 101A's.
+    limits = (
+        json.loads(LIMITS.read_text())["limits"] | json.loads(LIMITS_101A.read_text())["limits"]
+    )
     path = FRONTEND / "constants" / "petitionLimits.ts"
     assert _numeric_record(path, "PETITION_TEXT_LIMITS") == limits
     assert limits == PetitionAnswers.TEXT_LIMITS
+
+
+def test_no_key_has_a_cap_in_both_limits_files():
+    # A key measured on two forms' boxes would have two caps and one record (4b2-R1).
+    first = set(json.loads(LIMITS.read_text())["limits"])
+    second = set(json.loads(LIMITS_101A.read_text())["limits"])
+    assert first and second
+    assert first & second == set()
 
 
 def test_a_row_cell_stops_at_the_servers_ceiling():
@@ -155,8 +170,18 @@ def test_the_revision_the_wizard_names_is_the_one_the_template_prints():
         r"^Voluntary Petition for Individuals Filing for Bankruptcy (\d{2}/\d{2}) *$", page, re.M
     )
     assert mark, "page 1 has no title line with an edition mark"
+    page_101a = pypdf.PdfReader(TEMPLATE_101A).pages[0].extract_text()
+    mark_101a = re.search(
+        r"^Initial Statement About an Eviction Judgment Against You (\d{2}/\d{2}) *$",
+        page_101a,
+        re.M,
+    )
+    assert mark_101a, "Form 101A's page 1 has no title line with an edition mark"
     form_text = FRONTEND / "constants" / "formText.ts"
-    assert _string_record(form_text, "FORM_REVISIONS") == {"form_101": mark.group(1)}
+    assert _string_record(form_text, "FORM_REVISIONS") == {
+        "form_101": mark.group(1),
+        "form_101a": mark_101a.group(1),
+    }
 
 
 PDFS = settings.BASE_DIR.parent / "data" / "forms" / "pdfs"
@@ -207,6 +232,9 @@ QUOTES = [
     ("FORM_101A_STAY_SENTENCE_A", "form_b101a_0.pdf", 1),
     ("FORM_101A_STAY_HEADING_B", "form_b101a_0.pdf", 1),
     ("FORM_101B_STAY_SENTENCE", "form_b101a_0.pdf", 1),
+    ("FORM_101A_LANDLORD_NAME", "form_b101a_0.pdf", 1),
+    ("FORM_101A_LANDLORD_ADDRESS", "form_b101a_0.pdf", 1),
+    ("FORM_101A_GATE_SENTENCE", "form_b101a_0.pdf", 1),
 ]
 
 # What may sit on either side of a whole quotation on the page: the page's edge; before it, the end
@@ -219,6 +247,18 @@ WHOLE_AFTER = re.compile(r"^(?:$|[A-Z(\uf000-\uf8ff_])")
 
 # Headings printed without a closing mark, each a quotation pinned above in its own right
 HEADINGS = ("FORM_101A_CERTIFICATION_HEADING",)
+
+# The form's own labels that end the text before a quotation, as the page prints them (4b2-R10):
+# the gate sentence follows the address block's last label
+LABELS_BEFORE = ("City State ZIP Code",)
+
+
+def test_the_landlord_keys_the_browser_sends_are_the_servers():
+    # One wrong key is a 400 for the whole Contracts & Leases save
+    source = (PETITION_DIR / "petitionGaps.ts").read_text()
+    match = re.search(r"^export const LANDLORD_KEYS = \[(.*?)\] as const;", source, re.M | re.S)
+    assert match, "petitionGaps.ts has no LANDLORD_KEYS"
+    assert tuple(re.findall(r"'(\w+)'", match.group(1))) == LANDLORD_KEYS
 
 
 def test_every_eviction_and_hazard_quote_is_pinned():
@@ -242,6 +282,7 @@ def test_the_eviction_and_hazard_words_are_the_forms_own(name, template, page):
         after_heading = any(
             before.endswith(heading) for h in HEADINGS for heading in _form_text_strings(h)
         )
-        assert WHOLE_BEFORE.search(before) or after_heading, cut_start
+        after_label = any(before.endswith(label) for label in LABELS_BEFORE)
+        assert WHOLE_BEFORE.search(before) or after_heading or after_label, cut_start
         cut_end = f"{name}: …{text[-40:]!r} stops mid-sentence, before {after[:40]!r}"
         assert WHOLE_AFTER.match(after), cut_end

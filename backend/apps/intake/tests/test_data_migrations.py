@@ -682,7 +682,9 @@ def test_every_fee_waiver_applicant_keeps_the_waiver_and_103b_when_the_applicati
     assert "fee_waiver_applications" not in connection.introspection.table_names()
     with pytest.raises(LookupError):
         apps.get_model("intake", "FeeWaiverApplication")
-    # APPLICATION_DROPPED is the leaf, so the live models read these rows as they are.
+    # The live packet reads tables later migrations add (Form 101A's applies() reads
+    # petition_answers, 0044), so read it at the leaf, as the live models expect.
+    migrate(MigrationExecutor(connection).loader.graph.leaf_nodes())
     packets = {pk: packet(LiveIntakeSession.objects.get(pk=pk)) for pk in (applied, chose, never)}
     assert ["form_103b" in packets[pk] for pk in (applied, chose, never)] == [True, False, False]
 

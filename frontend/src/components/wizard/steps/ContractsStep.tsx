@@ -56,6 +56,8 @@ interface ContractsStepProps {
   /** Form 101's answers, of which this step asks line 11's rent and eviction after the rows (4b) */
   rent: PetitionAnswers;
   onRentChange: (next: PetitionAnswers) => void;
+  /** The county's division, which names the clerk's number in Form 101A's deposit sentence */
+  division: 'Eastern' | 'Western' | null;
   /** The wizard's amounts owed and assets, for the links a contract can name */
   debts: DebtRow[];
   assets: WizardRow<AssetInfo>[];
@@ -115,6 +117,7 @@ export function ContractsStep({
   onAnswerChange,
   rent,
   onRentChange,
+  division,
   debts,
   assets,
   onValidationChange,
@@ -363,6 +366,8 @@ export function ContractsStep({
         onChange={onRentChange}
         touched={rentTouched}
         onLeave={() => setRentLeft(true)}
+        leaseRows={rows}
+        division={division}
       />
 
       {/* A status, not an alert: a sentence can quote a row's name while it's typed. It stays

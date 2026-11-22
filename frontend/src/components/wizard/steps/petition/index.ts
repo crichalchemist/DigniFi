@@ -10,6 +10,7 @@ export {
   isBlankPetitionRow,
   isItin,
   isNineDigits,
+  LANDLORD_KEYS,
   RENT_KEYS,
   rentGap,
 } from './petitionGaps';

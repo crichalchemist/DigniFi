@@ -2,10 +2,11 @@
 
 The gaps come from the session's `PetitionAnswers` record and from measuring it, never from a
 form's preconditions, `packet()` or the means test, and nothing here writes. The measure is not a
-pure read: `petition_fit.too_long` loads Form 101's and Form 103B's schemas, runs
+pure read: `petition_fit.too_long` loads Form 101's, Form 101A's and Form 103B's schemas, runs
 `PDFFormFiller().check()` on what their boxes print, and reads the filing fee's
-`payment_choice` (through Form 103B's `applies`) to know whether 103B is in the packet. So a
-filing-fee save, or a schema change, can add or remove a too-long detail.
+`payment_choice` and the rent and eviction answers (through each form's `applies`) to know
+whether 103B and 101A are in the packet. So a filing-fee save, a rent or eviction answer, or a
+schema change, can add or remove a too-long detail.
 
 A text is listed too long when it is over its character cap (`PetitionAnswers.TEXT_LIMITS`,
 which the wizard's boxes enforce) or when its box can't take it; Generate refuses only the
@@ -14,12 +15,16 @@ second. The sentences are DigniFi's own; the browser's copy is
 `test_petition_frontend_copy.py` pins its sentences to these.
 """
 
+from apps.forms.registry import FORM_101A_LANDLORD
 from apps.forms.services import petition_fit
 from apps.forms.services.answer_records import (
+    LANDLORD_KEYS,
     PETITION_STEP_OF_KEY,
+    evicted_renter,
     is_itin,
     is_mm_dd_yyyy,
     is_nine_digits,
+    landlord_missing,
 )
 
 from .completion import Gap
@@ -64,6 +69,10 @@ DETAIL_BUSINESS = "Add your business's name, or change your answer to No."
 DETAIL_HAZARD = "Say what the hazard is, or change your answer to No."
 # A one-off text's template: {label} is the box's index label in plain words (TEXT_LABELS).
 DETAIL_TOO_LONG = "Your answer for {label} is too long for its box on Form 101."
+# The landlord's twin (owner-approved 2026-11-22, 4b2-R3), same {label}: on Form 101A's box.
+DETAIL_TOO_LONG_101A = "Your answer for {label} is too long for its box on Form 101A."
+# Form 101A's one refusal sentence is also the detail's: one literal, in the registry (PF-4b2-6).
+DETAIL_LANDLORD = FORM_101A_LANDLORD
 # A row cell's (owner ruling Q5): {label} from CELL_LABELS, {noun} from ROW_NOUNS, {n} the row's
 # place in its list, counted from 1, and {forms} the forms whose box refuses it, from FORMS_WORDS
 # (owner ruling Q10).
@@ -104,7 +113,8 @@ _GATE_SENTENCE = {
     "sole_proprietor_answer": GATE_SOLE_PROPRIETOR,
 }
 
-# Every key a detail can name, to the forms that print its box blank while it is open (4b-R12).
+# Every key a detail can name, to the forms that print its box blank while it is open (4b-R12),
+# except the landlord keys, whose detail refuses Form 101A whole (4b2).
 # Form 101 prints the ITIN's last four but has no box for the other Social Security number, so
 # `itin` names both forms and `other_ssn` names Form 121 alone (PF2-T7-7). Form 103B line 20
 # prints Form 101 line 9's earlier cases (PF2-T10-3).
@@ -112,6 +122,8 @@ FORMS_OF_KEY: dict[str, tuple[str, ...]] = {key: ("form_101",) for key in Petiti
 FORMS_OF_KEY["itin"] = ("form_101", "form_121")
 FORMS_OF_KEY["other_ssn"] = ("form_121",)
 FORMS_OF_KEY["prior_cases"] = ("form_101", "form_103b")
+# The landlord block prints on Form 101A alone.
+FORMS_OF_KEY.update(dict.fromkeys(LANDLORD_KEYS, ("form_101a",)))
 _MAILING_KEYS = (
     "mailing_street",
     "mailing_po_box",
@@ -194,6 +206,9 @@ def text_shows(answers: dict, key: str) -> bool:
     list's cells print only under its line's Yes."""
     if key in ROW_LIST_GATES:
         return answers.get(ROW_LIST_GATES[key]) == "yes"
+    # The landlord's boxes print only under the pair; a stale eviction Yes under a rent No is none.
+    if key in LANDLORD_KEYS:
+        return evicted_renter(answers)
     for prefix, gate in (
         ("mailing_", "mailing_answer"),
         ("business_", "sole_proprietor_answer"),
@@ -206,7 +221,9 @@ def text_shows(answers: dict, key: str) -> bool:
     return True
 
 
-def _too_long(answers: dict, step: str, keys: list[str], too_wide: dict) -> list[Gap]:
+def _too_long(
+    answers: dict, step: str, keys: list[str], too_wide: dict, template: str = DETAIL_TOO_LONG
+) -> list[Gap]:
     """A detail for each of `keys` whose text is over its box's cap, or under it and still too
     wide for a box it prints in (`too_wide`, measured as check() measures it), naming the box
     once. A text over its cap is listed even when its box takes it (a cap counts digit-wide
@@ -220,7 +237,7 @@ def _too_long(answers: dict, step: str, keys: list[str], too_wide: dict) -> list
         over = limit is not None and isinstance(value, str) and len(value) > limit
         if over or (key, None, None) in too_wide:
             label = PetitionAnswers.TEXT_LABELS.get(key, key.replace("_", " "))
-            gaps.append(_detail(DETAIL_TOO_LONG.format(label=label), step, key))
+            gaps.append(_detail(template.format(label=label), step, key))
     return gaps
 
 
@@ -246,18 +263,20 @@ def _cells_too_long(answers: dict, too_wide: dict) -> list[Gap]:
 
 
 def petition_step_gaps(session) -> list[Gap]:
-    """Every question of Form 101 still open on steps 1, 5 and 7, in step order.
+    """Every question of Form 101 and Form 101A still open on steps 1, 5 and 7, in step order.
 
-    A session with no record has every key unanswered. Nothing for 4d's or 4i's keys, and no
-    `landlord_*` detail (4b2's).
+    A session with no record has every key unanswered. Nothing for 4d's or 4i's keys. Under a
+    rent Yes and an eviction Yes the landlord block ends step 7's list: Form 101A is refused
+    whole while it is missing (a detail, which Complete lets through), never printed blank.
     """
     record = getattr(session, "petition_answers", None)
     answers = record.get_answers() if record else {}
-    # Only the keys steps 1 and 5 ask in 4b; 4d's, 4i's and the landlord's are other steps'.
+    # Only the keys steps 1, 5 and 7 ask; 4d's and 4i's are other steps'.
     limited = list(PetitionAnswers.TEXT_LIMITS)
     step_1_keys = [k for k in limited if PETITION_STEP_OF_KEY.get(k) == "debtor_info"]
     hazard_keys = [k for k in limited if PETITION_STEP_OF_KEY.get(k) == "assets"]
-    measured = [*step_1_keys, *hazard_keys, *ROW_LIST_GATES]
+    landlord_keys = [k for k in limited if PETITION_STEP_OF_KEY.get(k) == "contracts"]
+    measured = [*step_1_keys, *hazard_keys, *landlord_keys, *ROW_LIST_GATES]
     too_wide = petition_fit.too_long(session, [k for k in measured if text_shows(answers, k)])
 
     gaps = [
@@ -279,4 +298,7 @@ def petition_step_gaps(session) -> list[Gap]:
         gaps.append(Gap(GATE_RENTS, "contracts", Gap.GATE))
     elif answers["rents_residence"] == "yes" and "eviction_judgment" not in answers:
         gaps.append(Gap(GATE_EVICTION, "contracts", Gap.GATE))
+    if landlord_missing(answers):
+        gaps.append(Gap(DETAIL_LANDLORD, "contracts", Gap.DETAIL, forms=("form_101a",)))
+    gaps += _too_long(answers, "contracts", landlord_keys, too_wide, DETAIL_TOO_LONG_101A)
     return gaps

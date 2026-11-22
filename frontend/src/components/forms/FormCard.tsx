@@ -265,12 +265,15 @@ export function FormCard({
 
       {/* The gap's own sentences, then one way to each step. Plain lines, no live region: the gaps
           arrive after the cards, and every card would read its line out again. A step the card's
-          refusal already links to gets no second link. */}
-      {details.map((detail, index) => (
-        <p key={index} className="form-card-notice">
-          {detail.message}
-        </p>
-      ))}
+          refusal already links to gets no second link. A detail the card's refusal already says in
+          the same words (Form 101A's landlord) is not printed twice (4b2-R12). */}
+      {details
+        .filter((detail) => detail.message !== refusal?.message)
+        .map((detail, index) => (
+          <p key={index} className="form-card-notice">
+            {detail.message}
+          </p>
+        ))}
       {[...new Set(details.map((detail) => detail.step))]
         .filter((step) => refusal?.link?.to !== `/intake?step=${step}`)
         .map((step) => (

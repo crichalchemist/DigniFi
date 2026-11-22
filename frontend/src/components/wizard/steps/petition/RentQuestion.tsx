@@ -3,25 +3,36 @@
  * the form's words: whether the filer rents their residence and, under its Yes, whether the
  * landlord has an eviction judgment. Under both Yes answers, the notice: the forms' own sentences,
  * quoted (formText.ts, owner answer Q2), DigniFi's own sentences and the court's two pages, in
- * PF2-T9-4's order. Form 101A's certification and its two boxes come before paragraph (a), so (a)'s
- * "both boxes above" has them (owner ruling Q11). Information, never advice: nothing here says whether to stay or to pay. An
- * eviction answer stored under a rent No stays stored and never shows the notice (spec §6.7); it is
- * hidden with a line that offers Show and Delete (T9-eviction-hidden). The step's one status region
- * names the gate (rentGap, PF2-T9-6).
+ * PF2-T9-4's order, in two parts with Form 101A's landlord block between them (4b2-R4): the form
+ * asks for the landlord's name and address before its certification. Form 101A's certification and
+ * its two boxes come before paragraph (a), so (a)'s "both boxes above" has them (owner ruling Q11).
+ * Information, never advice: nothing here says whether to stay or to pay. An eviction answer stored
+ * under a rent No stays stored and never shows the notice (spec §6.7); it is hidden with a line
+ * that offers Show and Delete (T9-eviction-hidden), and so are landlord answers kept under an
+ * eviction No or a rent No (4b2-R6). The landlord is a detail, never a gate (§5.7). The step's one
+ * status region names the gate (rentGap, PF2-T9-6).
  */
 import { useState } from 'react';
 import type { FocusEvent } from 'react';
+import { FormField, FormSelect } from '../../../common';
 import { YesNoThenDetails } from '../../YesNoThenDetails';
 import {
+  CLERK_PHONE_EASTERN,
+  CLERK_PHONE_WESTERN,
   COURT_FORM_101A_URL,
   COURT_FORM_101B_URL,
+  FORM_101A_BOXES_BLANK,
+  FORM_101A_DEPOSIT,
+  FORM_101A_DEPOSIT_WITH_CLERK,
   FORM_101A_LINK,
-  FORM_101A_NOT_YET,
   FORM_101_LINE_11_LEAD,
   FORM_101A_SAYS,
   FORM_101B_LINK,
   FORM_101B_NOT_PREPARED,
   HIDDEN_ANSWERS,
+  LANDLORD_PICK_HINT,
+  LANDLORD_PICK_LABEL,
+  LANDLORD_PICK_PLACEHOLDER,
 } from '../../../../constants/copy';
 import {
   FORM_101_LINE_11_EVICTION,
@@ -31,6 +42,9 @@ import {
   FORM_101A_CERTIFICATION_BOX_2,
   FORM_101A_CERTIFICATION_HEADING,
   FORM_101A_CERTIFICATION_SENTENCE,
+  FORM_101A_GATE_SENTENCE,
+  FORM_101A_LANDLORD_ADDRESS,
+  FORM_101A_LANDLORD_NAME,
   FORM_101A_SERVICE_CONDITIONS,
   FORM_101A_SERVICE_SENTENCE,
   FORM_101A_STAY_HEADING_A,
@@ -38,8 +52,12 @@ import {
   FORM_101A_STAY_SENTENCE_A,
   FORM_101B_STAY_SENTENCE,
 } from '../../../../constants/formText';
-import type { PetitionAnswers, YesNo } from '../../../../types/api';
+import { PETITION_TEXT_LIMITS } from '../../../../constants/petitionLimits';
+import type { ContractRow, PetitionAnswers, YesNo } from '../../../../types/api';
+import { landlordFromLease, residentialLeases } from './landlord';
+import { PartyAddressFields } from './PartyAddressFields';
 import { HiddenLine } from './PetitionQuestions';
+import { LANDLORD_KEYS } from './petitionGaps';
 
 interface RentQuestionProps {
   answers: PetitionAnswers;
@@ -48,13 +66,22 @@ interface RentQuestionProps {
   touched: boolean;
   /** Focus has left the block */
   onLeave: () => void;
+  /** The step's contracts, whose residential leases the landlord can be copied from (4b2-R7) */
+  leaseRows: ContractRow[];
+  /** The county's division, which names the clerk's number in the deposit sentence (4b2-R5) */
+  division: 'Eastern' | 'Western' | null;
 }
 
 const yesNo = (value: unknown): YesNo | null => (value === 'yes' || value === 'no' ? value : null);
 
-/** Form 101 line 11's Yes instruction, Form 101A's words, DigniFi's sentences and the two links */
+const NO_LANDLORD = Object.fromEntries(LANDLORD_KEYS.map((key) => [key, null])) as Pick<
+  PetitionAnswers,
+  (typeof LANDLORD_KEYS)[number]
+>;
+
+/** Form 101 line 11's Yes instruction, Form 101A's opening words and the link to the form */
 // DRAFT: counsel C-40
-function EvictionNotice() {
+function NoticeHead() {
   // `.info-box` is a flex row, so the pieces sit in one child and read top to bottom
   return (
     <div className="info-box eviction-notice">
@@ -72,20 +99,45 @@ function EvictionNotice() {
             ))}
           </ul>
         </blockquote>
-        <p className="info-message">{FORM_101A_NOT_YET}</p>
         <p className="info-message">
           <a href={COURT_FORM_101A_URL} target="_blank" rel="noopener noreferrer">
             {FORM_101A_LINK}
           </a>
         </p>
+      </div>
+    </div>
+  );
+}
+
+/** The certification and its two boxes, DigniFi's words under them, then the stay passage */
+// DRAFT: counsel C-40
+// DRAFT: counsel C-46
+function NoticeCertification({ division }: { division: 'Eastern' | 'Western' | null }) {
+  const phone =
+    division === 'Eastern'
+      ? CLERK_PHONE_EASTERN
+      : division === 'Western'
+        ? CLERK_PHONE_WESTERN
+        : null;
+  return (
+    <div className="info-box eviction-notice">
+      <div>
         <p className="info-message">{FORM_101A_SAYS}</p>
         <blockquote>
+          <p className="info-message">{FORM_101A_GATE_SENTENCE}</p>
           <p className="info-message">{FORM_101A_CERTIFICATION_HEADING}</p>
           <p className="info-message">{FORM_101A_CERTIFICATION_SENTENCE}</p>
           <ul>
             <li>{FORM_101A_CERTIFICATION_BOX_1}</li>
             <li>{FORM_101A_CERTIFICATION_BOX_2}</li>
           </ul>
+        </blockquote>
+        <p className="info-message">{FORM_101A_BOXES_BLANK}</p>
+        <p className="info-message">
+          {phone ? `${FORM_101A_DEPOSIT_WITH_CLERK} ${phone}.` : FORM_101A_DEPOSIT}
+        </p>
+        <p className="info-message">{FORM_101A_SAYS}</p>
+        <blockquote>
           <p className="info-message">{FORM_101A_STAY_HEADING_A}</p>
           <p className="info-message">{FORM_101A_STAY_SENTENCE_A}</p>
           <p className="info-message">{FORM_101A_STAY_HEADING_B}</p>
@@ -102,11 +154,30 @@ function EvictionNotice() {
   );
 }
 
-export function RentQuestion({ answers, onChange, touched, onLeave }: RentQuestionProps) {
+export function RentQuestion({
+  answers,
+  onChange,
+  touched,
+  onLeave,
+  leaseRows,
+  division,
+}: RentQuestionProps) {
   const [shown, setShown] = useState(false);
+  // Whether a landlord answer was stored when Show was pressed: under an eviction No it keeps the
+  // block open for the visit, so clearing the last box never takes the box away mid-edit (FR-W4)
+  const [landlordShown, setLandlordShown] = useState(false);
+  // The lease last picked stays selected, so an arrow key on the closed select reaches the next
+  // lease and not the first again (FR-W2)
+  const [pickedLease, setPickedLease] = useState('');
   const set = (changes: Partial<PetitionAnswers>) => onChange({ ...answers, ...changes });
   const rent = yesNo(answers.rents_residence);
   const eviction = yesNo(answers.eviction_judgment);
+  const pair = rent === 'yes' && eviction === 'yes';
+  const hasLandlord = LANDLORD_KEYS.some((key) => {
+    const value = answers[key];
+    return typeof value === 'string' && value.trim() !== '';
+  });
+  const leases = residentialLeases(leaseRows);
 
   const leave = (event: FocusEvent<HTMLDivElement>) => {
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onLeave();
@@ -121,6 +192,8 @@ export function RentQuestion({ answers, onChange, touched, onLeave }: RentQuesti
         onChange={(next) => {
           // Show opens a hidden eviction answer once: a new rent answer hides it again
           setShown(false);
+          setLandlordShown(false);
+          setPickedLease('');
           set({ rents_residence: next });
         }}
         unanswered={touched && rent === null}
@@ -134,15 +207,76 @@ export function RentQuestion({ answers, onChange, touched, onLeave }: RentQuesti
             unanswered={rent === 'yes' && touched && eviction === null}
             required={rent === 'yes'}
           >
-            {rent === 'yes' && eviction === 'yes' && <EvictionNotice />}
+            {pair && <NoticeHead />}
+            {(pair || (shown && (eviction === 'yes' || landlordShown))) && (
+              // DRAFT: counsel C-46
+              <div className="landlord-block">
+                {leases.length > 0 && (
+                  <FormSelect
+                    label={LANDLORD_PICK_LABEL}
+                    name="landlord_pick"
+                    options={leases.map((lease) => ({ value: lease.key, label: lease.label }))}
+                    placeholder={LANDLORD_PICK_PLACEHOLDER}
+                    helpText={LANDLORD_PICK_HINT}
+                    value={pickedLease}
+                    onChange={(key) => {
+                      setPickedLease(key);
+                      const lease = leases.find((candidate) => candidate.key === key);
+                      if (lease) set(landlordFromLease(lease.row));
+                    }}
+                  />
+                )}
+                <FormField
+                  label={FORM_101A_LANDLORD_NAME}
+                  name="landlord_name"
+                  type="text"
+                  maxLength={PETITION_TEXT_LIMITS.landlord_name}
+                  value={answers.landlord_name ?? ''}
+                  onChange={(e) => set({ landlord_name: e.target.value })}
+                />
+                <p id="landlord-address-label" className="form-label">
+                  {FORM_101A_LANDLORD_ADDRESS}
+                </p>
+                <div role="group" aria-labelledby="landlord-address-label">
+                  <PartyAddressFields
+                    answers={answers}
+                    onChange={set}
+                    streetKey="landlord_street"
+                    cityKey="landlord_city"
+                    stateKey="landlord_state"
+                    zipKey="landlord_zip"
+                  />
+                </div>
+              </div>
+            )}
+            {pair && <NoticeCertification division={division} />}
+            {eviction === 'no' && hasLandlord && !(shown && landlordShown) && (
+              <HiddenLine
+                sentence={HIDDEN_ANSWERS}
+                onShow={() => {
+                  setShown(true);
+                  setLandlordShown(true);
+                }}
+                onDelete={() => {
+                  setPickedLease('');
+                  set(NO_LANDLORD);
+                }}
+              />
+            )}
           </YesNoThenDetails>
         ) : (
           rent === 'no' &&
-          eviction !== null && (
+          (eviction !== null || hasLandlord) && (
             <HiddenLine
               sentence={HIDDEN_ANSWERS}
-              onShow={() => setShown(true)}
-              onDelete={() => set({ eviction_judgment: null })}
+              onShow={() => {
+                setShown(true);
+                setLandlordShown(hasLandlord);
+              }}
+              onDelete={() => {
+                setPickedLease('');
+                set({ eviction_judgment: null, ...NO_LANDLORD });
+              }}
             />
           )
         )}

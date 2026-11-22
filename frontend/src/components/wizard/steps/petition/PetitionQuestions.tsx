@@ -81,6 +81,7 @@ import {
   isBlankPetitionRow,
   isItin,
   isNineDigits,
+  LANDLORD_KEYS,
   RENT_KEYS,
 } from './petitionGaps';
 
@@ -191,7 +192,11 @@ const BUSINESS_KEYS = [
   'business_kind',
 ] as const;
 
-const LATER_STEP_KEYS: ReadonlySet<string> = new Set([...HAZARD_KEYS, ...RENT_KEYS]);
+const LATER_STEP_KEYS: ReadonlySet<string> = new Set([
+  ...HAZARD_KEYS,
+  ...RENT_KEYS,
+  ...LANDLORD_KEYS,
+]);
 
 // The last new row's key: unique while the page is open, apart from a loaded row's `loaded-<i>`
 let nextKey = 0;

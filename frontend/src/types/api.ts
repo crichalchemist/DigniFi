@@ -1054,9 +1054,10 @@ export type ExemptionsUpdate = Partial<
 // Form Generation
 // ============================================================================
 
-/** All 18 form types registered in the backend form registry */
+/** All 19 form types registered in the backend form registry */
 export type FormType =
   | 'form_101' // Voluntary Petition
+  | 'form_101a' // Eviction Judgment Statement
   | 'form_103b' // Fee Waiver Application
   | 'form_106dec' // Declaration
   | 'form_106sum' // Summary of Assets/Liabilities
@@ -1105,84 +1106,89 @@ export const FORM_TYPE_METADATA: Record<
     description: 'Your official petition to file for bankruptcy',
     order: 1,
   },
+  form_101a: {
+    label: 'Form 101A - Eviction Judgment Statement',
+    description: 'Initial Statement About an Eviction Judgment Against You',
+    order: 2,
+  },
   form_103b: {
     label: 'Form 103B - Fee Waiver Application',
     description: 'Request to waive the filing fee',
-    order: 2,
+    order: 3,
   },
   form_106dec: {
     label: 'Form 106Dec - Declaration',
     description: 'Declaration about the accuracy of your forms',
-    order: 3,
+    order: 4,
   },
   form_106sum: {
     label: 'Form 106Sum - Summary',
     description: 'Summary of your assets and liabilities',
-    order: 4,
+    order: 5,
   },
   form_107: {
     label: 'Form 107 - Financial Affairs',
     description: 'Statement of your financial affairs',
-    order: 5,
+    order: 6,
   },
   form_121: {
     label: 'Form 121 - SSN Statement',
     description: 'Social Security number verification',
-    order: 6,
+    order: 7,
   },
   form_122a1: {
     label: 'Form 122A-1 - Means Test',
     description: 'Chapter 7 means test calculation',
-    order: 7,
+    order: 8,
   },
   form_122a1_supp: {
     label: 'Form 122A-1 Supp - Means Test Supplement',
     description: 'Supplement to the Chapter 7 means test',
-    order: 8,
+    order: 9,
   },
   form_122a2: {
     label: 'Form 122A-2 - Means Test Expenses',
     description: 'Chapter 7 means test expense calculation',
-    order: 9,
+    order: 10,
   },
   list_of_creditors: {
     label: 'List of Creditors',
     description:
       "The court's list of the name and address of everyone you owe money to, or who must be told about your case.",
-    order: 10,
+    order: 11,
   },
   schedule_a_b: {
     label: 'Schedule A/B - Property',
     description: 'List of all your property',
-    order: 11,
+    order: 12,
   },
   schedule_c: {
     label: 'Schedule C - Exemptions',
     description: 'Property you claim as exempt',
-    order: 12,
+    order: 13,
   },
   schedule_d: {
     label: 'Schedule D - Secured Creditors',
     description: 'Creditors with collateral claims',
-    order: 13,
+    order: 14,
   },
   schedule_e_f: {
     label: 'Schedule E/F - Unsecured Creditors',
     description: 'Creditors without collateral',
-    order: 14,
+    order: 15,
   },
   schedule_g: {
     label: 'Schedule G - Executory Contracts',
     description: 'Executory contracts and unexpired leases',
-    order: 15,
+    order: 16,
   },
   schedule_h: {
     label: 'Schedule H - Codebtors',
     description: 'People who are also liable for your debts',
-    order: 16,
+    order: 17,
   },
-  schedule_i: { label: 'Schedule I - Income', description: 'Your current income', order: 17 },
-  schedule_j: { label: 'Schedule J - Expenses', description: 'Your current expenses', order: 18 },
+  schedule_i: { label: 'Schedule I - Income', description: 'Your current income', order: 18 },
+  schedule_j: { label: 'Schedule J - Expenses', description: 'Your current expenses', order: 19 },
 };
 
 // ============================================================================

@@ -49,6 +49,8 @@ LIMITS = ROOT / "data/forms/schemas/form_101.limits.json"
 ADDENDUM = ROOT / "data/forms/field_index/audit/step2_verification.json"
 TEMPLATE = Path(settings.PDF_FORMS_DIRECTORY) / "form_b101.pdf"
 INDEX = json.loads((settings.FORM_INDEX_DIRECTORY / "form_b101.index.json").read_text())
+# Form 101's own keys and words (Form 101A's landlord keys are in the record too, 4b2-R1).
+FORM_101_LIMITS = json.loads(LIMITS.read_text())["limits"]
 
 # The widest amount one row can hold (DecimalField(12, 2)).
 WIDEST_ROW = "9999999999.99"
@@ -295,8 +297,10 @@ def test_the_schema_and_its_rows_and_caps_are_what_the_tool_writes():
     assert addendum_text == tool.merged_text(addendum_text, rows)
     assert LIMITS.read_text() == tool.dumps(limits)
     # The record caps the filer's text by the same file (4b-R10).
-    assert PetitionAnswers.TEXT_LIMITS == limits["limits"]
-    assert PetitionAnswers.TEXT_LABELS == limits["labels"]
+    # The record also holds Form 101A's landlord keys (4b2-R1), so each of this file's keys has
+    # this file's value in it.
+    assert {k: PetitionAnswers.TEXT_LIMITS[k] for k in limits["limits"]} == limits["limits"]
+    assert {k: PetitionAnswers.TEXT_LABELS[k] for k in limits["labels"]} == limits["labels"]
 
 
 def test_every_widget_is_bound_or_blank_on_purpose():
@@ -938,13 +942,13 @@ ORDINARY_ANSWERS = {
 
 
 def test_every_capped_key_has_an_ordinary_answer():
-    assert set(ORDINARY_ANSWERS) == set(PetitionAnswers.TEXT_LIMITS)
+    assert set(ORDINARY_ANSWERS) == set(FORM_101_LIMITS)
 
 
 @pytest.mark.parametrize("key", sorted(ORDINARY_ANSWERS))
 def test_an_ordinary_answer_is_within_its_cap_and_prints(session, key):
     answer = ORDINARY_ANSWERS[key]
-    assert len(answer) <= PetitionAnswers.TEXT_LIMITS[key], (answer, len(answer))
+    assert len(answer) <= FORM_101_LIMITS[key], (answer, len(answer))
     _petition_row(session, **_capped_answers(key, answer))
     PDFFormFiller().check("form_101", _petition(session))
 
@@ -969,20 +973,20 @@ def _measuring_letter(key):
     return "W" if key.endswith("_state") else "o"
 
 
-@pytest.mark.parametrize("key", sorted(set(PetitionAnswers.TEXT_LIMITS) - {"venue_reason"}))
+@pytest.mark.parametrize("key", sorted(set(FORM_101_LIMITS) - {"venue_reason"}))
 def test_every_answer_at_its_cap_of_its_measuring_letter_prints_without_refusal(session, key):
     # 4b-R10: a ZIP code or a state the page lets through never fails at Generate, and nor do
     # ordinary words; a text mostly of wider letters may, and check() names the step. The
     # venue reason, which wraps at spaces, is tested at its cap in ordinary words below.
-    cap = PetitionAnswers.TEXT_LIMITS[key]
+    cap = FORM_101_LIMITS[key]
     _petition_row(session, **_capped_answers(key, _measuring_letter(key) * cap))
     PDFFormFiller().check("form_101", _petition(session))
 
 
-@pytest.mark.parametrize("key", sorted(set(PetitionAnswers.TEXT_LIMITS) - {"venue_reason"}))
+@pytest.mark.parametrize("key", sorted(set(FORM_101_LIMITS) - {"venue_reason"}))
 def test_no_cap_leaves_room_for_one_more_of_its_measuring_letter(session, key):
     # The cap is the most that fit, not a safe guess below it: one letter more is refused.
-    cap = PetitionAnswers.TEXT_LIMITS[key]
+    cap = FORM_101_LIMITS[key]
     _petition_row(session, **_capped_answers(key, _measuring_letter(key) * (cap + 1)))
     with pytest.raises(ValueTooLong):
         PDFFormFiller().check("form_101", _petition(session))
@@ -1070,7 +1074,7 @@ def test_a_venue_reason_one_letter_over_its_cap_is_named_too_long(session):
 
 @pytest.mark.parametrize(
     "key",
-    sorted(k for k in PetitionAnswers.TEXT_LIMITS if not k.endswith(("_zip", "_state", "_reason"))),
+    sorted(k for k in FORM_101_LIMITS if not k.endswith(("_zip", "_state", "_reason"))),
 )
 def test_capitals_at_a_cap_are_refused_by_name_with_the_step_that_asks_them(session, key):
     # The caps of ordinary text are measured at ordinary-word width, so the page lets through
@@ -1078,7 +1082,7 @@ def test_capitals_at_a_cap_are_refused_by_name_with_the_step_that_asks_them(sess
     # the box and the step that asks it (spec §5.7); it is never printed cut off.
     from apps.forms.services.answer_records import PETITION_STEP_OF_KEY
 
-    _petition_row(session, **_capped_answers(key, "W" * PetitionAnswers.TEXT_LIMITS[key]))
+    _petition_row(session, **_capped_answers(key, "W" * FORM_101_LIMITS[key]))
     with pytest.raises(ValueTooLong) as refused:
         PDFFormFiller().check("form_101", _petition(session))
     assert (refused.value.step, refused.value.page) == (PETITION_STEP_OF_KEY[key], None)
@@ -1185,9 +1189,7 @@ def test_a_malformed_case_date_prints_blank_and_the_rest_of_its_row_prints(sessi
 # Every key whose too-long line is gated by its box's visibility (PF2-3). The schema's
 # `conditional_on` for the key's boxes decides, so petition.text_shows can't drift from it.
 GATED_KEYS = sorted(
-    key
-    for key in PetitionAnswers.TEXT_LIMITS
-    if PETITION_STEP_OF_KEY.get(key) in ("debtor_info", "assets")
+    key for key in FORM_101_LIMITS if PETITION_STEP_OF_KEY.get(key) in ("debtor_info", "assets")
 )
 GATE_STATES = [
     {},

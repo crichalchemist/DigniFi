@@ -16,8 +16,11 @@ from django.contrib.auth import get_user_model
 from apps.districts.models import District
 from apps.forms.schema import _LIST_BINDING
 from apps.forms.services.answer_records import (
+    LANDLORD_KEYS,
     NEW_STEP_KEYS,
     PETITION_STEP_OF_KEY,
+    evicted_renter,
+    landlord_missing,
     record_step,
     record_value,
 )
@@ -228,3 +231,23 @@ def test_a_row_binding_in_each_namespace_is_a_list_binding(binding):
     assert _LIST_BINDING.fullmatch(binding)
     assert not _LIST_BINDING.fullmatch("petition.name_suffix")
     assert not _LIST_BINDING.fullmatch("answer:x.y[].z")
+
+
+@pytest.mark.parametrize("rent", ["yes", "no", None])
+@pytest.mark.parametrize("eviction", ["yes", "no", None])
+def test_the_pair_is_rent_yes_and_eviction_yes_and_nothing_else(rent, eviction):
+    answers = {}
+    if rent:
+        answers["rents_residence"] = rent
+    if eviction:
+        answers["eviction_judgment"] = eviction
+    assert evicted_renter(answers) is (rent == "yes" and eviction == "yes")
+
+
+def test_a_missing_landlord_counts_only_under_the_pair():
+    whole = dict.fromkeys(LANDLORD_KEYS, "x")
+    pair = {"rents_residence": "yes", "eviction_judgment": "yes"}
+    assert landlord_missing(pair) is True
+    assert landlord_missing({**pair, **whole}) is False
+    assert landlord_missing({**pair, **whole, "landlord_zip": " "}) is True
+    assert landlord_missing({"rents_residence": "no", "eviction_judgment": "yes"}) is False

@@ -24,7 +24,7 @@
 | ------------------------- | ---------------- | --------------- |
 | Backend (pytest)          | 2,096 (+1 xfail) | Passing         |
 | Frontend (vitest)         | 358              | Passing         |
-| E2E journeys (Playwright) | 8/8 journeys     | All steps green |
+| E2E journeys (Playwright) | 9/9 journeys     | All steps green |
 
 ## Quick Start
 
@@ -128,7 +128,7 @@ dignifi/
 │   │   ├── intake/         # Data collection (9-step wizard)
 │   │   ├── eligibility/    # Means test calculator
 │   │   ├── documents/      # Document scanning pipeline (OCR → draft debts)
-│   │   └── forms/          # 18 court forms: registry, fill engine, PDF filler
+│   │   └── forms/          # 19 court forms: registry, fill engine, PDF filler
 │   ├── config/             # Django settings (base, dev, prod)
 │   └── requirements/       # Python dependencies
 ├── frontend/               # React 19 + TypeScript SPA
@@ -139,7 +139,7 @@ dignifi/
 │   │   ├── api/            # Typed API client
 │   │   └── utils/          # Analytics, helpers
 │   └── e2e/                # Playwright page objects & journey specs
-├── data/forms/pdfs/        # 68 official AO court PDF templates
+├── data/forms/pdfs/        # 69 official AO court PDF templates
 └── docs/                   # Reference documentation
     ├── internal/           # PRD, briefs, architecture analysis
     ├── testing/            # Persona briefs, test scripts, run protocol
@@ -151,7 +151,7 @@ dignifi/
 
 - **Backend**: Python 3.11, Django 5.0, Django REST Framework, PostgreSQL 15
 - **Frontend**: React 19, Vite 7, TypeScript (Context API for state management)
-- **PDF Generation**: pypdf 6.x — 18 form schemas fill the court's templates (17 official AO forms and ILND's own List of Creditors)
+- **PDF Generation**: pypdf 6.x — 19 form schemas fill the court's templates (18 official AO forms and ILND's own List of Creditors)
 - **Authentication**: JWT (djangorestframework-simplejwt) with silent refresh
 - **Encryption**: django-encrypted-model-fields (Fernet) for PII
 - **Testing**: pytest, vitest, Playwright, vitest-axe (accessibility)
@@ -167,7 +167,7 @@ dignifi/
 - 9-step intake wizard: Your Information → Income → Take-home pay → Expenses → Assets → Amounts Owed → Contracts & Leases → Codebtors → Review & Results
 - Chapter 7 means test calculator (11 U.S.C. § 707(b) — annualized CMI vs. Census median by household size)
 - Filing fee (Form 101 line 8): the filer chooses how to pay. A waiver request adds Form 103B, filled from the intake. The court's limit (150% of the HHS poverty guideline) and the filer's own Form 103B figure are shown as information (28 U.S.C. § 1930(f)).
-- 18 court forms (Form 101 through Schedules A/B–J, and the court's List of Creditors); each filer's packet holds 15–17 of them
+- 19 court forms (Form 101 through Schedules A/B–J, and the court's List of Creditors); each filer's packet holds 15–18 of them
 - PDF download — each form's schema fills its official AO court template via pypdf
 - UPL confirmation modal gates all form generation
 - Post-task usability survey (3 Likert + 2 open text)
@@ -216,7 +216,7 @@ docker compose exec backend pytest -q
 # Frontend (358 tests)
 cd frontend && npx vitest run
 
-# Full E2E (8 Playwright journeys; backend running and seeded)
+# Full E2E (9 Playwright journeys; backend running and seeded)
 cd frontend && npm run e2e
 
 # Quick smoke test (Maria only)
