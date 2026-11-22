@@ -655,6 +655,30 @@ describe('the details on a card', () => {
     expect(screen.getAllByRole('link', { name: 'Go to Your Information' })).toHaveLength(1);
   });
 
+  it("a pending card's button carries the refusal's address and no second link goes to the same step", async () => {
+    const user = userEvent.setup();
+    function Where() {
+      return <p data-testid="where">{useLocation().search}</p>;
+    }
+    render(
+      <MemoryRouter>
+        <FormCard
+          {...props}
+          details={[district]}
+          refusal={{
+            message: 'Fill in your information.',
+            link: { to: '/intake?step=debtor_info', label: 'Go to Your Information' },
+          }}
+        />
+        <Where />
+      </MemoryRouter>
+    );
+    expect(screen.getByText(district.message)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Go to Your Information' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Go to Your Information' }));
+    expect(screen.getByTestId('where')).toHaveTextContent('?step=debtor_info');
+  });
+
   it('puts the lines after the card notice and before the refusal', () => {
     const { container } = render(
       <MemoryRouter>

@@ -306,6 +306,25 @@ describe('FormDashboard', () => {
       expect(screen.getAllByText('Enter your income by source.')).toHaveLength(1);
     });
 
+    // A gate that names a form still stays off its card: only a detail repeats there
+    it('a gate that names Form 101 shows in the notice and on no card', async () => {
+      gapsAre([
+        {
+          message: 'Enter your income by source.',
+          step: 'income_info',
+          kind: 'gate',
+          forms: ['form_101'],
+        },
+      ]);
+      renderFormDashboard();
+
+      await screen.findByText('Enter your income by source.');
+      for (const card of screen.getAllByRole('article')) {
+        expect(within(card).queryByText('Enter your income by source.')).not.toBeInTheDocument();
+      }
+      expect(screen.getAllByText('Enter your income by source.')).toHaveLength(1);
+    });
+
     // A filed form prints what was filed (DIG-155): no answer given now changes it
     it('a filed Form 101 shows no detail line', async () => {
       server.use(
