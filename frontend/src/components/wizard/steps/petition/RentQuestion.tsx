@@ -42,36 +42,39 @@ const yesNo = (value: unknown): YesNo | null => (value === 'yes' || value === 'n
 /** Form 101 line 11's Yes instruction, Form 101A's words, DigniFi's sentences and the two links */
 // DRAFT: counsel C-40
 function EvictionNotice() {
+  // `.info-box` is a flex row, so the pieces sit in one child and read top to bottom
   return (
     <div className="info-box eviction-notice">
-      <blockquote>
-        <p className="info-message">{FORM_101_LINE_11_NOTICE}</p>
-      </blockquote>
-      <p className="info-message">{FORM_101A_SAYS}</p>
-      <blockquote>
-        <p className="info-message">{FORM_101A_SERVICE_SENTENCE}</p>
-        <ul>
-          {FORM_101A_SERVICE_CONDITIONS.map((condition) => (
-            <li key={condition}>{condition}</li>
-          ))}
-        </ul>
-      </blockquote>
-      <p className="info-message">{FORM_101A_NOT_YET}</p>
-      <p className="info-message">
-        <a href={COURT_FORM_101A_URL} target="_blank" rel="noopener noreferrer">
-          {FORM_101A_LINK}
-        </a>
-      </p>
-      <p className="info-message">{FORM_101A_SAYS}</p>
-      <blockquote>
-        <p className="info-message">{FORM_101B_STAY_SENTENCE}</p>
-      </blockquote>
-      <p className="info-message">{FORM_101B_NOT_PREPARED}</p>
-      <p className="info-message">
-        <a href={COURT_FORM_101B_URL} target="_blank" rel="noopener noreferrer">
-          {FORM_101B_LINK}
-        </a>
-      </p>
+      <div>
+        <blockquote>
+          <p className="info-message">{FORM_101_LINE_11_NOTICE}</p>
+        </blockquote>
+        <p className="info-message">{FORM_101A_SAYS}</p>
+        <blockquote>
+          <p className="info-message">{FORM_101A_SERVICE_SENTENCE}</p>
+          <ul>
+            {FORM_101A_SERVICE_CONDITIONS.map((condition) => (
+              <li key={condition}>{condition}</li>
+            ))}
+          </ul>
+        </blockquote>
+        <p className="info-message">{FORM_101A_NOT_YET}</p>
+        <p className="info-message">
+          <a href={COURT_FORM_101A_URL} target="_blank" rel="noopener noreferrer">
+            {FORM_101A_LINK}
+          </a>
+        </p>
+        <p className="info-message">{FORM_101A_SAYS}</p>
+        <blockquote>
+          <p className="info-message">{FORM_101B_STAY_SENTENCE}</p>
+        </blockquote>
+        <p className="info-message">{FORM_101B_NOT_PREPARED}</p>
+        <p className="info-message">
+          <a href={COURT_FORM_101B_URL} target="_blank" rel="noopener noreferrer">
+            {FORM_101B_LINK}
+          </a>
+        </p>
+      </div>
     </div>
   );
 }

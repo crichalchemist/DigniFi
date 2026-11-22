@@ -140,6 +140,9 @@ describe('RentQuestion', () => {
     ]);
     // The forms' own words are marked as quotations
     expect(block.querySelectorAll('blockquote')).toHaveLength(3);
+    // `.info-box` lays its children out as one flex row, so the notice's pieces sit in one child
+    // and read top to bottom, not as side-by-side columns
+    expect(block.children).toHaveLength(1);
 
     const link101A = screen.getByRole('link', { name: FORM_101A_LINK });
     expect(link101A).toHaveAttribute('href', COURT_FORM_101A_URL);

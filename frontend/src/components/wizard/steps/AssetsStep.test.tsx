@@ -1356,4 +1356,30 @@ describe("Form 101 line 14's hazard, after Part 7's lines (4b)", () => {
     render(<Walk part={7} />);
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
+
+  it("names Part 7's own gap when the filer starts with the hazard, so a held Continue says why", () => {
+    // The hazard block begins Part 7 too: a filer who answers it before any line meets a held
+    // Continue, and the region names the Part's gap rather than staying empty (PF2-T8-10)
+    const partGap = firstGapOnPart(7, [], {})!;
+    expect(partGap).not.toBeNull();
+    render(<Walk part={7} />);
+    fireEvent.click(
+      document.querySelector('input[name="hazard_answer"][value="no"]') as HTMLInputElement
+    );
+    expect(latest.valid).toBe(false);
+    expect(screen.getByRole('status')).toHaveTextContent(partGap);
+  });
+
+  it("names Part 7's own gap before the hazard's when the filer passes the hazard first", () => {
+    // A filer who passes the hazard without answering still sees the Part's own gap first
+    // (PF2-T9-6), not the hazard's
+    const partGap = firstGapOnPart(7, [], {})!;
+    render(<Walk part={7} />);
+    fireEvent.focusOut(
+      document.querySelector('input[name="hazard_answer"][value="no"]') as HTMLInputElement,
+      { relatedTarget: null }
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(partGap);
+    expect(screen.getByRole('status')).not.toHaveTextContent(PETITION_GATE_HAZARD);
+  });
 });

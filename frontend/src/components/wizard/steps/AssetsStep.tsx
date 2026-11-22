@@ -127,9 +127,13 @@ export function AssetsStep({
   const gap = firstGapOnPart(part, rows, answers);
   // Nothing is lacking yet on a Part the filer hasn't begun, so the sentence waits for a first
   // answer. A row already on the Part has begun it, even on a line that isn't showing.
-  const partIsStarted = ASSET_LINES.some(
-    (line) => line.part === part && (answers[line.key] || rowsOn(line.key).length > 0)
-  );
+  // On the last Part the hazard block begins it too: a filer who answers or leaves it before any
+  // line meets a held Continue, and the region says why (PF2-T8-10)
+  const partIsStarted =
+    ASSET_LINES.some(
+      (line) => line.part === part && (answers[line.key] || rowsOn(line.key).length > 0)
+    ) ||
+    (asksHazard && (hazardLeft || anyAnswerIn(hazard, HAZARD_KEYS)));
   // One status region for the step (PF2-T9-6): the Part's own gap first, then the hazard's gate
   const shownGap =
     gap !== null && partIsStarted ? gap : asksHazard && hazardTouched ? hazardGap(hazard) : null;
