@@ -21,6 +21,17 @@ function wizardIndex(key: string): number {
   return index === -1 ? WIZARD_STEPS.length : index;
 }
 
+/** The one way to a gap's step, "Go to {label}"; nothing for a step this browser doesn't know */
+export function GapLink({ step }: { step: string }) {
+  const wizardStep = WIZARD_STEPS.find((candidate) => candidate.key === step);
+  if (!wizardStep) return null;
+  return (
+    <Link to={`/intake?step=${step}`} className="button button--primary">
+      Go to {wizardStep.label}
+    </Link>
+  );
+}
+
 export function GapsNotice({ gaps }: { gaps: CompletionGap[] }) {
   const gateCount = gaps.filter((gap) => gap.kind === 'gate').length;
   const detailCount = gaps.filter((gap) => gap.kind === 'detail').length;
@@ -50,23 +61,16 @@ export function GapsNotice({ gaps }: { gaps: CompletionGap[] }) {
       )}
       {steps.length > 0 && (
         <ul>
-          {steps.map((key) => {
-            const wizardStep = WIZARD_STEPS.find((step) => step.key === key);
-            return (
-              <li key={key}>
-                {gaps
-                  .filter((gap) => gap.step === key)
-                  .map((gap, index) => (
-                    <p key={index}>{gap.message}</p>
-                  ))}
-                {wizardStep && (
-                  <Link to={`/intake?step=${key}`} className="button button--primary">
-                    Go to {wizardStep.label}
-                  </Link>
-                )}
-              </li>
-            );
-          })}
+          {steps.map((key) => (
+            <li key={key}>
+              {gaps
+                .filter((gap) => gap.step === key)
+                .map((gap, index) => (
+                  <p key={index}>{gap.message}</p>
+                ))}
+              <GapLink step={key} />
+            </li>
+          ))}
         </ul>
       )}
     </section>

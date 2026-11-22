@@ -189,7 +189,9 @@ describe('FormDashboard', () => {
     }
 
     it('names each missing answer above Generate All', async () => {
-      gapsAre([{ message: 'Enter your income by source.', step: 'income_info', kind: 'gate' }]);
+      gapsAre([
+        { message: 'Enter your income by source.', step: 'income_info', kind: 'gate', forms: [] },
+      ]);
       renderFormDashboard();
 
       const heading = await screen.findByText(DASHBOARD_GATES_ONE);
@@ -206,7 +208,9 @@ describe('FormDashboard', () => {
 
     // The notice is the packet's: it sits with the count, under the progress bar and above the button
     it('sits between the progress bar and Generate All', async () => {
-      gapsAre([{ message: 'Enter your income by source.', step: 'income_info', kind: 'gate' }]);
+      gapsAre([
+        { message: 'Enter your income by source.', step: 'income_info', kind: 'gate', forms: [] },
+      ]);
       renderFormDashboard();
 
       const heading = await screen.findByText(DASHBOARD_GATES_ONE);
@@ -226,7 +230,14 @@ describe('FormDashboard', () => {
         http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', async () => {
           await delay(150);
           return HttpResponse.json({
-            gaps: [{ message: 'Enter your income by source.', step: 'income_info', kind: 'gate' }],
+            gaps: [
+              {
+                message: 'Enter your income by source.',
+                step: 'income_info',
+                kind: 'gate',
+                forms: [],
+              },
+            ],
           });
         })
       );
@@ -247,6 +258,80 @@ describe('FormDashboard', () => {
       await screen.findByText('Form 101 - Voluntary Petition');
       expect(screen.queryByText(/still missing/)).not.toBeInTheDocument();
       expect(screen.queryByText(/blank on your forms/)).not.toBeInTheDocument();
+    });
+
+    // A detail repeats on the card of each form it concerns, so the filer sees it where it prints
+    const DISTRICT = 'Choose why you are filing in this district.';
+
+    it("a Form 101 detail shows on Form 101's card and on no other", async () => {
+      gapsAre([{ message: DISTRICT, step: 'debtor_info', kind: 'detail', forms: ['form_101'] }]);
+      renderFormDashboard();
+
+      const card101 = await screen.findByRole('article', { name: 'Form 101 - Voluntary Petition' });
+      expect(await within(card101).findByText(DISTRICT)).toBeInTheDocument();
+      expect(within(card101).getByRole('link', { name: 'Go to Your Information' })).toHaveAttribute(
+        'href',
+        '/intake?step=debtor_info'
+      );
+      const card121 = screen.getByRole('article', { name: 'Form 121 - SSN Statement' });
+      expect(within(card121).queryByText(DISTRICT)).not.toBeInTheDocument();
+      // Once on the card, once in the notice
+      expect(screen.getAllByText(DISTRICT)).toHaveLength(2);
+    });
+
+    it('an ITIN detail shows on Forms 101 and 121', async () => {
+      const itin = 'Enter your ITIN.';
+      gapsAre([
+        { message: itin, step: 'debtor_info', kind: 'detail', forms: ['form_101', 'form_121'] },
+      ]);
+      renderFormDashboard();
+
+      const card101 = await screen.findByRole('article', { name: 'Form 101 - Voluntary Petition' });
+      const card121 = screen.getByRole('article', { name: 'Form 121 - SSN Statement' });
+      expect(await within(card101).findByText(itin)).toBeInTheDocument();
+      expect(within(card121).getByText(itin)).toBeInTheDocument();
+      expect(screen.getAllByText(itin)).toHaveLength(3);
+    });
+
+    it('a gate shows in the notice and on no card', async () => {
+      gapsAre([
+        { message: 'Enter your income by source.', step: 'income_info', kind: 'gate', forms: [] },
+      ]);
+      renderFormDashboard();
+
+      await screen.findByText('Enter your income by source.');
+      for (const card of screen.getAllByRole('article')) {
+        expect(within(card).queryByText('Enter your income by source.')).not.toBeInTheDocument();
+      }
+      expect(screen.getAllByText('Enter your income by source.')).toHaveLength(1);
+    });
+
+    // A filed form prints what was filed (DIG-155): no answer given now changes it
+    it('a filed Form 101 shows no detail line', async () => {
+      server.use(
+        http.get('http://localhost:8000/api/forms/', () =>
+          HttpResponse.json([
+            {
+              id: 1,
+              session: 1,
+              form_type: 'form_101',
+              form_type_display: 'Form 101',
+              status: 'filed',
+              status_display: 'Filed',
+              pdf_file_path: null,
+              generated_by: 1,
+              generated_at: '2026-01-20T10:00:00Z',
+              updated_at: '2026-01-20T10:00:00Z',
+            },
+          ])
+        )
+      );
+      gapsAre([{ message: DISTRICT, step: 'debtor_info', kind: 'detail', forms: ['form_101'] }]);
+      renderFormDashboard();
+
+      const card101 = await screen.findByRole('article', { name: 'Form 101 - Voluntary Petition' });
+      await screen.findByText(DISTRICT);
+      expect(within(card101).queryByText(DISTRICT)).not.toBeInTheDocument();
     });
 
     it('a failed gaps check shows no notice and the forms still load', async () => {
@@ -927,7 +1012,7 @@ describe('FormDashboard', () => {
       server.use(
         http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
           HttpResponse.json({
-            gaps: [{ message: INCOME_NOT_SPLIT, step: 'income_info', kind: 'gate' }],
+            gaps: [{ message: INCOME_NOT_SPLIT, step: 'income_info', kind: 'gate', forms: [] }],
           })
         ),
         http.post('http://localhost:8000/api/forms/generate_all/', () =>
@@ -950,7 +1035,12 @@ describe('FormDashboard', () => {
         http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
           HttpResponse.json({
             gaps: [
-              { message: 'Go through the Expenses step.', step: 'expense_info', kind: 'gate' },
+              {
+                message: 'Go through the Expenses step.',
+                step: 'expense_info',
+                kind: 'gate',
+                forms: [],
+              },
             ],
           })
         ),
@@ -977,7 +1067,7 @@ describe('FormDashboard', () => {
       server.use(
         http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
           HttpResponse.json({
-            gaps: [{ message: INCOME_NOT_SPLIT, step: 'income_info', kind: 'gate' }],
+            gaps: [{ message: INCOME_NOT_SPLIT, step: 'income_info', kind: 'gate', forms: [] }],
           })
         ),
         // The gaps answer first, so the notice would be on the page if anything showed it

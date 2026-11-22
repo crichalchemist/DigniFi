@@ -18,11 +18,17 @@ function renderNotice(gaps: CompletionGap[]) {
   );
 }
 
-const gate = (step: string, message: string): CompletionGap => ({ message, step, kind: 'gate' });
+const gate = (step: string, message: string): CompletionGap => ({
+  message,
+  step,
+  kind: 'gate',
+  forms: [],
+});
 const detail = (step: string, message: string): CompletionGap => ({
   message,
   step,
   kind: 'detail',
+  forms: [],
 });
 
 describe('GapsNotice', () => {
