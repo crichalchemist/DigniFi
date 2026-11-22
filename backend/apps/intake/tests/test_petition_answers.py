@@ -354,3 +354,19 @@ def test_other_ssn_saved_only_when_it_is_nine_digits(filer, other, saved):
     assert _patch(client, session, {"other_ssn": other}).status_code == 200
     read = client.get(_url(session)).json()["petition_answers"]
     assert read["other_ssn_saved"] is saved
+
+
+@pytest.mark.parametrize("key,number", [("itin", "900701234"), ("other_ssn", "666701234")])
+def test_delete_removes_a_saved_number_and_it_reads_as_not_saved(filer, key, number):
+    # F10: step 1's Delete sends the key as null in its own PATCH; the server removes it, so a
+    # number typed by mistake (perhaps another person's) can be taken back
+    client, session = filer
+    saved_flag = key + "_saved"
+    assert _patch(client, session, {key + "_answer": "no", key: number}).status_code == 200
+    assert client.get(_url(session)).json()["petition_answers"][saved_flag] is True
+
+    response = _patch(client, session, {key: None})
+
+    assert response.status_code == 200
+    assert key not in _stored(session)
+    assert client.get(_url(session)).json()["petition_answers"][saved_flag] is False
