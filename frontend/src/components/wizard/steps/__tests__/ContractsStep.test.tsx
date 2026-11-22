@@ -80,6 +80,7 @@ interface HarnessProps {
   /** Form 101 line 11's answers; answered No unless a test says otherwise, so G's own gaps show */
   rent?: PetitionAnswers;
   onRentChange?: (next: PetitionAnswers) => void;
+  division?: 'Eastern' | 'Western' | null;
 }
 
 /** The wizard's part: it holds the rows and the answer the step shows */
@@ -93,6 +94,7 @@ function StepWithRows({
   onGoToStep = vi.fn(),
   rent: initialRent = { rents_residence: 'no' },
   onRentChange = () => {},
+  division = null,
 }: HarnessProps) {
   const [rows, setRows] = useState<ContractRow[]>(initial);
   const [answer, setAnswer] = useState<YesNo | null>(initialAnswer);
@@ -111,7 +113,7 @@ function StepWithRows({
         setRent(next);
         onRentChange(next);
       }}
-      division={null}
+      division={division}
       debts={heldDebts}
       assets={heldAssets}
       onValidationChange={onValidationChange}
@@ -125,6 +127,33 @@ const nameBox = () =>
   screen.getByRole('textbox', { name: new RegExp(`^${SCHEDULE_G_NAME_LABEL}`) });
 
 describe('ContractsStep', () => {
+  // The landlord block reads the step's own rows and the county's division (4b2): passing either
+  // empty would leave every other test green
+  it("offers the step's residential leases to copy a landlord from, and not a vehicle lease", () => {
+    render(
+      <StepWithRows
+        initial={[leaseRow, { ...leaseRow, _key: '5', id: 5, lease_kind: 'residential' }]}
+        rent={{ rents_residence: 'yes', eviction_judgment: 'yes' }}
+      />
+    );
+    const pick = field('landlord_pick') as unknown as HTMLSelectElement;
+    expect(pick).not.toBeNull();
+    // The placeholder and the one residential lease
+    expect(pick.options).toHaveLength(2);
+  });
+
+  it("names the county's clerk in the deposit sentence", () => {
+    render(
+      <StepWithRows
+        rent={{ rents_residence: 'yes', eviction_judgment: 'yes' }}
+        division="Eastern"
+      />
+    );
+    expect(
+      screen.getByText(`${copy.FORM_101A_DEPOSIT_WITH_CLERK} ${copy.CLERK_PHONE_EASTERN}.`)
+    ).toBeInTheDocument();
+  });
+
   it("keeps the other party's name within the length the server stores, so a long name never blocks Continue", async () => {
     const onRowsChange = vi.fn();
     render(<StepWithRows initial={[leaseRow]} onRowsChange={onRowsChange} />);

@@ -190,6 +190,14 @@ const NO_LANDLORD = {
   landlord_state: null,
   landlord_zip: null,
 };
+// The same five keys answered, which a rent or eviction No keeps and sends
+const STORED_LANDLORD = {
+  landlord_name: 'Demo Property Holdings LLC',
+  landlord_street: '100 Demo St',
+  landlord_city: 'Chicago',
+  landlord_state: 'IL',
+  landlord_zip: '60601',
+};
 
 // Every key step 1's body sends under `petition_answers`, the secrets aside
 const STEP_1_PETITION_KEYS = [
@@ -5350,7 +5358,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       [],
       [],
       { contracts_answer: 'yes' },
-      { rents_residence: 'yes', eviction_judgment: 'yes' }
+      { rents_residence: 'yes', eviction_judgment: 'yes', ...STORED_LANDLORD }
     );
     renderWizard();
     await expectStep('Contracts & Leases');
@@ -5378,11 +5386,12 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     }
 
     expect(contractSaves).toHaveLength(1);
-    // A stored eviction Yes under a rent No stays stored and is sent as it is (spec §6.7)
+    // A stored eviction Yes under a rent No stays stored and is sent as it is (spec §6.7), the
+    // landlord answers too: a null would remove them on the server (4b2-R6)
     expect(sessionPatches).toEqual([
       {
         claim_answers: { contracts_answer: 'yes' },
-        petition_answers: { rents_residence: 'no', eviction_judgment: 'yes', ...NO_LANDLORD },
+        petition_answers: { rents_residence: 'no', eviction_judgment: 'yes', ...STORED_LANDLORD },
       },
     ]);
     expect(document.querySelector('.eviction-notice')).toBeNull();
