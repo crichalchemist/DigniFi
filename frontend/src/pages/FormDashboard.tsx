@@ -478,7 +478,13 @@ export function FormDashboard() {
   const detailsOf = (formType: FormType): CompletionGap[] =>
     formsByType.get(formType)?.status === 'filed'
       ? []
-      : details.filter((gap) => gap.forms.includes(formType));
+      : details.filter(
+          (gap) =>
+            gap.forms.includes(formType) &&
+            // Generate All lists its refusals apart and clears the cards' own, so a detail Generate
+            // All already says for this form (Form 101A's landlord) is not printed a third time
+            !generationErrors.some((e) => e.form_type === formType && e.error === gap.message)
+        );
   const errorList = (errors: GenerateAllError[], links: FormRefusal['link'][]) => (
     <ul>
       {errors.map((e, index) => {

@@ -461,6 +461,38 @@ describe('FormDashboard', () => {
       expect(within(card).queryByRole('link')).not.toBeInTheDocument();
     });
 
+    // Generate All clears every card's own refusal and lists its refusals apart, so the card has
+    // none to match: it skips a detail equal to its own form's Generate All error (FR-W1)
+    it('after Generate All refuses Form 101A for the missing landlord, the sentence shows twice, not three times', async () => {
+      withForm101A([landlordGap]);
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({
+            generated: [],
+            errors: [
+              { form_type: 'form_101a', error: PETITION_DETAIL_LANDLORD, step: 'contracts' },
+            ],
+            total_generated: 0,
+            total_errors: 1,
+          })
+        )
+      );
+      renderFormDashboard();
+
+      const card = await screen.findByRole('article', { name: CARD_101A });
+      // Before Generate All: once on the card and once in the notice
+      expect(screen.getAllByText(PETITION_DETAIL_LANDLORD)).toHaveLength(2);
+      await userEvent.click(await screen.findByRole('button', { name: /generate all/i }));
+      await userEvent.click(screen.getByRole('checkbox'));
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent(PETITION_DETAIL_LANDLORD);
+      // The alert and the notice say it; the card says nothing more
+      expect(within(card).queryByText(PETITION_DETAIL_LANDLORD)).not.toBeInTheDocument();
+      expect(screen.getAllByText(PETITION_DETAIL_LANDLORD, { exact: false })).toHaveLength(2);
+    });
+
     it('a pending Form 101A card’s Answer Questions goes to Contracts & Leases', async () => {
       withForm101A();
       localStorage.setItem('current_session_id', '1');
