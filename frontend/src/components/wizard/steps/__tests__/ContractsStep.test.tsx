@@ -422,8 +422,8 @@ describe("Form 101 line 11's rent and eviction, after the contracts (4b)", () =>
   });
 
   it('the landlord block never holds Continue', async () => {
-    // Form 101A's landlord is a detail, never a gate (§5.7): an empty block, and a block holding a
-    // too-long name, leave Continue as the rent answers leave it
+    // Form 101A's landlord is a detail, never a gate (§5.7): an empty block, and a block after a
+    // name is typed into it, leave Continue as the rent answers leave it
     const user = userEvent.setup();
     const valid = vi.fn();
     render(

@@ -200,7 +200,7 @@ export function RentQuestion({
             required={rent === 'yes'}
           >
             {pair && <NoticeHead />}
-            {(pair || shown) && (
+            {(pair || (shown && (eviction === 'yes' || hasLandlord))) && (
               // DRAFT: counsel C-46
               <div className="landlord-block">
                 {leases.length > 0 && (

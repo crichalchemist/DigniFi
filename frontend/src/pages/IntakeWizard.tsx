@@ -179,7 +179,7 @@ function step1PetitionBody(
 
 /**
  * A later step's `petition_answers`: its own keys only (HAZARD_KEYS on Assets, RENT_KEYS on
- * Contracts & Leases), null when unanswered, built the same way from loaded and edited answers, so
+ * Contracts & Leases, which sends RENT_KEYS and LANDLORD_KEYS), null when unanswered, built the same way from loaded and edited answers, so
  * showing the step again sends nothing. A hazard text kept under a No still goes (PF2-T9-8).
  */
 function stepPetitionBody(
@@ -688,7 +688,8 @@ export function IntakeWizard() {
         // Only a new row with nothing on it stays in the browser. A stored row always goes, since
         // the list save deletes a stored row it leaves out, so one whose name was cleared goes
         // nameless under its id (R17).
-        // Form 101 line 11's keys alone go beside G's answer, in the same PATCH (PF2-T9-5)
+        // Form 101 line 11's keys (RENT_KEYS) and Form 101A's landlord keys (LANDLORD_KEYS) alone go
+        // beside G's answer, in the same PATCH (PF2-T9-5)
         return {
           contracts: keptRows(contractsData, isBlankContract),
           claim_answers: { contracts_answer: claimAnswers.contracts_answer ?? null },

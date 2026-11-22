@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
 import { RentQuestion } from '../RentQuestion';
@@ -8,12 +8,15 @@ import {
   COURT_FORM_101A_URL,
   COURT_FORM_101B_URL,
   FORM_101A_LINK,
+  CLERK_PHONE_EASTERN,
   CLERK_PHONE_WESTERN,
   DELETE_HIDDEN,
   FORM_101A_BOXES_BLANK,
   FORM_101A_DEPOSIT,
   FORM_101A_DEPOSIT_WITH_CLERK,
+  LANDLORD_PICK_HINT,
   LANDLORD_PICK_LABEL,
+  LANDLORD_PICK_PLACEHOLDER,
   FORM_101_LINE_11_LEAD,
   FORM_101A_SAYS,
   FORM_101B_LINK,
@@ -339,6 +342,11 @@ describe('RentQuestion', () => {
       screen.getByText(`${FORM_101A_DEPOSIT_WITH_CLERK} ${CLERK_PHONE_WESTERN}.`)
     ).toBeInTheDocument();
     unmount();
+    const east = render(<Harness initial={PAIR} division="Eastern" />);
+    expect(
+      screen.getByText(`${FORM_101A_DEPOSIT_WITH_CLERK} ${CLERK_PHONE_EASTERN}.`)
+    ).toBeInTheDocument();
+    east.unmount();
     render(<Harness initial={PAIR} division={null} />);
     const sentence = screen.getByText(FORM_101A_DEPOSIT);
     expect(sentence.textContent).not.toMatch(/\d/);
@@ -374,11 +382,66 @@ describe('RentQuestion', () => {
     expect(field('landlord_zip')).toHaveValue('60610');
     // The pick goes back to its placeholder, so the same lease can be picked again
     expect(field('landlord_pick')).toHaveValue('');
+    // Only the pick's own select (the state select keeps its default words)
+    const pick = within(field('landlord_pick'));
+    expect(pick.getByRole('option', { name: LANDLORD_PICK_PLACEHOLDER })).toHaveValue('');
+    expect(pick.queryByText('Please select...')).toBeNull();
+    expect(screen.getByText(LANDLORD_PICK_HINT)).toBeInTheDocument();
 
     await user.clear(field('landlord_name'));
     await user.type(field('landlord_name'), 'Demo Property Holdings LLC');
     expect(field('landlord_name')).toHaveValue('Demo Property Holdings LLC');
     expect(field('landlord_city')).toHaveValue('Chicago');
+  });
+
+  it('a pick overwrites every landlord box, a blank on the lease blanking the box (4b2-R7)', async () => {
+    const user = userEvent.setup();
+    const changes: PetitionAnswers[] = [];
+    render(
+      <Harness
+        initial={PAIR}
+        leaseRows={[{ ...LEASE, city: '', zip_code: '' }]}
+        onChange={(next) => changes.push(next)}
+      />
+    );
+    await user.type(field('landlord_city'), 'Springfield');
+    expect(field('landlord_city')).toHaveValue('Springfield');
+    await user.selectOptions(field('landlord_pick'), 'new-1');
+    expect(field('landlord_city')).toHaveValue('');
+    expect(field('landlord_zip')).toHaveValue('');
+    expect(changes.at(-1)).toEqual({
+      ...PAIR,
+      landlord_name: 'Gold Coast Example Residential LLC',
+      landlord_street: '850 N State St, c/o Management Office',
+      landlord_city: null,
+      landlord_state: 'IL',
+      landlord_zip: null,
+    });
+  });
+
+  it('Show under a rent No and an eviction No opens no empty landlord block (T6-show)', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <Harness initial={{ rents_residence: 'no', eviction_judgment: 'no' }} />
+    );
+    await user.click(screen.getByRole('button', { name: SHOW_HIDDEN }));
+    expect(radio('eviction_judgment', 'no')).toBeChecked();
+    expect(document.querySelector('input[name="landlord_name"]')).toBeNull();
+    expect(screen.queryByText(FORM_101A_LANDLORD_NAME)).not.toBeInTheDocument();
+    unmount();
+
+    // A landlord answer kept under the two Nos is there to read once Show is pressed (4b2-R6)
+    render(
+      <Harness
+        initial={{
+          rents_residence: 'no',
+          eviction_judgment: 'no',
+          landlord_name: 'Demo Property Holdings LLC',
+        }}
+      />
+    );
+    await user.click(screen.getByRole('button', { name: SHOW_HIDDEN }));
+    expect(field('landlord_name')).toHaveValue('Demo Property Holdings LLC');
   });
 
   const STORED_LANDLORD: PetitionAnswers = {
@@ -410,6 +473,8 @@ describe('RentQuestion', () => {
     await user.click(screen.getByRole('button', { name: SHOW_HIDDEN }));
     expect(field('landlord_name')).toHaveValue('Demo Property Holdings LLC');
     expect(notice()).toBeNull();
+    // Shown, the answers are no longer hidden: the line goes
+    expect(screen.queryByText(HIDDEN_ANSWERS)).not.toBeInTheDocument();
     unmount();
 
     render(<Harness initial={stored} onChange={(next) => changes.push(next)} />);
