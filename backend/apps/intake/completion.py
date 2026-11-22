@@ -34,8 +34,9 @@ class Gap(Exception):
 
     `step` is the WIZARD_STEPS key that fixes it. `kind` is "gate" (Complete refuses while it
     is open) or "detail" (Complete lets it through). str(gap) is the sentence. `forms` lists the
-    form types a detail concerns: a missing answer prints its box blank there, and an answer too
-    long for its box is refused at Generate until it is shortened. A gate leaves it empty.
+    form types a detail concerns: a missing answer prints its box blank there. A text over its
+    character cap, or one its box can't take, is listed too long; Generate refuses that form only
+    while the box can't take it. A gate leaves it empty.
     """
 
     GATE = "gate"
@@ -111,11 +112,8 @@ def completion_gaps(session) -> list[Gap]:
     # out of wizard order on purpose (3c4), the legacy gaps and the line 4 question.
     head, tail = claim_gap_parts(session)
     claims = [Gap(str(gap), gap.step, GATE) for gap in head]
-    contracts = [i for i, g in enumerate(claims) if g.step == "contracts"]
-    at = next(
-        (i for i, g in enumerate(claims) if g.step == "codebtors"),
-        contracts[-1] + 1 if contracts else len(claims),
-    )
+    # Before Codebtors' first gap; with none, at the end, since the head ends with Codebtors'
+    at = next((i for i, g in enumerate(claims) if g.step == "codebtors"), len(claims))
     claims[at:at] = [g for g in petition if g.step == "contracts"]
     gaps.extend(claims)
     gaps.extend(Gap(str(gap), gap.step, GATE) for gap in tail)

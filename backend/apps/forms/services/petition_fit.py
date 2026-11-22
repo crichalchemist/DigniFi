@@ -3,8 +3,11 @@
 
 Each box is measured by `PDFFormFiller.check()` itself, on what its binding prints (the
 derivation's own output: a street's Number and Street, the venue reason's wrapped lines), so
-Review's too-long line and Generate's refusal can never disagree. A row past a list's slots is
-measured on the attached sheet as `sheets.plan_sheet` measures it, through check() too.
+every answer Generate refuses as too long is listed on Review. Review lists more than that:
+`petition.py` also lists a text over its character cap (`PetitionAnswers.TEXT_LIMITS`, which the
+wizard's boxes enforce), and a cap counts digit-wide letters, so a text of narrow letters over
+it can still fit its box. Generate refuses only what check() refuses. A row past a list's slots
+is measured on the attached sheet as `sheets.plan_sheet` measures it, through check() too.
 """
 
 from collections.abc import Collection

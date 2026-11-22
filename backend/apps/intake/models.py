@@ -918,8 +918,10 @@ class PetitionAnswers(models.Model):
     )
     # Never read back: the serializer drops them and says only whether one is stored.
     SECRET_KEYS: ClassVar[tuple[str, ...]] = ("itin", "other_ssn")
-    # The keys a {no, yes} radio prints: a stored stranger makes `_emit` raise UnmappedChoice
-    # (a 422), so the save refuses it. prior_bankruptcy_answer also feeds 103B's check_20.
+    # The keys a {no, yes} radio prints: a stored stranger would make `_emit` raise
+    # UnmappedChoice (a 422). Each is in YES_NO_KEYS, so the save's own guard
+    # (`_petition_value_ok`) refuses any other value. prior_bankruptcy_answer also feeds 103B's
+    # check_20.
     RADIO_KEYS: ClassVar[tuple[str, ...]] = (
         "prior_bankruptcy_answer",
         "pending_case_answer",

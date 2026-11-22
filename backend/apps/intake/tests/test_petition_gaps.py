@@ -188,16 +188,20 @@ def test_every_detail_names_the_forms_that_print_it_blank(filer, monkeypatch):
     for sentence in (DETAIL_VENUE_REASON, DETAIL_OTHER_NAMES, DETAIL_ITIN, DETAIL_OTHER_SSN):
         assert sentence in texts
     assert DETAIL_EIN in texts and DETAIL_MAILING in texts and DETAIL_HAZARD in texts
-    for gap in gaps:
-        if gap.kind == "detail":
-            assert gap.forms
-        else:
-            assert gap.forms == ()
     by_text = {str(g): g for g in gaps}
+    # Only Form 101 prints these; the ITIN, the other number and the earlier cases are pinned below.
+    elsewhere = (DETAIL_ITIN, DETAIL_OTHER_SSN, DETAIL_PRIOR_CASE, DETAIL_PRIOR_DATE)
+    for gap in gaps:
+        if gap.kind == "gate":
+            assert gap.forms == ()
+        elif str(gap) not in elsewhere:
+            assert gap.forms == ("form_101",), str(gap)
     assert by_text[DETAIL_ITIN].forms == ("form_101", "form_121")
     # Form 101 has no box for the other number, so only Form 121 prints it blank.
     assert by_text[DETAIL_OTHER_SSN].forms == ("form_121",)
-    assert by_text[DETAIL_EIN].forms == ("form_101",)
+    # 103B line 20 prints the earlier cases too (Task 10)
+    assert by_text[DETAIL_PRIOR_CASE].forms == ("form_101", "form_103b")
+    assert by_text[DETAIL_PRIOR_DATE].forms == ("form_101", "form_103b")
     assert [str(g) for g in gaps if g.kind == "gate"] == [GATE_EVICTION]
 
 
@@ -319,12 +323,12 @@ def test_a_too_long_text_under_a_no_is_not_listed(filer, monkeypatch):
     "itin,sentence",
     [
         # Nine digits not starting with 9 get the reason they aren't an ITIN (owner ruling Q7).
-        ("812345678", DETAIL_ITIN_NINE),
-        ("812-34-5678", DETAIL_ITIN_NINE),
+        ("666701234", DETAIL_ITIN_NINE),
+        ("666-70-1234", DETAIL_ITIN_NINE),
         ("912345678", None),
         ("9-12-34-5678", None),
         ("91234567", DETAIL_ITIN),
-        ("8123456789", DETAIL_ITIN),
+        ("6667012345", DETAIL_ITIN),
         ("", DETAIL_ITIN),
     ],
 )

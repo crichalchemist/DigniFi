@@ -1,8 +1,17 @@
 """What Form 101's questions still lack from the filer (forms step 4b spec §7.1).
 
-Pure reading: the gaps come from the session's `PetitionAnswers` record, never from a form's
-preconditions. The sentences are DigniFi's own; 4b-ii adds the browser's copy
-(`petitionGaps.ts`) and the test that pins it (`test_petition_frontend_copy.py`).
+The gaps come from the session's `PetitionAnswers` record and from measuring it, never from a
+form's preconditions, `packet()` or the means test, and nothing here writes. The measure is not a
+pure read: `petition_fit.too_long` loads Form 101's and Form 103B's schemas, runs
+`PDFFormFiller().check()` on what their boxes print, and reads the filing fee's
+`payment_choice` (through Form 103B's `applies`) to know whether 103B is in the packet. So a
+filing-fee save, or a schema change, can add or remove a too-long detail.
+
+A text is listed too long when it is over its character cap (`PetitionAnswers.TEXT_LIMITS`,
+which the wizard's boxes enforce) or when its box can't take it; Generate refuses only the
+second. The sentences are DigniFi's own; the browser's copy is
+`frontend/src/components/wizard/steps/petition/petitionGaps.ts`, and
+`test_petition_frontend_copy.py` pins its sentences to these.
 """
 
 from apps.forms.services import petition_fit
@@ -200,7 +209,8 @@ def text_shows(answers: dict, key: str) -> bool:
 def _too_long(answers: dict, step: str, keys: list[str], too_wide: dict) -> list[Gap]:
     """A detail for each of `keys` whose text is over its box's cap, or under it and still too
     wide for a box it prints in (`too_wide`, measured as check() measures it), naming the box
-    once."""
+    once. A text over its cap is listed even when its box takes it (a cap counts digit-wide
+    letters); Generate refuses only a text the box can't take."""
     gaps = []
     for key in keys:
         if not text_shows(answers, key):

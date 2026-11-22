@@ -196,8 +196,11 @@ def test_the_digit_rules_reach_the_boxes_in_that_order():
     for field in load_schema("form_101").fields:
         if field.rule and re.search(r"_digit_\d$|^ein_(prefix|suffix)$", field.rule):
             (row,) = [r for r in by_name[field.pdf_field] if r["page"] == field.page]
-            placed[field.rule] = row
+            placed.setdefault(field.rule, []).append(row)
     assert len(placed) == 10
+    # Each rule fills one box: a second binding of a rule would print its digit twice
+    assert all(len(rows) == 1 for rows in placed.values()), placed
+    placed = {rule: rows[0] for rule, rows in placed.items()}
     for kind in ("ssn", "itin"):
         for n in (1, 2, 3, 4):
             row = placed[f"{kind}_last4_digit_{n}"]
@@ -208,6 +211,9 @@ def test_the_digit_rules_reach_the_boxes_in_that_order():
     assert placed["ein_prefix"]["label"].endswith("EIN 1, first 2 digits")
     assert placed["ein_suffix"]["label"].endswith("EIN 1, last 7 digits")
     assert placed["ein_prefix"]["rect"][0] < placed["ein_suffix"]["rect"][0]
+    # The pair is one number on one row of the page
+    assert placed["ein_prefix"]["page"] == placed["ein_suffix"]["page"]
+    assert placed["ein_prefix"]["rect"][1] == placed["ein_suffix"]["rect"][1]
 
 
 SIGNATURE_BOXES = [
@@ -217,11 +223,16 @@ SIGNATURE_BOXES = [
 ]
 
 
-def _ink(page, rect):
-    """Count of dark pixels inside `rect` (top-left points), inset 1 pt to skip the border."""
+def _ink(page, rect, annots=True):
+    """
+    Count of pixels inside `rect` (top-left points) that aren't white, inset 1 pt to skip the
+    border: light grey counts too, so a faint mark can't hide under a dark-only threshold.
+    """
     clip = pymupdf.Rect(*rect) + (1, 1, -1, -1)
-    pixmap = page.get_pixmap(clip=clip, dpi=144, colorspace=pymupdf.csGRAY, alpha=False)
-    return sum(1 for value in pixmap.samples if value < 128)
+    pixmap = page.get_pixmap(
+        clip=clip, dpi=144, colorspace=pymupdf.csGRAY, alpha=False, annots=annots
+    )
+    return sum(1 for value in pixmap.samples if value < 250)
 
 
 def _signature_rects():
@@ -240,10 +251,12 @@ def _page_7_filled():
 def test_the_bake_leaves_each_signature_box_as_empty_as_the_court_prints_it():
     # PF2-12 (b): the filer signs in ink on a sworn petition. Judged by pixels, not by what
     # a binding would write: whatever the bake does to a /Sig widget must add no ink.
+    # The blank is drawn without its widgets, as the court prints the page: the baked page has
+    # no widget left, so its boxes must hold no more than the court's own print.
     blank = pymupdf.open(PDF_DIR / TEMPLATE)[6]
     filled = _page_7_filled()
     for name, rect in _signature_rects().items():
-        assert _ink(filled, rect) <= _ink(blank, rect), name
+        assert _ink(filled, rect) <= _ink(blank, rect, annots=False), name
 
 
 def test_the_ink_measure_sees_a_mark_in_a_signature_box():
@@ -253,4 +266,4 @@ def test_the_ink_measure_sees_a_mark_in_a_signature_box():
     for name, rect in _signature_rects().items():
         before = _ink(filled, rect)
         filled.insert_text((rect[0] + 10, rect[3] - 6), "X Jane Doe", fontsize=14)
-        assert _ink(filled, rect) > max(before, _ink(blank, rect)), name
+        assert _ink(filled, rect) > max(before, _ink(blank, rect, annots=False)), name

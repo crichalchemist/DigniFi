@@ -403,7 +403,7 @@ def test_a_reason_typed_with_combining_marks_wraps_as_it_prints():
 
 def test_an_itin_not_starting_with_9_prints_blank_but_the_other_number_still_prints():
     # PF2-U2: an ITIN is nine digits starting with 9; the other Social Security number is not.
-    s = session({"itin": "812345678", "other_ssn": "812345678"})
+    s = session({"itin": "666701234", "other_ssn": "666701234"})
     names = [f"itin_last4_digit_{n}" for n in (1, 2, 3, 4)] + ["itin_whole"]
     assert [rule(name, s) for name in names] == [""] * len(names)
-    assert rule("other_ssn_whole", s) == "812-34-5678"
+    assert rule("other_ssn_whole", s) == "666-70-1234"

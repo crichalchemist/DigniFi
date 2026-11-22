@@ -280,7 +280,8 @@ def test_a_filed_form_with_no_stored_values_refuses_like_an_unfiled_one(filer):
 
 
 def _completed_before_3e2(session):
-    """By hand: 3e1's answers, none of 3e2's (no list, no "now different", no assistance)."""
+    """By hand: 3e1's answers, none of 3e2's (no list, no "now different", no assistance), and
+    Form 101's answers, so the first gap is the Income step's."""
     session.status = "completed"
     session.save()
     _debtor(session, ssn="900-12-3456")

@@ -580,11 +580,20 @@ RADIOS = [
 ]
 
 
-def test_the_radios_this_file_pins_are_the_keys_the_save_guards():
+def test_the_radios_this_file_pins_are_form_101s_own_radios_and_the_radio_keys():
     # PF2-12 (a): a radio bound without a RADIOS row is unpinned, and one in RADIO_KEYS
-    # with no radio guards nothing.
+    # with no radio guards nothing. Judged on Form 101's own schema too, not only through
+    # RADIO_KEYS, which covers every form's radios.
     from apps.intake.models import PetitionAnswers
 
+    bound = {
+        field.binding.removeprefix("petition.")
+        for field in load_schema("form_101").fields
+        if (field.binding or "").startswith("petition.")
+        and field.type == "radio"
+        and set(field.choices or {}) != {"true"}
+    }
+    assert {key for key, *_ in RADIOS} == bound
     assert {key for key, *_ in RADIOS} == set(PetitionAnswers.RADIO_KEYS)
 
 

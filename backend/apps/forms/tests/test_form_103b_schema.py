@@ -176,3 +176,14 @@ class TestForm103BSchema:
             None,
             "19-1",
         )
+
+
+def test_form_103b_line_20s_sheet_keeps_form_101_line_9s_columns():
+    # One answer prints on both sheets, and Review names a too-long cell by Form 101's own labels
+    # (CELL_LABELS) for either form: a column added, moved, renamed or narrowed on one sheet alone
+    # would print the rows differently or name a cell the other form doesn't have.
+    def columns(form_type, group):
+        sheet = load_schema(form_type).groups[group].sheet
+        return sheet.line_width, [(c.label, c.binding, c.width) for c in sheet.columns]
+
+    assert columns("form_103b", "prior_cases_103b") == columns("form_101", "prior_cases")

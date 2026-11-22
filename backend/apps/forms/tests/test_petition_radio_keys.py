@@ -4,9 +4,10 @@ A radio or choice box bound to a petition answer prints only answers the filer c
 
 Business intent: `_emit` raises UnmappedChoice (a 422) for a stored answer the box's
 `choices` don't name, so a filer whose answer the box can't print is stuck at Generate.
-`PetitionAnswers.RADIO_KEYS` is the save's guard against that, and it defends only the
-keys that are in it. This walks every schema, so a new radio can't be bound without its
-key being a {no, yes} (or listed-choice) answer in RADIO_KEYS.
+The save's guard against that is `_petition_value_ok`, which takes only "no" or "yes" for a
+key in `PetitionAnswers.YES_NO_KEYS` and only a listed choice for one in `CHOICE_KEYS`.
+`RADIO_KEYS` lists the keys a radio prints. This walks every schema, so a new radio can't be
+bound without its key being one of those answers and listed in RADIO_KEYS.
 """
 
 from apps.forms.registry import FORM_REGISTRY

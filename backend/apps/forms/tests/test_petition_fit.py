@@ -1,12 +1,14 @@
 """
-Review names a Form 101 answer too wide for its box exactly when Generate would refuse it
+The measure names a Form 101 answer too wide for its box exactly when Generate would refuse it
 (forms step 4b-ii, Rulings PF2-1, PF2-10 a and d, PF2-4).
 
 Business intent: Form 101's caps count characters at digit width (Ruling T4-caps), so an answer
 under its cap typed in capitals or wide letters can still be too wide for its box. If Review said
 "Nothing is missing." and Generate All then refused it, the fix would reopen the filer's intake.
-So the too-long line on Review must be listed exactly when check() refuses the box, no sooner (a
-false line about an answer that prints) and no later (a refusal Review never warned of).
+So the measure (`petition_fit.too_long`) must name a box exactly when check() refuses it, no
+sooner (a false line about an answer that prints) and no later (a refusal Review never warned
+of). Review also lists a text over its character cap, which the wizard's boxes enforce, even when
+its box takes it (`petition.py`); that arm is not this measure, and Generate never refuses it.
 """
 
 from datetime import date
