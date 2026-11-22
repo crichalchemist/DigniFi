@@ -102,7 +102,8 @@ describe('GapsNotice', () => {
     const tooLong = PETITION_DETAIL_TOO_LONG.replace('{label}', 'your other name');
     const tooLongRow = PETITION_DETAIL_TOO_LONG_ROW.replace('{label}', 'the court')
       .replace('{noun}', 'case')
-      .replace('{n}', '2');
+      .replace('{n}', '2')
+      .replace('{forms}', 'Form 101');
     renderNotice([detail('debtor_info', tooLong), detail('debtor_info', tooLongRow)]);
 
     const notice = screen.getByRole('status');
@@ -110,6 +111,19 @@ describe('GapsNotice', () => {
     expect(within(notice).getByText(tooLongRow)).toBeInTheDocument();
     expect(notice).not.toHaveTextContent(/blank/i);
   });
+
+  // Owner ruling Q10: a row cell's sentence names the forms whose box refuses it, in three ways
+  it.each(['Form 101', 'Form 103B', 'Forms 101 and 103B'])(
+    'a too-long row naming %s is never counted as blank',
+    (forms) => {
+      const tooLongRow = `Your answer for line 9's case number, in case 1, is too long to fit on ${forms}.`;
+      renderNotice([detail('debtor_info', tooLongRow)]);
+
+      const notice = screen.getByRole('status');
+      expect(within(notice).getByText(tooLongRow)).toBeInTheDocument();
+      expect(notice).not.toHaveTextContent(/blank/i);
+    }
+  );
 
   it('counts only the blank details when a too-long one stands beside them', () => {
     const tooLong = PETITION_DETAIL_TOO_LONG.replace('{label}', 'your other name');

@@ -45,7 +45,10 @@ const TOO_LONG_SENTENCES = [
   patternOf(PETITION_DETAIL_TOO_LONG_ROW),
 ];
 
-/** A too-long answer stops Form 101 rather than printing blank, so the blank count leaves it out */
+/**
+ * A too-long answer stops the form whose box refuses it (Form 101, Form 103B or both, which a
+ * row's {forms} names) rather than printing blank, so the blank count leaves it out
+ */
 function isTooLong(gap: CompletionGap): boolean {
   return TOO_LONG_SENTENCES.some((pattern) => pattern.test(gap.message));
 }

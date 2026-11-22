@@ -75,6 +75,22 @@ def test_every_petition_sentence_the_browser_shows_is_the_servers(kind):
     assert browser == server
 
 
+def test_only_the_two_too_long_templates_take_placeholders_and_each_only_its_own():
+    # The server fills these in and the browser compares the templates (F-16): {label} in both,
+    # {noun} and {n} for the row (owner ruling Q5), and {forms}, the forms whose box refuses the
+    # row's cell (owner ruling Q10).
+    found = {
+        name: set(re.findall(r"\{(\w+)\}", text))
+        for kind in ("GATE_", "DETAIL_")
+        for name, text in _server_sentences(kind).items()
+        if "{" in text
+    }
+    assert found == {
+        "DETAIL_TOO_LONG": {"label"},
+        "DETAIL_TOO_LONG_ROW": {"label", "noun", "n", "forms"},
+    }
+
+
 def test_the_mirror_has_every_sentence_the_server_has_today():
     # The counts as petition.py holds them at Task 8 (10 gates, 16 details with 7c's row
     # template and owner ruling Q7's DETAIL_ITIN_NINE), so a reader that silently matched

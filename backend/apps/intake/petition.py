@@ -56,8 +56,16 @@ DETAIL_HAZARD = "Say what the hazard is, or change your answer to No."
 # A one-off text's template: {label} is the box's index label in plain words (TEXT_LABELS).
 DETAIL_TOO_LONG = "Your answer for {label} is too long for its box on Form 101."
 # A row cell's (owner ruling Q5): {label} from CELL_LABELS, {noun} from ROW_NOUNS, {n} the row's
-# place in its list, counted from 1.
-DETAIL_TOO_LONG_ROW = "Your answer for {label}, in {noun} {n}, is too long to fit on Form 101."
+# place in its list, counted from 1, and {forms} the forms whose box refuses it, from FORMS_WORDS
+# (owner ruling Q10).
+DETAIL_TOO_LONG_ROW = "Your answer for {label}, in {noun} {n}, is too long to fit on {forms}."
+# The forms a row cell's detail names, in the owner's words (Q10, 2026-11-21), by the detail's
+# own form types in FORMS_OF_KEY's order.
+FORMS_WORDS = {
+    ("form_101",): "Form 101",
+    ("form_103b",): "Form 103B",
+    ("form_101", "form_103b"): "Forms 101 and 103B",
+}
 
 # The row lists step 1 asks, in the form's line order (2, 9, 10), each printed under its line's
 # Yes; their cells have no character cap and are measured where they print (PF2-10a).
@@ -218,11 +226,11 @@ def _cells_too_long(answers: dict, too_wide: dict) -> list[Gap]:
         for n in rows:
             for attr, label in CELL_LABELS[list_key].items():
                 if (list_key, attr, n) in too_wide:
-                    sentence = DETAIL_TOO_LONG_ROW.format(
-                        label=label, noun=ROW_NOUNS[list_key], n=n
-                    )
                     refusing = too_wide[(list_key, attr, n)]
                     forms = tuple(f for f in FORMS_OF_KEY[list_key] if f in refusing)
+                    sentence = DETAIL_TOO_LONG_ROW.format(
+                        label=label, noun=ROW_NOUNS[list_key], n=n, forms=FORMS_WORDS[forms]
+                    )
                     gaps.append(Gap(sentence, "debtor_info", Gap.DETAIL, forms=forms))
     return gaps
 

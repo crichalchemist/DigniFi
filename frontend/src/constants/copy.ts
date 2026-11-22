@@ -1669,11 +1669,12 @@ export const PETITION_DETAIL_PENDING_CASE =
   'Each pending case needs the name of the person who filed it.';
 export const PETITION_DETAIL_BUSINESS = "Add your business's name, or change your answer to No.";
 export const PETITION_DETAIL_HAZARD = 'Say what the hazard is, or change your answer to No.';
-// Templates the server fills in: {label} a box in plain words; {noun} and {n} a row (Q5)
+// Templates the server fills in: {label} a box in plain words; {noun} and {n} a row (Q5);
+// {forms} the forms whose box refuses it: Form 101, Form 103B or Forms 101 and 103B (Q10)
 export const PETITION_DETAIL_TOO_LONG =
   'Your answer for {label} is too long for its box on Form 101.';
 export const PETITION_DETAIL_TOO_LONG_ROW =
-  'Your answer for {label}, in {noun} {n}, is too long to fit on Form 101.';
+  'Your answer for {label}, in {noun} {n}, is too long to fit on {forms}.';
 
 // The questions step 1 asks in its own words, where the form prints no question (spec §6.1)
 // DRAFT: counsel C-44

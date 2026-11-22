@@ -155,10 +155,11 @@ describe("step 1's Form 101 sentences are information, never advice", () => {
   });
 
   it('uses only the placeholders the server and the step fill in', () => {
-    // {n} and {count} anywhere, {label} in the two too-long templates, {noun} in the row one (Q5)
+    // {n} and {count} anywhere, {label} in the two too-long templates, {noun} and {forms} in the
+    // row one (Q5, Q10)
     const allowed: Record<string, string[]> = {
       PETITION_DETAIL_TOO_LONG: ['{label}'],
-      PETITION_DETAIL_TOO_LONG_ROW: ['{label}', '{noun}', '{n}'],
+      PETITION_DETAIL_TOO_LONG_ROW: ['{label}', '{noun}', '{n}', '{forms}'],
     };
     for (const name of PETITION_NAMES) {
       const found = String(strings[name]).match(/\{\w+\}/g) ?? [];

@@ -202,8 +202,10 @@ NOUNS = {"other_names": "name", "other_business_names": "name"}
 
 
 def _row_line(list_key, attr, n):
+    # No fee waiver here, so Form 103B is not in the packet and only Form 101 is named (Q10).
     noun = NOUNS.get(list_key, "case")
-    return DETAIL_TOO_LONG_ROW.format(label=CELL_LABELS[list_key][attr], noun=noun, n=n)
+    label = CELL_LABELS[list_key][attr]
+    return DETAIL_TOO_LONG_ROW.format(label=label, noun=noun, n=n, forms="Form 101")
 
 
 CELL_TEXTS = ["W" * 40, "W" * 25, "Central District of California", "12/31/2020"]

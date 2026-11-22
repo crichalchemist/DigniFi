@@ -102,7 +102,7 @@ class TestForm121Schema:
     # §13.4). Its number boxes are combs: the ITIN box follows a printed 9, so it takes the eight
     # digits after it (PF2-T10-1).
 
-    def test_an_itin_prints_whole_on_form_121_and_only_its_last_four_on_form_101(
+    def test_form_121_prints_an_itins_eight_digits_after_its_printed_9_and_form_101_its_last_four(
         self, session_with_ssn
     ):
         answer_petition(session_with_ssn, itin_answer="yes", itin="900-70-1234")
@@ -125,7 +125,7 @@ class TestForm121Schema:
         assert field_map.get("Check Box3") == "/On"
         assert "Debtor1a.ITINNum" not in field_map
 
-    @pytest.mark.parametrize("itin", ["90070123", "9007012345", "812-34-5678"])
+    @pytest.mark.parametrize("itin", ["90070123", "9007012345", "666-70-1234"])
     def test_a_non_nine_digit_itin_prints_blank_on_both_forms(self, session_with_ssn, itin):
         # Eight or ten digits, or nine not starting with 9 (PF2-U2), is no ITIN: both forms blank.
         answer_petition(session_with_ssn, itin_answer="yes", itin=itin)

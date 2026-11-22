@@ -340,8 +340,8 @@ def _too_long(label):
     return DETAIL_TOO_LONG.format(label=label)
 
 
-def _row_too_long(label, noun, n):
-    return DETAIL_TOO_LONG_ROW.format(label=label, noun=noun, n=n)
+def _row_too_long(label, noun, n, forms="Form 101"):
+    return DETAIL_TOO_LONG_ROW.format(label=label, noun=noun, n=n, forms=forms)
 
 
 def test_capitals_under_a_cap_that_dont_fit_the_box_are_named_too_long(filer):
@@ -444,33 +444,76 @@ _FITS_101_NOT_103B = "W" * 17
 _FITS_NEITHER = "W" * 18
 
 
-def _prior_case_number(session, case_number, payment_choice):
+def _prior_case_number(session, case_number, payment_choice, position=1):
+    case = {"district": "Demo", "filed_on": "01/15/2019", "case_number": case_number}
     answers = {
         **NO,
         "venue_choice": "lived_here",
         "prior_bankruptcy_answer": "yes",
-        "prior_cases": [{"district": "Demo", "filed_on": "01/15/2019", "case_number": case_number}],
+        "prior_cases": [{"district": "Demo", "filed_on": "01/15/2019"}] * (position - 1) + [case],
     }
     PetitionAnswers.objects.create(session=session, answers=json.dumps(answers))
     if payment_choice is not None:
         FilingFee.objects.create(session=session, payment_choice=payment_choice)
     session.refresh_from_db()
-    return [(g.step, g.kind, g.forms) for g in petition_step_gaps(session)]
+    return [(g.step, g.kind, g.forms, str(g)) for g in petition_step_gaps(session)]
 
 
 def test_a_waiver_filers_case_number_is_measured_in_form_103b_s_narrower_box(filer):
     # PF2-T10-6: line 20 prints for a waiver filer, so a case number Form 101 takes but 103B
-    # refuses at Generate is named on Review, on 103B's card alone.
+    # refuses at Generate is named on Review, on 103B's card alone, and the sentence names the
+    # form whose box refuses it (owner ruling Q10), never Form 101, which prints it.
     _, session = filer
     assert _prior_case_number(session, _FITS_101_NOT_103B, "waiver") == [
-        ("debtor_info", "detail", ("form_103b",))
+        (
+            "debtor_info",
+            "detail",
+            ("form_103b",),
+            "Your answer for line 9's case number, in case 1, is too long to fit on Form 103B.",
+        )
     ]
 
 
 def test_a_case_number_too_wide_for_both_forms_names_both(filer):
     _, session = filer
     assert _prior_case_number(session, _FITS_NEITHER, "waiver") == [
-        ("debtor_info", "detail", ("form_101", "form_103b"))
+        (
+            "debtor_info",
+            "detail",
+            ("form_101", "form_103b"),
+            "Your answer for line 9's case number, in case 1, is too long to fit on "
+            "Forms 101 and 103B.",
+        )
+    ]
+
+
+def test_a_case_number_too_wide_for_form_101_names_form_101_alone_without_a_waiver(filer):
+    # No waiver, no 103B in the packet: the sentence names Form 101 and nothing else.
+    _, session = filer
+    assert _prior_case_number(session, _FITS_NEITHER, "pay_in_full") == [
+        (
+            "debtor_info",
+            "detail",
+            ("form_101",),
+            "Your answer for line 9's case number, in case 1, is too long to fit on Form 101.",
+        )
+    ]
+
+
+def test_a_waiver_filers_fourth_case_is_measured_on_form_103b_s_sheet_too(filer):
+    # Rows past line 20's three print on 103B's attached sheet (20.4 on), as rows past line 9's
+    # print on Form 101's (9.4 on). The two sheets have the same columns, so a cell one refuses
+    # the other refuses too, and the detail names both; were 103B's sheet not measured, a filer
+    # told only of Form 101 would meet 103B's refusal at Generate.
+    _, session = filer
+    assert _prior_case_number(session, "W" * 40, "waiver", position=4) == [
+        (
+            "debtor_info",
+            "detail",
+            ("form_101", "form_103b"),
+            "Your answer for line 9's case number, in case 4, is too long to fit on "
+            "Forms 101 and 103B.",
+        )
     ]
 
 
