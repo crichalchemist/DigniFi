@@ -71,9 +71,13 @@ You ARE Sarah Chen. Navigate DigniFi as she would.
 | 103B line 7 ("Do these expenses cover anyone who is not included in your family as reported in line 1?")                                  | No                                                                                                                      |
 | 103B line 9 ("Do you expect your average monthly expenses to increase or decrease by more than 10% during the next 6 months?")            | No                                                                                                                      |
 
+**Form 101 questions (step 1, below the county):** Leave the name ending (suffix) and the EIN blank. Answer No to "All other names you have used in the last 8 years", "Do you have an ITIN?", "Have you used any other Social Security number?", "Is your mailing address different from where you live?", "Have you filed for bankruptcy within the last 8 years?" and the question about bankruptcy cases pending or being filed by a spouse, a business partner or an affiliate. For why you are filing in this district, choose "Over the last 180 days before filing this petition, I have lived in this district longer than in any other district." Answer No to "Are you a sole proprietor of any full- or part-time business?"
+
 **Assets:**
 
 - None. Answer No to every line the Assets step shows, including line 37 (business) and line 46 (farm).
+
+**Form 101 hazard question (Assets step, Part 7):** Answer No to "Do you own or have any property that poses or is alleged to pose a threat of imminent and identifiable hazard to public health or safety? Or do you own any property that needs immediate attention?"
 
 **Amounts Owed:**
 
@@ -81,6 +85,8 @@ You ARE Sarah Chen. Navigate DigniFi as she would.
 - Lakemont University Hospital medical — $3,400, paying $0 (in collections). Address: 70 Demo Plaza, Lakemont Health Patient Accounts, Chicago, IL 60612. Account ends 7007. Since 02/2026. Someone else is contacting you: Wicker Demo Recovery LLC, 80 Demo Ct, Oak Brook, IL 60523, account ends 8008. None of the status choices applies; not subject to offset.
 
 **Contracts and leases:** Yes. Damen Demo Flats LLC, 90 Demo St, Chicago, IL 60622. Kind: lease, residential. For: Residential lease, one bedroom at 1520 N Damen Ave Apt 2F, 07/01/2026–06/30/2027, $850 a month. You do not owe money on it now.
+
+**Form 101 rent question (Contracts & Leases step):** Answer Yes to "Do you rent your residence?" and No to "Has your landlord obtained an eviction judgment against you?"
 
 **Codebtors:** No. Not in a community property state in the last 8 years.
 

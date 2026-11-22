@@ -74,6 +74,8 @@ You ARE James Washington. Navigate DigniFi as he would.
 
 Your car payment ($350) comes from the Crestway Auto Credit loan on Amounts Owed. The Expenses step doesn't ask it.
 
+**Form 101 questions (step 1, below the county):** Leave the name ending (suffix) and the EIN blank. Answer No to "All other names you have used in the last 8 years", "Do you have an ITIN?", "Have you used any other Social Security number?", "Is your mailing address different from where you live?", "Have you filed for bankruptcy within the last 8 years?" and the question about bankruptcy cases pending or being filed by a spouse, a business partner or an affiliate. For why you are filing in this district, choose "Over the last 180 days before filing this petition, I have lived in this district longer than in any other district." Answer No to "Are you a sole proprietor of any full- or part-time business?"
+
 **Assets:**
 
 Each item goes on the Schedule A/B line shown. You are the only one with an interest in the car, so its entire value is the portion you own. Answer No to every other line the Assets step shows.
@@ -85,12 +87,16 @@ Each item goes on the Schedule A/B line shown. You are the only one with an inte
 - Line 16: cash (the form has no description box) — $40
 - Line 17, checking: Bank of America — $1,200
 
+**Form 101 hazard question (Assets step, Part 7):** Answer No to "Do you own or have any property that poses or is alleged to pose a threat of imminent and identifiable hazard to public health or safety? Or do you own any property that needs immediate attention?"
+
 **Amounts Owed:**
 
 - Meridale National Bank credit card — $9,800, paying $200/mo. Address: PO Box 90222, Sioux Falls, SD 57117. Account ends 4402. Since 06/2015–2026. No one else is contacting you. None of the status choices applies; not subject to offset.
 - Crestway Auto Credit auto loan — $8,500, paying $350/mo (secured by vehicle: your Toyota Camry on Part 1 of the Assets step, line 3). Address: PO Box 90122, Plano, TX 75025. Account ends 7702. Since 12/2023. Lien: an agreement you made. The lender can take back property: Yes. None of the status choices applies. No one else is contacting you.
 
 **Contracts and leases:** Yes. Gold Coast Example Residential LLC, 850 N State St, c/o Management Office, Chicago, IL 60610. Kind: lease, residential. For: Residential lease, Apt 1204, 06/01/2026–05/31/2027, $1,650 a month. You do not owe money on it now.
+
+**Form 101 rent question (Contracts & Leases step):** Answer Yes to "Do you rent your residence?" and No to "Has your landlord obtained an eviction judgment against you?"
 
 **Codebtors:** No. Not in a community property state in the last 8 years.
 

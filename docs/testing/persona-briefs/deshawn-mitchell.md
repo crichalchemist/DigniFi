@@ -78,6 +78,8 @@ You ARE DeShawn Mitchell. Navigate DigniFi as he would.
 
 Your mortgage ($1,200) comes from the Harrowgate loan on Amounts Owed, and line 4 adds it.
 
+**Form 101 questions (step 1, below the county):** Leave the name ending (suffix) and the EIN blank. Answer No to "All other names you have used in the last 8 years", "Do you have an ITIN?", "Have you used any other Social Security number?", "Is your mailing address different from where you live?", "Have you filed for bankruptcy within the last 8 years?" and the question about bankruptcy cases pending or being filed by a spouse, a business partner or an affiliate. For why you are filing in this district, choose "Over the last 180 days before filing this petition, I have lived in this district longer than in any other district." Answer No to "Are you a sole proprietor of any full- or part-time business?"
+
 **Assets:**
 
 Each item goes on the Schedule A/B line shown. You are the only one with an interest in the home and the truck, so each entire value is the portion you own. Answer No to every other line the Assets step shows.
@@ -93,6 +95,8 @@ Each item goes on the Schedule A/B line shown. You are the only one with an inte
 - Line 17, checking: PNC Bank — $640
 - Line 21, 401(k): Fidelity — $12,000
 
+**Form 101 hazard question (Assets step, Part 7):** Answer No to "Do you own or have any property that poses or is alleged to pose a threat of imminent and identifiable hazard to public health or safety? Or do you own any property that needs immediate attention?"
+
 **Amounts Owed:**
 
 - Harrowgate Home Loans — $160,000, paying $1,200/mo (secured by home: your house on line 1; you live there). Address: PO Box 4401, Chicago, IL 60680. Account ends 0441. Since 2019. Lien: an agreement you made. The lender can take back property: Yes. First mortgage. None of the status choices applies. No one else is contacting you.
@@ -101,6 +105,8 @@ Each item goes on the Schedule A/B line shown. You are the only one with an inte
 - Southmoor Health medical — $4,200, paying $0 (in collections). Address: PO Box 4404, Chicago, IL 60680. Account ends 0444. Since 2025. Someone else is contacting you: Demo Medical Collections, PO Box 4406, Chicago, IL 60680, account ends 7444. None of the status choices applies; not subject to offset.
 
 **Contracts and leases:** No. **Codebtors:** No. Not in a community property state in the last 8 years.
+
+**Form 101 rent question (Contracts & Leases step):** Answer No to "Do you rent your residence?" No eviction question follows.
 
 **Exemptions (Schedule C, on the page after the filing-fee page):** Line 1: You are claiming state and federal nonbankruptcy exemptions. You claim: 7823 S Sangamon St (line 1.1): 735 ILCS 5/12-901, $20,000; Ford F-150 2012 (line 3.1): 735 ILCS 5/12-1001(c), $3,600; Ford F-150 2012 (line 3.1): 735 ILCS 5/12-1001(b), $4,000; Everyday clothes and work boots (line 11): 735 ILCS 5/12-1001(a), 100% of fair market value, up to any applicable statutory limit; Fidelity (line 21): 735 ILCS 5/12-1006, 100% of fair market value, up to any applicable statutory limit. Line 3: No.
 

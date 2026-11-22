@@ -11,6 +11,7 @@ import type {
   PersonaAssistance,
   PersonaDebtor,
   PersonaIncome,
+  PersonaPetition,
   PersonaAddress,
   PersonaAsset,
   PersonaDebt,
@@ -115,6 +116,42 @@ export class WizardPage {
     // already holds it — assert instead of fill (fill() times out on readOnly).
     await expect(this.page.locator('input[name="email"]')).toHaveValue(data.email);
     await fill('phone', data.phone);
+  }
+
+  /** Types one petition address block; its boxes are named `<prefix>street`, `city`, `state`, `zip`. */
+  private async fillPartyAddress(prefix: 'business_', address: PersonaAddress) {
+    const box = (field: string) => this.page.locator(`[name="${prefix}${field}"]`);
+    await box('street').fill(address.street_address);
+    await box('city').fill(address.city);
+    const state = box('state');
+    const tag = await state.evaluate((el) => el.tagName.toLowerCase());
+    if (tag === 'select') await state.selectOption(address.state);
+    else await state.fill(address.state);
+    await box('zip').fill(address.zip_code);
+  }
+
+  /**
+   * Step 1's Form 101 questions, after the county block: every gate answered, why this district,
+   * and under a sole proprietorship's Yes the business. Each control's name is its PetitionAnswers key.
+   */
+  async fillPetitionQuestions(petition: PersonaPetition) {
+    const radio = (name: string, value: string) =>
+      this.page.locator(`input[name="${name}"][value="${value}"]`);
+    await radio('other_names_answer', petition.other_names_answer).check();
+    await radio('itin_answer', petition.itin_answer).check();
+    await radio('other_ssn_answer', petition.other_ssn_answer).check();
+    await radio('mailing_answer', petition.mailing_answer).check();
+    await radio('venue_choice', petition.venue_choice).check();
+    await radio('prior_bankruptcy_answer', petition.prior_bankruptcy_answer).check();
+    await radio('pending_case_answer', petition.pending_case_answer).check();
+    await radio('sole_proprietor_answer', petition.sole_proprietor_answer).check();
+    if (petition.sole_proprietor_answer === 'yes') {
+      const business = petition.business;
+      if (!business) throw new Error('A sole proprietor persona needs a business block');
+      await this.page.locator('input[name="business_name"]').fill(business.name);
+      await this.fillPartyAddress('business_', business.address);
+      await radio('business_kind', business.kind).check();
+    }
   }
 
   // ── Step 2: Income Info ─────────────────────────────────────────
@@ -361,6 +398,14 @@ export class WizardPage {
     }
   }
 
+  /** Form 101 line 14: answered only when its radio is on the page (Part 7 shows it). */
+  private async answerHazard(petition: PersonaPetition) {
+    const radio = this.page.locator(
+      `input[name="hazard_answer"][value="${petition.hazard_answer}"]`
+    );
+    if ((await radio.count()) > 0) await radio.check();
+  }
+
   private async assetPart(): Promise<number> {
     const text = await this.page.getByText(/^Part \d of 7$/).textContent();
     return Number(/Part (\d)/.exec(text ?? '')?.[1]);
@@ -370,7 +415,7 @@ export class WizardPage {
    * The whole Assets step: for each Part, the persona's rows on the lines it shows, a No on
    * every other line, then Continue. Continue moves a Part until Part 7, then leaves the step.
    */
-  async walkAssets(persona: Pick<PersonaData, 'assets' | 'asset_gates'>) {
+  async walkAssets(persona: Pick<PersonaData, 'assets' | 'asset_gates' | 'petition'>) {
     this.assetRows = new Map();
     const unfilled = new Set(persona.assets);
     for (;;) {
@@ -387,8 +432,14 @@ export class WizardPage {
         unfilled.delete(asset);
       }
       await this.answerLinesNo();
+      await this.answerHazard(persona.petition);
       if (part === 7) {
         expect(unfilled.size, 'every persona asset sits on a line the walk showed').toBe(0);
+        await expect(
+          this.page.locator(
+            `input[name="hazard_answer"][value="${persona.petition.hazard_answer}"]`
+          )
+        ).toBeChecked();
         await this.nextStep();
         return;
       }
@@ -552,7 +603,22 @@ export class WizardPage {
 
   // ── Step 7: Contracts & Leases ──────────────────────────────────
 
-  async walkContracts(persona: Pick<PersonaData, 'contracts' | 'claim_answers'>) {
+  /** Form 101 line 11: the rent answer, and under a Yes the eviction answer. */
+  private async answerRentQuestion(petition: PersonaPetition) {
+    await this.page
+      .locator(`input[name="rents_residence"][value="${petition.rents_residence}"]`)
+      .check();
+    if (petition.rents_residence === 'yes') {
+      if (!petition.eviction_judgment) {
+        throw new Error('A persona who rents needs an eviction_judgment answer');
+      }
+      await this.page
+        .locator(`input[name="eviction_judgment"][value="${petition.eviction_judgment}"]`)
+        .check();
+    }
+  }
+
+  async walkContracts(persona: Pick<PersonaData, 'contracts' | 'claim_answers' | 'petition'>) {
     const page = this.page;
     await page
       .locator(`input[name="contracts_answer"][value="${persona.claim_answers.contracts_answer}"]`)
@@ -577,6 +643,7 @@ export class WizardPage {
       }
       await page.locator(`input[name="owes_now_${i}"][value="${contract.owes_now}"]`).check();
     }
+    await this.answerRentQuestion(persona.petition);
     await this.nextStep();
   }
 

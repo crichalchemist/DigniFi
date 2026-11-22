@@ -52,6 +52,7 @@ test.describe('SOFA — Form 107 Financial History', () => {
 
     // Step 1: Debtor Info
     await wizard.fillDebtorInfo(debtorData);
+    await wizard.fillPetitionQuestions(JAMES.petition);
     await wizard.nextStep();
 
     // Uploads come between basic info and Income; this journey types everything in

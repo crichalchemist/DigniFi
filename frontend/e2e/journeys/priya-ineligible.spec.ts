@@ -38,6 +38,7 @@ test.describe('Priya Sharma — Above the Median', () => {
 
     // Step 1: Debtor Info
     await wizard.fillDebtorInfo(PRIYA.debtor);
+    await wizard.fillPetitionQuestions(PRIYA.petition);
     await wizard.nextStep();
 
     // Uploads come between basic info and Income; this journey types everything in

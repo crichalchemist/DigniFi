@@ -32,6 +32,7 @@ test.describe('James Washington — Borderline', () => {
 
     // Step 1: Debtor Info
     await wizard.fillDebtorInfo(JAMES.debtor);
+    await wizard.fillPetitionQuestions(JAMES.petition);
     await wizard.nextStep();
 
     // Uploads come between basic info and Income; this journey types everything in
