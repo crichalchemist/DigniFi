@@ -399,12 +399,23 @@ describe("Form 101 line 11's rent and eviction, after the contracts (4b)", () =>
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
 
-  it('says nothing about the rent until the filer has touched it', async () => {
+  it('names the rent question in the status region whenever it alone holds Continue', async () => {
+    // F8: Continue held with a silent region leaves a screen reader user, or a filer sent here
+    // from Review, with nothing saying why. Once Schedule G's own gap is gone, the rent gate is
+    // named before the filer has touched the block (as the Assets step names the hazard once Part
+    // 7's lines are done)
+    const valid = vi.fn();
+    const { unmount } = render(<StepWithRows answer="no" rent={{}} onValidationChange={valid} />);
+    expect(valid).toHaveBeenLastCalledWith(false);
+    expect(screen.getByRole('status')).toHaveTextContent(copy.PETITION_GATE_RENTS);
+    unmount();
+
+    // While G's own gap stands, that gap is the one named, until the filer touches the rent
     const user = userEvent.setup();
-    render(<StepWithRows answer="no" rent={{}} />);
-    expect(screen.getByRole('status')).toBeEmptyDOMElement();
-    // Focus leaving the block counts as touched (PF2-T8-10)
-    rentRadio('rents_residence', 'no').focus();
+    render(<StepWithRows answer={null} rent={{}} />);
+    expect(screen.getByRole('status')).toHaveTextContent(copy.CONTRACT_GAP_NO_ANSWER);
+    expect(screen.getByRole('status')).not.toHaveTextContent(copy.PETITION_GATE_RENTS);
+    // Answering G clears its gap, and the rent gate is named at once
     await user.click(document.querySelector('[name="contracts_answer"][value="no"]')!);
     expect(screen.getByRole('status')).toHaveTextContent(copy.PETITION_GATE_RENTS);
   });

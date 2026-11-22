@@ -10,6 +10,7 @@ import {
   SSN_SAVED,
 } from '../../../../constants/copy';
 import type { DebtorInfo, PetitionAnswers } from '../../../../types/api';
+import { firstPetitionGap } from '../petition/petitionGaps';
 
 // DebtorInfoStep locks the contact email to the authenticated user's address
 // (note 9). Stub useAuth so the step has a logged-in user to read from.
@@ -142,6 +143,25 @@ describe("DebtorInfoStep and Form 101's questions", () => {
       />
     );
     expect(onValidationChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it('names the open Form 101 question in the status region whenever it alone holds Continue', () => {
+    // F8: a returning filer whose fields above are all valid, sent here from Review, meets a held
+    // Continue; the region says which question holds it before they touch the block
+    const onValidationChange = vi.fn();
+    const { unmount } = renderStep({
+      initialData: { ...LOADED, ssn_saved: true },
+      county: 'Cook',
+      onValidationChange,
+    });
+    expect(onValidationChange).toHaveBeenLastCalledWith(false);
+    expect(screen.getByRole('status')).toHaveTextContent(firstPetitionGap({}) as string);
+    unmount();
+
+    // A field above still open holds Continue itself, and its own error says so: the region
+    // waits until the filer reaches the block
+    renderStep({ county: 'Cook' });
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
 
   it('a loaded step with no saved SSN still asks for it', () => {

@@ -15,6 +15,7 @@ import { YesNoThenDetails } from '../../YesNoThenDetails';
 import {
   DELETE_HIDDEN,
   HIDDEN_ANSWERS,
+  NOT_SAVED_TRY_AGAIN,
   HIDDEN_ROWS_MANY,
   HIDDEN_ROWS_ONE,
   ITIN_SAVED,
@@ -92,8 +93,15 @@ interface PetitionQuestionsProps {
   /** The ITIN and other Social Security number typed since the last save, as digits */
   pendingSecrets: { itin?: string; other_ssn?: string };
   onSecretChange: (key: Secret, value: string) => void;
+  /** Removes a saved number on the server; rejects when the server refuses (F10) */
+  onSecretDelete?: (key: Secret) => Promise<void>;
   /** The county's division, which names the clerk and line 6's information; null before one */
   division: Division;
+  /**
+   * Every field above the block is valid, so an open gate here alone holds Continue: the status
+   * region names it before the block is touched (F8)
+   */
+  fieldsAboveComplete?: boolean;
 }
 
 type RowList = 'other_names' | 'other_business_names' | 'prior_cases' | 'pending_cases';
@@ -215,10 +223,13 @@ export function PetitionQuestions({
   onChange,
   pendingSecrets,
   onSecretChange,
+  onSecretDelete,
   division,
+  fieldsAboveComplete = false,
 }: PetitionQuestionsProps) {
   // Touched once any answer is set or focus has left the block (PF2-T8-10): until then nothing
-  // says "Not answered yet" and the status region stays empty
+  // says "Not answered yet", and the status region stays empty unless the fields above are all
+  // valid, when the gate alone holds Continue (F8)
   const [blurred, setBlurred] = useState(false);
   // Hidden answers the filer asked to see again under a No, by block
   const [shown, setShown] = useState<Record<string, boolean>>({});
@@ -226,6 +237,15 @@ export function PetitionQuestions({
   // digits are typed the box stays open because of them, so when a save takes them the saved line
   // shows again
   const [replacing, setReplacing] = useState<Record<Secret, boolean>>({
+    itin: false,
+    other_ssn: false,
+  });
+  // The secret box that has focus, and the digits typed into it since it took focus: a save that
+  // takes them clears the wizard's copy, but the box keeps them, and stays, until focus leaves (F9)
+  const [focusedSecret, setFocusedSecret] = useState<Secret | null>(null);
+  const [typedHere, setTypedHere] = useState('');
+  // A saved number's Delete the server refused, by key: the line stays and says so (F10)
+  const [deleteFailed, setDeleteFailed] = useState<Record<Secret, boolean>>({
     itin: false,
     other_ssn: false,
   });
@@ -255,7 +275,7 @@ export function PetitionQuestions({
   const yesNo = (
     key: keyof PetitionAnswers,
     question: string,
-    note: string | undefined,
+    note: string | readonly string[] | undefined,
     children?: ReactNode
   ) => {
     const value = answers[key];
@@ -374,7 +394,8 @@ export function PetitionQuestions({
   /** The ITIN's or other number's box, or the line saying one is saved (F-3, PF2-5) */
   const secretBox = (key: Secret, label: string, savedLine: string, saved: boolean) => {
     const pending = pendingSecrets[key] ?? '';
-    if (saved && pending === '' && !replacing[key]) {
+    const focused = focusedSecret === key;
+    if (saved && pending === '' && !replacing[key] && !focused) {
       return (
         <div className="form-field">
           <p className="form-help-text">{savedLine}</p>
@@ -391,7 +412,8 @@ export function PetitionQuestions({
     }
     // Nine digits that aren't an ITIN would print blank, so they stay here, unsent, with the
     // server's own sentence beside them (PF2-U2, owner ruling Q7)
-    const notAnItin = key === 'itin' && isNineDigits(pending) && !isItin(pending);
+    const shownDigits = focused && pending === '' ? typedHere : pending;
+    const notAnItin = key === 'itin' && isNineDigits(shownDigits) && !isItin(shownDigits);
     return (
       <FormField
         label={label}
@@ -401,13 +423,54 @@ export function PetitionQuestions({
         autoComplete="off"
         placeholder="XXX-XX-XXXX"
         helpText={notAnItin ? PETITION_DETAIL_ITIN_NINE : undefined}
-        value={nineDigitNumber(pending)}
+        value={nineDigitNumber(shownDigits)}
+        onFocus={() => {
+          setFocusedSecret(key);
+          setTypedHere(pending);
+        }}
+        onBlur={() => {
+          setFocusedSecret(null);
+          setTypedHere('');
+        }}
         onChange={(e) => {
           const digits = nineDigitNumber(e.target.value).replace(/\D/g, '');
           setReplacing((current) => ({ ...current, [key]: digits === '' }));
+          setTypedHere(digits);
           onSecretChange(key, digits);
         }}
       />
+    );
+  };
+
+  /** A secret's box under its Yes; under a No, or unanswered, a saved one named as hidden (F10) */
+  const secretUnder = (
+    gate: 'itin_answer' | 'other_ssn_answer',
+    key: Secret,
+    label: string,
+    savedLine: string
+  ) => {
+    const saved = answers[`${key}_saved`] === true;
+    if (answers[gate] === 'yes' || (saved && shown[key])) {
+      return secretBox(key, label, savedLine, saved);
+    }
+    if (!saved) return null;
+    const remove = async () => {
+      setDeleteFailed((current) => ({ ...current, [key]: false }));
+      try {
+        await onSecretDelete?.(key);
+      } catch {
+        setDeleteFailed((current) => ({ ...current, [key]: true }));
+      }
+    };
+    return (
+      <>
+        <HiddenLine sentence={HIDDEN_ANSWERS} onShow={() => show(key)} onDelete={remove} />
+        {deleteFailed[key] && (
+          <p className="form-error" role="alert">
+            {NOT_SAVED_TRY_AGAIN}
+          </p>
+        )}
+      </>
     );
   };
 
@@ -438,7 +501,7 @@ export function PetitionQuestions({
         FORM_101_LINE_2,
         // The form's instructions come with the question, before the answer: a maiden or trade
         // name counts, and a filer told so only after a Yes could answer No without knowing it
-        `${FORM_101_LINE_2_INSTRUCTIONS} ${WHY_OTHER_NAMES}`,
+        [FORM_101_LINE_2_INSTRUCTIONS, WHY_OTHER_NAMES],
         rowsUnder('other_names_answer', 'other_names', [OTHER_NAMES, OTHER_BUSINESS_NAMES])
       )}
 
@@ -447,8 +510,7 @@ export function PetitionQuestions({
         'itin_answer',
         PETITION_ASKED_AS_ITIN,
         WHY_ITIN,
-        answers.itin_answer === 'yes' &&
-          secretBox('itin', FORM_101_LINE_3_ITIN, ITIN_SAVED, answers.itin_saved === true)
+        secretUnder('itin_answer', 'itin', FORM_101_LINE_3_ITIN, ITIN_SAVED)
       )}
 
       {/* 1d, Form 121 line 2 */}
@@ -456,13 +518,7 @@ export function PetitionQuestions({
         'other_ssn_answer',
         PETITION_ASKED_AS_OTHER_SSN,
         WHY_OTHER_SSN,
-        answers.other_ssn_answer === 'yes' &&
-          secretBox(
-            'other_ssn',
-            FORM_121_LINE_2_OTHER_SSN,
-            OTHER_SSN_SAVED,
-            answers.other_ssn_saved === true
-          )
+        secretUnder('other_ssn_answer', 'other_ssn', FORM_121_LINE_2_OTHER_SSN, OTHER_SSN_SAVED)
       )}
 
       {/* 1e, Form 101 line 4 */}
@@ -522,6 +578,9 @@ export function PetitionQuestions({
         {venue === 'other' && (
           <FormField
             label={FORM_101_VENUE_CHOICES.other}
+            // The radio above reads the choice's words alone; the box adds the line's question,
+            // so the two are told apart
+            aria-label={`${FORM_101_LINE_6} ${FORM_101_VENUE_CHOICES.other}`}
             name="venue_reason"
             type="text"
             maxLength={PETITION_TEXT_LIMITS.venue_reason}
@@ -589,7 +648,7 @@ export function PetitionQuestions({
 
       {/* A status, not an alert, mounted from the start so a screen reader reads what arrives */}
       <div role="status">
-        {touched && gap !== null && (
+        {(touched || fieldsAboveComplete) && gap !== null && (
           <div className="info-box">
             <p className="info-message">{gap}</p>
           </div>

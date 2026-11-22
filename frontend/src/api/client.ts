@@ -461,6 +461,15 @@ export const intakeAPI = {
     });
   },
 
+  // Delete under a saved ITIN or other Social Security number (F10): its own session PATCH sends
+  // the key as null, which the server removes. Step 1's own body never carries either key blank.
+  deleteSavedSecret: async (sessionId: number, key: 'itin' | 'other_ssn'): Promise<void> => {
+    await apiFetch<IntakeSession>(`/intake/sessions/${sessionId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ petition_answers: { [key]: null } }),
+    });
+  },
+
   // Contracts (Schedule G)
   contracts: async (sessionId: number): Promise<ExecutoryContract[]> => {
     return apiFetch<ExecutoryContract[]>(`/intake/sessions/${sessionId}/contracts/`);

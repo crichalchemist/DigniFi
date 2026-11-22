@@ -1068,6 +1068,14 @@ export function IntakeWizard() {
     setLegacyPayments((held) => (held ? { ...held, [field]: null } : held));
   };
 
+  // Delete under a saved ITIN or other number (F10): its own session PATCH, and the step shows the
+  // failure. Once the server has removed it, it reads as not saved
+  const deleteSecret = async (key: PetitionSecret) => {
+    if (!session) throw new Error('no session');
+    await api.intake.deleteSavedSecret(session.id, key);
+    setPetitionAnswers((current) => ({ ...current, [`${key}_saved`]: false }));
+  };
+
   const renderStepContent = (key: string) => {
     switch (key) {
       case 'debtor_info':
@@ -1084,6 +1092,7 @@ export function IntakeWizard() {
             onSecretChange={(key, value) =>
               setPendingSecrets((current) => ({ ...current, [key]: value }))
             }
+            onSecretDelete={deleteSecret}
             division={divisionOf(county)}
           />
         );

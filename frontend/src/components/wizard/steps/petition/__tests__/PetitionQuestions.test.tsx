@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { axe } from 'vitest-axe';
@@ -7,11 +7,13 @@ import { PetitionQuestions } from '../PetitionQuestions';
 import { firstPetitionGap } from '../petitionGaps';
 import {
   CLERK_PHONE_WESTERN,
+  DELETE_HIDDEN,
   HIDDEN_ANSWERS,
   HIDDEN_ROWS_MANY,
   HIDDEN_ROWS_ONE,
   ITIN_SAVED,
   LINE_12_FEEDS_107,
+  NOT_SAVED_TRY_AGAIN,
   OTHER_SSN_SAVED,
   PETITION_ADD_OTHER_NAME,
   PETITION_ADD_PRIOR_CASE,
@@ -21,12 +23,15 @@ import {
   PETITION_GATE_OTHER_NAMES,
   PUBLIC_RECORD_NOTICE,
   REPLACE_SAVED,
+  SHOW_HIDDEN,
   VENUE_DIVISION_EASTERN,
   VENUE_DIVISION_WESTERN,
+  WHY_OTHER_NAMES,
 } from '../../../../../constants/copy';
 import {
   FORM_101_LINE_12_NAME,
   FORM_101_LINE_2_INSTRUCTIONS,
+  FORM_101_LINE_6,
   FORM_101_VENUE_CHOICES,
 } from '../../../../../constants/formText';
 import {
@@ -44,6 +49,9 @@ const GATES = [
   'pending_case_answer',
   'sole_proprietor_answer',
 ] as const;
+
+// Line 6's box is named by its question, then the choice it explains
+const VENUE_REASON_NAME = `${FORM_101_LINE_6} ${FORM_101_VENUE_CHOICES.other}`;
 
 const EVERY_YES: PetitionAnswers = Object.fromEntries(GATES.map((gate) => [gate, 'yes']));
 
@@ -291,6 +299,10 @@ describe('PetitionQuestions', () => {
     const question = radio('other_names_answer', 'no').closest('fieldset') as HTMLElement;
     expect(question).toHaveTextContent(FORM_101_LINE_2_INSTRUCTIONS);
     expect(question).toHaveTextContent(/married or maiden names/);
+    // The form's instructions and DigniFi's reason are two paragraphs, never run together
+    const paragraphs = Array.from(question.querySelectorAll('p')).map((p) => p.textContent);
+    expect(paragraphs).toContain(FORM_101_LINE_2_INSTRUCTIONS);
+    expect(paragraphs).toContain(WHY_OTHER_NAMES);
   });
 
   it('an ITIN is masked, sent through onSecretChange and shown as saved afterwards', async () => {
@@ -338,8 +350,119 @@ describe('PetitionQuestions', () => {
     rerender(<PetitionQuestions {...props} pendingSecrets={{ itin: '900701234' }} />);
     expect(screen.getByRole('textbox', { name: /ITIN/ })).toHaveValue('900-70-1234');
     rerender(<PetitionQuestions {...props} pendingSecrets={{}} />);
+    // The box keeps focus until the filer leaves it (F9); then the saved line shows
+    const box = screen.getByRole('textbox', { name: /ITIN/ });
+    expect(box).toHaveFocus();
+    act(() => box.blur());
     expect(screen.getByText(ITIN_SAVED)).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: /ITIN/ })).not.toBeInTheDocument();
+  });
+
+  it('a save that takes the typed number never pulls the box out from under the filer', async () => {
+    // F9: autosave lands about two seconds after the ninth digit, often while the filer is still
+    // in the box rereading it. The box, its digits and the focus stay until focus leaves it, and
+    // only then does the saved line show
+    const user = userEvent.setup();
+    const props = {
+      onChange: vi.fn(),
+      onSecretChange: vi.fn(),
+      division: null,
+    };
+    const { rerender } = render(
+      <main>
+        <PetitionQuestions {...props} answers={{ itin_answer: 'yes' }} pendingSecrets={{}} />
+        <button type="button">Somewhere else</button>
+      </main>
+    );
+    const box = screen.getByRole('textbox', { name: /ITIN/ });
+    await user.type(box, '900701234');
+    expect(props.onSecretChange).toHaveBeenLastCalledWith('itin', '900701234');
+    rerender(
+      <main>
+        <PetitionQuestions
+          {...props}
+          answers={{ itin_answer: 'yes' }}
+          pendingSecrets={{ itin: '900701234' }}
+        />
+        <button type="button">Somewhere else</button>
+      </main>
+    );
+    // The save took the digits: the wizard clears them and the record says one is saved
+    rerender(
+      <main>
+        <PetitionQuestions
+          {...props}
+          answers={{ itin_answer: 'yes', itin_saved: true }}
+          pendingSecrets={{}}
+        />
+        <button type="button">Somewhere else</button>
+      </main>
+    );
+    const still = screen.getByRole('textbox', { name: /ITIN/ });
+    expect(still).toBe(box);
+    expect(still).toHaveFocus();
+    expect(still).toHaveValue('900-70-1234');
+    expect(screen.queryByText(ITIN_SAVED)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Somewhere else' }));
+    expect(screen.getByText(ITIN_SAVED)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /ITIN/ })).not.toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/1234/);
+  });
+
+  it('a saved number under a No is named as hidden, with Show and Delete (F10)', async () => {
+    // Nothing reappears unannounced (spec line 177), and the filer can remove what they typed: a
+    // saved number under a No, or with its question unanswered, says so with Show and Delete
+    const user = userEvent.setup();
+    const onSecretDelete = vi.fn().mockResolvedValue(undefined);
+    for (const answer of ['no', null] as const) {
+      const { unmount } = render(
+        <PetitionQuestions
+          answers={{ other_ssn_answer: answer, other_ssn_saved: true }}
+          onChange={vi.fn()}
+          pendingSecrets={{}}
+          onSecretChange={vi.fn()}
+          onSecretDelete={onSecretDelete}
+          division={null}
+        />
+      );
+      expect(screen.getByText(HIDDEN_ANSWERS)).toBeInTheDocument();
+      expect(screen.queryByText(OTHER_SSN_SAVED)).not.toBeInTheDocument();
+      // Show reveals the saved line, never digits, which never come back (F-3)
+      await user.click(screen.getByRole('button', { name: SHOW_HIDDEN }));
+      expect(screen.getByText(OTHER_SSN_SAVED)).toBeInTheDocument();
+      unmount();
+    }
+
+    render(
+      <PetitionQuestions
+        answers={{ other_ssn_answer: 'no', other_ssn_saved: true }}
+        onChange={vi.fn()}
+        pendingSecrets={{}}
+        onSecretChange={vi.fn()}
+        onSecretDelete={onSecretDelete}
+        division={null}
+      />
+    );
+    await user.click(screen.getByRole('button', { name: DELETE_HIDDEN }));
+    expect(onSecretDelete).toHaveBeenCalledWith('other_ssn');
+  });
+
+  it('a Delete the server refuses keeps the line and says it was not saved', async () => {
+    const user = userEvent.setup();
+    render(
+      <PetitionQuestions
+        answers={{ itin_answer: 'no', itin_saved: true }}
+        onChange={vi.fn()}
+        pendingSecrets={{}}
+        onSecretChange={vi.fn()}
+        onSecretDelete={vi.fn().mockRejectedValue(new Error('offline'))}
+        division={null}
+      />
+    );
+    await user.click(screen.getByRole('button', { name: DELETE_HIDDEN }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(NOT_SAVED_TRY_AGAIN);
+    expect(screen.getByText(HIDDEN_ANSWERS)).toBeInTheDocument();
   });
 
   it('a box emptied after Replace stays open while the filer types', async () => {
@@ -357,8 +480,8 @@ describe('PetitionQuestions', () => {
     // Owner ruling Q7: the sentence says why nine digits aren't one, not "type your 9-digit ITIN"
     render(<Harness initial={{ itin_answer: 'yes' }} />);
     const box = screen.getByRole('textbox', { name: /ITIN/ });
-    await userEvent.type(box, '812345678');
-    expect(box).toHaveValue('812-34-5678');
+    await userEvent.type(box, '666701234');
+    expect(box).toHaveValue('666-70-1234');
     expect(box).toHaveAccessibleDescription(PETITION_DETAIL_ITIN_NINE);
     expect(screen.queryByText(PETITION_DETAIL_ITIN)).not.toBeInTheDocument();
     await userEvent.clear(box);
@@ -389,10 +512,22 @@ describe('PetitionQuestions', () => {
       'maxLength',
       String(PETITION_TEXT_LIMITS.business_name)
     );
-    expect(screen.getByRole('textbox', { name: FORM_101_VENUE_CHOICES.other })).toHaveAttribute(
+    expect(screen.getByRole('textbox', { name: VENUE_REASON_NAME })).toHaveAttribute(
       'maxLength',
       String(PETITION_TEXT_LIMITS.venue_reason)
     );
+  });
+
+  it('the venue radio and the box under it have different names for a screen reader', () => {
+    // Two controls read out with one name can't be told apart: the box takes the line's question
+    // before the choice's words, all of them the form's own
+    render(<Harness initial={{ venue_choice: 'other' }} />);
+    expect(screen.getByRole('radio', { name: FORM_101_VENUE_CHOICES.other })).toBeChecked();
+    expect(screen.getByRole('textbox', { name: VENUE_REASON_NAME })).toHaveAttribute(
+      'name',
+      'venue_reason'
+    );
+    expect(screen.queryByRole('textbox', { name: FORM_101_VENUE_CHOICES.other })).toBeNull();
   });
 
   it('a row cell stops at the server ceiling and a date keeps MM/DD/YYYY', async () => {

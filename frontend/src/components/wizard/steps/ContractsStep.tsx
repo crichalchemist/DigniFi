@@ -126,11 +126,12 @@ export function ContractsStep({
     (change: 1 | -1) => setPartialBoxes((count) => count + change),
     []
   );
-  // Touched once an answer in the block is set or focus has left it (PF2-T8-10)
-  const [rentLeft, setRentLeft] = useState(false);
-  const rentTouched = rentLeft || anyAnswerIn(rent, RENT_KEYS);
-
   const gap = firstContractGap(rows, answer, debts, assets);
+  // Touched once an answer in the block is set, focus has left it, or Schedule G's own gap is gone
+  // (PF2-T8-10, F8): Continue held for the rent always has a sentence saying why
+  const [rentLeft, setRentLeft] = useState(false);
+  const rentTouched = rentLeft || anyAnswerIn(rent, RENT_KEYS) || gap === null;
+
   const rentGate = rentGap(rent);
   const isValid = gap === null && partialBoxes === 0 && rentGate === null;
   // One status region for the step (PF2-T9-6): Schedule G's own gap first, then line 11's gate

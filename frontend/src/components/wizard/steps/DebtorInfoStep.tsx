@@ -36,6 +36,8 @@ interface DebtorInfoStepProps {
   onPetitionChange: (next: PetitionAnswers) => void;
   pendingSecrets: { itin?: string; other_ssn?: string };
   onSecretChange: (key: 'itin' | 'other_ssn', value: string) => void;
+  /** Removes a saved ITIN or other number on the server (F10) */
+  onSecretDelete?: (key: 'itin' | 'other_ssn') => Promise<void>;
   division: 'Eastern' | 'Western' | null;
 }
 
@@ -57,6 +59,7 @@ export function DebtorInfoStep({
   onPetitionChange,
   pendingSecrets,
   onSecretChange,
+  onSecretDelete,
   division,
 }: DebtorInfoStepProps) {
   const [formData, setFormData] = useState<Partial<DebtorInfo>>(initialData || {});
@@ -363,7 +366,9 @@ export function DebtorInfoStep({
         onChange={onPetitionChange}
         pendingSecrets={pendingSecrets}
         onSecretChange={onSecretChange}
+        onSecretDelete={onSecretDelete}
         division={division}
+        fieldsAboveComplete={Object.keys(errors).length === 0}
       />
     </div>
   );

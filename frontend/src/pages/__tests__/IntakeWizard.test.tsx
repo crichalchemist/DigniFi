@@ -25,6 +25,8 @@ import {
   CLAIM_GAP_LEGACY_VEHICLE,
   CODEBTOR_GAP_NO_NAME,
   CONTRACT_GAP_NO_NAME,
+  DELETE_HIDDEN,
+  HIDDEN_ANSWERS,
   ITIN_SAVED,
   LEGACY_REMOVE,
   LINE_4_PAY_BOTH,
@@ -3412,6 +3414,35 @@ describe('IntakeWizard county', { timeout: 15_000 }, () => {
     expect(patchBodies).toHaveLength(0);
   });
 
+  it('Delete removes a saved other number under a No in its own PATCH, and it reads as not saved', async () => {
+    // F10: the filer can remove a number typed by mistake. The one request carries only that key
+    // as null, which the server removes, and step 1's own body never carries it
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({
+          ...savedStep1,
+          petition_answers: { ...savedStep1.petition_answers, other_ssn_saved: true },
+        })
+      )
+    );
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    const block = (
+      document.querySelector('input[name="other_ssn_answer"][value="no"]') as HTMLElement
+    ).closest('fieldset') as HTMLElement;
+    expect(within(block).getByText(HIDDEN_ANSWERS)).toBeInTheDocument();
+    await userEvent.click(within(block).getByRole('button', { name: DELETE_HIDDEN }));
+    await waitFor(() => expect(patchBodies).toEqual([{ petition_answers: { other_ssn: null } }]));
+    await waitFor(() => expect(within(block).queryByText(HIDDEN_ANSWERS)).not.toBeInTheDocument());
+
+    // The saved flag now reads false: a Yes opens an empty box, not "Another ... is saved."
+    fireEvent.click(
+      document.querySelector('input[name="other_ssn_answer"][value="yes"]') as HTMLElement
+    );
+    expect(document.querySelector('input[name="other_ssn"]')).toHaveValue('');
+    expect(screen.queryByText(OTHER_SSN_SAVED)).not.toBeInTheDocument();
+  });
+
   it('nine digits that are no ITIN never leave the browser', async () => {
     // PF2-U2: saved would mean it prints, and a number not starting with 9 prints blank
     renderWizard();
@@ -3421,7 +3452,7 @@ describe('IntakeWizard county', { timeout: 15_000 }, () => {
       document.querySelector('input[name="itin_answer"][value="yes"]') as HTMLElement
     );
     fireEvent.change(screen.getByRole('textbox', { name: /ITIN/ }), {
-      target: { value: '812-34-5678' },
+      target: { value: '666-70-1234' },
     });
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
     await screen.findByText('DocumentUploadPage');
@@ -3429,7 +3460,7 @@ describe('IntakeWizard county', { timeout: 15_000 }, () => {
     for (const body of patchBodies) {
       expect(body.petition_answers).not.toHaveProperty('itin');
     }
-    expect(JSON.stringify(patchBodies)).not.toContain('812345678');
+    expect(JSON.stringify(patchBodies)).not.toContain('666701234');
   });
 
   it('a typed ITIN is sent once and never echoed', async () => {
