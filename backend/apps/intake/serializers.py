@@ -16,7 +16,7 @@ from rest_framework import serializers
 from apps.districts.counties import ILND_COUNTIES
 from apps.districts.dated_tables import fill_date
 from apps.eligibility.cmi import answered_window, income_step_gaps, income_window
-from apps.forms.registry import _SSN
+from apps.forms.registry import SSN_PATTERN
 from apps.forms.services.answer_records import is_itin, is_nine_digits
 from apps.forms.services.exemption_items import fits_description, fits_law
 from apps.forms.services.means_fit import LIST_ANSWERS, merge_row_errors, shown_box_refusals
@@ -95,7 +95,7 @@ class DebtorInfoSerializer(serializers.ModelSerializer):
         }
 
     def get_ssn_saved(self, instance) -> bool:
-        return bool(_SSN.fullmatch((instance.ssn or "").strip()))
+        return bool(SSN_PATTERN.fullmatch((instance.ssn or "").strip()))
 
     def validate_ssn(self, value):
         """Validate SSN format (9 digits, no hyphens for storage)."""
@@ -1344,7 +1344,10 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
         # Update or create nested objects
         if debtor_data:
-            DebtorInfo.objects.update_or_create(session=instance, defaults=debtor_data)
+            # The reply reads the row just saved, not the copy loaded with the session
+            instance.debtor_info, _ = DebtorInfo.objects.update_or_create(
+                session=instance, defaults=debtor_data
+            )
 
         if income_data:
             _save_income(instance, income_data)

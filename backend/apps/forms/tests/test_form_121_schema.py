@@ -125,9 +125,18 @@ class TestForm121Schema:
         assert field_map.get("Check Box3") == "/On"
         assert "Debtor1a.ITINNum" not in field_map
 
-    @pytest.mark.parametrize("itin", ["90070123", "9007012345", "666-70-1234"])
+    @pytest.mark.parametrize(
+        "itin",
+        [
+            "90070123",
+            "9007012345",
+            "666-70-1234",
+            "9\u0660\u0667\u0660\u0661\u0662\u0663\u0664\u0665",
+        ],
+    )
     def test_a_non_nine_digit_itin_prints_blank_on_both_forms(self, session_with_ssn, itin):
-        # Eight or ten digits, or nine not starting with 9 (PF2-U2), is no ITIN: both forms blank.
+        # Eight or ten digits, nine not starting with 9 (PF2-U2), or digits other than 0-9 (F16),
+        # is no ITIN: both forms blank.
         answer_petition(session_with_ssn, itin_answer="yes", itin=itin)
         on_121 = resolve(load_schema("form_121"), session_with_ssn)
         on_101 = resolve(load_schema("form_101"), session_with_ssn)

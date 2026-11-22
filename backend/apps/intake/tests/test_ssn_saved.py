@@ -69,7 +69,10 @@ def test_a_stored_nine_digit_ssn_reads_as_saved_and_never_comes_back(session):
     assert not any(SSN[-4:] in value for value in debtor_values)
 
 
-@pytest.mark.parametrize("stored", ["", "90070123", "9007012345"])
+@pytest.mark.parametrize(
+    "stored",
+    ["", "90070123", "9007012345", "\u0669\u0660\u0660\u0667\u0660\u0661\u0662\u0663\u0664"],
+)
 def test_a_missing_or_wrong_length_ssn_reads_as_not_saved(session, stored):
     # Form 101 and Complete refuse these (`_needs_ssn`), so step 1 must ask for it again
     _debtor(session, stored)
@@ -94,3 +97,20 @@ def test_a_step_1_save_without_the_ssn_keeps_the_stored_one(session):
     assert stored.ssn == SSN
     assert stored.last_name == "Renamed"
     assert response.data["debtor_info"]["ssn_saved"] is True
+
+
+def test_a_save_that_stores_a_first_valid_ssn_replies_with_what_it_stored(session):
+    # The reply must read the row the save wrote: a filer whose stored SSN was blank is told the
+    # server now holds one, never asked to type it again from a copy read before the save
+    _debtor(session, "")
+
+    response = _client(session).patch(
+        f"/api/intake/sessions/{session.pk}/",
+        {"debtor_info": {"ssn": SSN, "last_name": "Renamed"}},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    assert DebtorInfo.objects.get(session=session).ssn == SSN
+    assert response.data["debtor_info"]["ssn_saved"] is True
+    assert response.data["debtor_info"]["last_name"] == "Renamed"

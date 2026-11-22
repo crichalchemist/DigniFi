@@ -906,8 +906,12 @@ def _county(session: IntakeSession) -> str:
 
 
 def digits(value: str) -> str:
-    """The digits of what the filer typed: "900-70-1234" and "900701234" read the same."""
-    return re.sub(r"\D", "", value or "")
+    """The digits of what the filer typed: "900-70-1234" and "900701234" read the same.
+
+    Only 0-9 count: other scripts' digits, which a "\\d" pattern would keep, can't print on the
+    forms.
+    """
+    return re.sub(r"[^0-9]", "", value or "")
 
 
 def nine_digit_slice(value, start: int, stop: int) -> str:

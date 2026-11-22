@@ -323,8 +323,10 @@ def test_every_radio_key_is_a_yes_no_key(key):
     [
         ("", False, True),
         ("9007012", False, True),
-        ("812345678", False, True),
+        ("666701234", False, True),
         ("912345678", True, False),
+        # Arabic-Indic digits are no ITIN: the forms' font can't print them (F16)
+        ("9\u0660\u0667\u0660\u0661\u0662\u0663\u0664\u0665", False, True),
     ],
 )
 def test_itin_saved_means_it_will_print_and_no_detail_is_listed(filer, itin, saved, listed):
@@ -338,7 +340,15 @@ def test_itin_saved_means_it_will_print_and_no_detail_is_listed(filer, itin, sav
     assert (DETAIL_ITIN in texts or DETAIL_ITIN_NINE in texts) is listed
 
 
-@pytest.mark.parametrize("other,saved", [("", False), ("9007012", False), ("812345678", True)])
+@pytest.mark.parametrize(
+    "other,saved",
+    [
+        ("", False),
+        ("9007012", False),
+        ("666701234", True),
+        ("\u0669\u0660\u0660\u0667\u0660\u0661\u0662\u0663\u0664", False),
+    ],
+)
 def test_other_ssn_saved_only_when_it_is_nine_digits(filer, other, saved):
     client, session = filer
     assert _patch(client, session, {"other_ssn": other}).status_code == 200

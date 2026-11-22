@@ -116,12 +116,13 @@ PETITION_STEP_OF_KEY = {
 
 
 def is_nine_digits(value) -> bool:
-    return isinstance(value, str) and len(re.sub(r"\D", "", value)) == 9
+    # 0-9 only: \d would also count other scripts' digits, which the forms' font can't print
+    return isinstance(value, str) and len(re.sub(r"[^0-9]", "", value)) == 9
 
 
 def is_itin(value) -> bool:
     """An ITIN is nine digits whose first digit is 9 (PF2-U2)."""
-    return is_nine_digits(value) and re.sub(r"\D", "", value)[0] == "9"
+    return is_nine_digits(value) and re.sub(r"[^0-9]", "", value)[0] == "9"
 
 
 def is_mm_dd_yyyy(value) -> bool:
@@ -134,7 +135,7 @@ def is_mm_dd_yyyy(value) -> bool:
     return True
 
 
-# Row lists whose `filed_on` prints only as a real MM/DD/YYYY date (PF2-2).
+# The petition record's row lists whose `filed_on` prints only as a real MM/DD/YYYY date (PF2-2).
 _DATED_ROW_LISTS = ("prior_cases", "pending_cases")
 
 
@@ -185,7 +186,7 @@ def record_value(session, binding: str) -> str | list[str]:
     if not isinstance(rows, list):
         return []
     cells = [_text(row.get(attr)) if isinstance(row, dict) else "" for row in rows]
-    if key in _DATED_ROW_LISTS and attr == "filed_on":
+    if namespace == "petition." and key in _DATED_ROW_LISTS and attr == "filed_on":
         # A date the form can't read prints blank; the stored value stays as typed.
         cells = [c if not c.strip() or is_mm_dd_yyyy(c) else "" for c in cells]
     return cells
