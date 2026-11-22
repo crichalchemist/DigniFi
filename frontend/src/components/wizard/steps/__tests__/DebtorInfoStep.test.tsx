@@ -200,25 +200,31 @@ describe("DebtorInfoStep and Form 101's questions", () => {
     expect(screen.queryByText(HOME_ZIP_ERROR)).not.toBeInTheDocument();
   });
 
-  it('a home ZIP stored with a hyphen loads with the ZIP error and holds Continue until edited', async () => {
-    // Ruling T8-zip-load: masking on load would change the saved body and reopen a completed
-    // intake, so the stored spelling shows as typed until the filer edits it
+  it('a home ZIP stored with a hyphen loads valid and is saved as stored', () => {
+    // PR review, reversing T8-zip-load: the ZIP is judged on its digits, so a stored ZIP+4 needs
+    // no edit; the value is not rewritten on load, which would change the body and reopen a
+    // completed intake
     const onValidationChange = vi.fn();
-    renderStep({
-      initialData: { ...LOADED, zip_code: '60201-1234', ssn_saved: true },
-      county: 'Cook',
-      petition: EVERY_GATE_NO,
-      onValidationChange,
-    });
-    const zip = screen.getByRole('textbox', { name: /zip code/i });
-    expect(zip).toHaveValue('60201-1234');
-    expect(screen.getByText(HOME_ZIP_ERROR)).toBeInTheDocument();
-    expect(onValidationChange).toHaveBeenLastCalledWith(false);
-
-    await userEvent.clear(zip);
-    await userEvent.type(zip, '60201-1234');
-    expect(zip).toHaveValue('602011234');
+    const onDataChange = vi.fn();
+    render(
+      <DebtorInfoStep
+        initialData={{ ...LOADED, zip_code: '60201-1234', ssn_saved: true }}
+        onDataChange={onDataChange}
+        onValidationChange={onValidationChange}
+        county="Cook"
+        onCountyChange={noop}
+        petition={EVERY_GATE_NO}
+        onPetitionChange={noop}
+        pendingSecrets={{}}
+        onSecretChange={noop}
+        division={null}
+      />
+    );
+    expect(screen.getByRole('textbox', { name: /zip code/i })).toHaveValue('60201-1234');
     expect(screen.queryByText(HOME_ZIP_ERROR)).not.toBeInTheDocument();
     expect(onValidationChange).toHaveBeenLastCalledWith(true);
+    for (const [data] of onDataChange.mock.calls) {
+      expect(data.zip_code).toBe('60201-1234');
+    }
   });
 });

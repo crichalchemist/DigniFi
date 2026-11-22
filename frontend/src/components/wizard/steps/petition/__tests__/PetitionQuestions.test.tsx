@@ -489,7 +489,53 @@ describe('PetitionQuestions', () => {
     expect(screen.getByText(HIDDEN_ANSWERS)).toBeInTheDocument();
   });
 
-  it('a box emptied after Replace stays open while the filer types', async () => {
+  it('leaving a box still empty after Replace brings the saved line back', async () => {
+    // PR review: the filer pressed Replace, typed and cleared, then left: the saved number is
+    // still what is stored, so its line returns. Leaving with digits typed keeps the box
+    const user = userEvent.setup();
+    render(
+      <main>
+        <Harness initial={{ itin_answer: 'yes', itin_saved: true }} />
+        <button type="button">Somewhere else</button>
+      </main>
+    );
+    await user.click(screen.getByRole('button', { name: REPLACE_SAVED }));
+    const box = screen.getByRole('textbox', { name: /ITIN/ });
+    await user.type(box, '90');
+    await user.clear(box);
+    await user.click(screen.getByRole('button', { name: 'Somewhere else' }));
+    expect(screen.getByText(ITIN_SAVED)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /ITIN/ })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: REPLACE_SAVED }));
+    await user.type(screen.getByRole('textbox', { name: /ITIN/ }), '90');
+    await user.click(screen.getByRole('button', { name: 'Somewhere else' }));
+    expect(screen.getByRole('textbox', { name: /ITIN/ })).toHaveValue('90');
+    expect(screen.queryByText(ITIN_SAVED)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['other_names_answer', { other_names: [{ _key: 'a', first: 'Jo' }] }],
+    ['itin_answer', { itin_saved: true }],
+    ['other_ssn_answer', { other_ssn_saved: true }],
+    ['mailing_answer', { mailing_street: '1 Main Street' }],
+    ['prior_bankruptcy_answer', { prior_cases: [{ _key: 'a', district: 'Northern' }] }],
+    ['pending_case_answer', { pending_cases: [{ _key: 'a', debtor: 'Jo' }] }],
+    ['sole_proprietor_answer', { business_name: 'Acme' }],
+  ] as [keyof PetitionAnswers, PetitionAnswers][])(
+    'a new answer to %s hides what Show opened behind its line again',
+    async (gate, stored) => {
+      const user = userEvent.setup();
+      render(<Harness initial={{ ...stored, [gate]: 'no' }} />);
+      await user.click(screen.getByRole('button', { name: SHOW_HIDDEN }));
+      expect(screen.queryByRole('button', { name: SHOW_HIDDEN })).not.toBeInTheDocument();
+      await user.click(radio(gate, 'yes'));
+      await user.click(radio(gate, 'no'));
+      expect(screen.getByRole('button', { name: SHOW_HIDDEN })).toBeInTheDocument();
+    }
+  );
+
+  it('a box emptied after Replace stays open while the filer is in it', async () => {
     render(<Harness initial={{ itin_answer: 'yes', itin_saved: true }} />);
     await userEvent.click(screen.getByRole('button', { name: REPLACE_SAVED }));
     const box = screen.getByRole('textbox', { name: /ITIN/ });

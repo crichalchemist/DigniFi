@@ -133,8 +133,9 @@ export function DebtorInfoStep({
 
     if (!formData.zip_code?.trim()) {
       newErrors.zip_code = 'Please enter your ZIP code';
-    } else if (!/^\d{5}(\d{4})?$/.test(formData.zip_code)) {
-      // Digits only: Form 101 line 5 prints a ZIP+4 as nine digits (owner ruling Q1)
+    } else if (!/^(\d{5}|\d{9})$/.test(formData.zip_code.replace(/\D/g, ''))) {
+      // Judged on its digits, so a stored ZIP+4 loads valid; typing is masked to digits and
+      // Form 101 line 5 prints nine (owner ruling Q1)
       newErrors.zip_code = HOME_ZIP_ERROR;
     }
 

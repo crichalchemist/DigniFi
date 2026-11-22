@@ -117,6 +117,17 @@ interface ListSpec {
   most: number;
 }
 
+/** The block each yes/no gates: a new answer to the gate hides what Show opened in these again */
+const GATE_BLOCKS: Partial<Record<keyof PetitionAnswers, string[]>> = {
+  other_names_answer: ['other_names'],
+  itin_answer: ['itin'],
+  other_ssn_answer: ['other_ssn'],
+  mailing_answer: ['mailing'],
+  prior_bankruptcy_answer: ['prior_cases'],
+  pending_case_answer: ['pending_cases'],
+  sole_proprietor_answer: ['business'],
+};
+
 const OTHER_NAMES: ListSpec = {
   key: 'other_names',
   cells: [
@@ -289,8 +300,7 @@ export function PetitionQuestions({
           // Show opens a hidden saved number once: a new answer hides it again
           setShown((current) => ({
             ...current,
-            [key]: false,
-            [key.replace(/_answer$/, '')]: false,
+            ...Object.fromEntries((GATE_BLOCKS[key] ?? []).map((block) => [block, false])),
           }));
           set({ [key]: next });
         }}
@@ -439,6 +449,8 @@ export function PetitionQuestions({
         onBlur={() => {
           setFocusedSecret(null);
           setTypedHere('');
+          // Left with nothing typed: the saved number is still what is stored, so its line returns
+          if (pending === '') setReplacing((current) => ({ ...current, [key]: false }));
         }}
         onChange={(e) => {
           const digits = nineDigitNumber(e.target.value).replace(/\D/g, '');
