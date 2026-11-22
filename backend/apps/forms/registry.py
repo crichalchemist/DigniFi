@@ -22,6 +22,7 @@ from apps.eligibility.cmi import MARRIAGE_UNANSWERED, is_above_median
 from apps.eligibility.means_inputs import page_answers, read_inputs, read_tables
 from apps.eligibility.means_lines import missing_line, work_out
 from apps.forms.schema import load_schema
+from apps.forms.services.answer_records import evicted_renter, landlord_missing
 from apps.forms.services.exemption_items import exemption_items
 from apps.forms.services.fill_resolver import resolve, resolve_parts
 from apps.forms.services.pdf_filler import PDFFormFiller
@@ -71,6 +72,26 @@ def payment_choice(session: IntakeSession) -> str | None:
 
 def _asks_fee_waiver(session: IntakeSession) -> bool:
     return payment_choice(session) == "waiver"
+
+
+def petition_answers_of(session: IntakeSession) -> dict:
+    """The session's Form 101 answers, or {} with no record. Never raises."""
+    record = getattr(session, "petition_answers", None)
+    return record.get_answers() if record is not None else {}
+
+
+def _evicted_renter(session: IntakeSession) -> bool:
+    return evicted_renter(petition_answers_of(session))
+
+
+# Form 101A's one refusal sentence (owner-approved 2026-11-22); Complete's landlord detail is
+# pinned to it written out.
+FORM_101A_LANDLORD = "Form 101A asks for your landlord's name and address, on Contracts & Leases."
+
+
+def _needs_landlord(session: IntakeSession) -> None:
+    if landlord_missing(petition_answers_of(session)):
+        raise PreconditionMissing(FORM_101A_LANDLORD, step="contracts")
 
 
 def _above_median(session: IntakeSession) -> bool:
@@ -227,6 +248,7 @@ def _needs_means_test_and_form_122a2(session: IntakeSession) -> None:
 # form_type → PacketForm. Every key must match a GeneratedForm.FORM_TYPE_CHOICES value.
 FORM_REGISTRY: dict[str, PacketForm] = {
     "form_101": PacketForm(_always, _needs_debtor_info_county_and_fee_choice),
+    "form_101a": PacketForm(_evicted_renter, _needs_landlord),
     "form_103b": PacketForm(_asks_fee_waiver, _needs_fee_waiver_answers),
     "form_106dec": PacketForm(_always, _nothing),
     "form_106sum": PacketForm(_always, _nothing),

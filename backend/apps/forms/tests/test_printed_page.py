@@ -496,6 +496,8 @@ def _overshoot(template, widget):
 # filers' forms may print this hairline is the owner's R38 question. Form 101 (11/26) has no
 # row: each of its text boxes sizes its own text, so none reaches past its rect.
 _R38_HAIRLINES = [
+    ("form_101a", "Case number@1:T4", "top"),
+    ("form_101a", "Debtor 1@1:T1", "top"),
     ("form_103b", "13 Other real estate city sate@2:T29", "top"),
     ("form_103b", "Case number@1:T4", "top"),
     ("form_103b", "Case number@2:T2", "top"),

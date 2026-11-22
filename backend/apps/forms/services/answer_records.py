@@ -114,6 +114,29 @@ PETITION_STEP_OF_KEY = {
     ),
 }
 
+# Form 101A's landlord block (4b2-R2): the one pair of answers that puts the form in the packet
+# is a rent Yes and an eviction Yes, never the eviction answer alone (a rent No keeps a stale one).
+LANDLORD_KEYS = (
+    "landlord_name",
+    "landlord_street",
+    "landlord_city",
+    "landlord_state",
+    "landlord_zip",
+)
+
+
+def evicted_renter(answers: dict) -> bool:
+    return answers.get("rents_residence") == "yes" and answers.get("eviction_judgment") == "yes"
+
+
+def landlord_missing(answers: dict) -> bool:
+    """True only under the pair, when any landlord key is not a non-blank string."""
+    if not evicted_renter(answers):
+        return False
+    return any(
+        not (isinstance(answers.get(key), str) and answers[key].strip()) for key in LANDLORD_KEYS
+    )
+
 
 def is_nine_digits(value) -> bool:
     # 0-9 only: \d would also count other scripts' digits, which the forms' font can't print

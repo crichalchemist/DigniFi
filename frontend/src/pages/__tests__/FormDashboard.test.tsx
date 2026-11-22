@@ -667,6 +667,42 @@ describe('FormDashboard', () => {
     expect(screen.queryByText('Form 122A-2 - Means Test Expenses')).not.toBeInTheDocument();
   });
 
+  it('a packet holding Form 101A shows its card under its label', async () => {
+    // A renter with an eviction judgment: Form 101A follows Form 101 (4b2). The packet is this
+    // test's own literal list, since the shared mockPacket stays the 15 forms every filer gets.
+    server.use(
+      http.get('http://localhost:8000/api/forms/packet/', () =>
+        HttpResponse.json({
+          session: 1,
+          form_types: [
+            'form_101',
+            'form_101a',
+            'form_106dec',
+            'form_106sum',
+            'form_107',
+            'form_121',
+            'list_of_creditors',
+            'form_122a1',
+            'schedule_a_b',
+            'schedule_c',
+            'schedule_d',
+            'schedule_e_f',
+            'schedule_g',
+            'schedule_h',
+            'schedule_i',
+            'schedule_j',
+          ],
+        })
+      ),
+      http.get('http://localhost:8000/api/forms/', () => HttpResponse.json([]))
+    );
+
+    renderFormDashboard();
+
+    expect(await screen.findByText('Form 101A - Eviction Judgment Statement')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /generate all 16 forms/i })).toBeInTheDocument();
+  });
+
   it('keeps showing a filed form after it leaves the packet, and says so', async () => {
     // 122A-2 was filed, then income dropped below the median (forms step 2 §5.6, DIG-155)
     server.use(

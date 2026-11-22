@@ -8,7 +8,10 @@ From the repo root:
     python data/forms/field_index/tools/build_form_101a.py
 
 It puts `backend/` on the path and sets up Django itself (`config.settings.test` unless
-DJANGO_SETTINGS_MODULE names another), so it needs no database and no other setup.
+DJANGO_SETTINGS_MODULE names another), so it needs no database and no other setup. In this repo
+run it through the backend settings (`py.sh ../data/forms/field_index/tools/build_form_101a.py`),
+because the backend imports `form_101a.limits.json` at start-up: a missing or overlapping
+`form_101a.limits.json` is restored from git, never rebuilt by hand (PF-4b2-8).
 
 Never hand-edit `form_101a.json` or `form_101a.limits.json`: change this tool and run it again.
 `test_the_schema_and_its_caps_are_what_the_tool_writes` fails on any difference.
@@ -122,6 +125,62 @@ def schema(index, template_sha256):
     }
 
 
+ADDENDUM = INDEX_DIR / "audit" / "step2_verification.json"
+
+
+def _producer(label):
+    kind, source, target = BINDINGS[label]
+    return f"{source}:{target}"
+
+
+def addendum_rows(index):
+    """One confirmed addendum row a binding, keyed by (box, the whole binding key)."""
+    rows = []
+    for label in BINDINGS:
+        row = _by_label(index, label)
+        rows.append(
+            {
+                "schema": FORM_TYPE,
+                "pdf_field": row["full_name"],
+                "producer": _producer(label),
+                "original_verdicts": [],
+                "final_verdicts": ["correct"],
+                "status": "confirmed",
+                "correct_target": row["full_name"],
+                "evidence": (
+                    f"Field index: {row['full_name']} p{row['page']} {row['tag']}, "
+                    f"{label!r} ({row['basis']}). Printed from the filer's own answer; "
+                    "Form 101A's certification boxes stay unbound. "
+                    "Read by test_form_101a_schema.py and tier 1."
+                ),
+            }
+        )
+    return rows
+
+
+def owned(row):
+    return row["schema"] == FORM_TYPE
+
+
+def merged(existing, ours):
+    """existing with our rows put at the first Form 101A row's place; with none, just before
+    the first List of Creditors row (its tool rewrites its rows at the end), else at the end."""
+    at = next((i for i, r in enumerate(existing) if owned(r)), None)
+    if at is None:
+        at = next(
+            (i for i, r in enumerate(existing) if r["schema"] == "list_of_creditors"),
+            len(existing),
+        )
+    before = [r for r in existing[:at] if not owned(r)]
+    after = [r for r in existing[at:] if not owned(r)]
+    return [*before, *ours, *after]
+
+
+def merged_text(existing_text, rows):
+    """The addendum file's text once our rows are merged into it."""
+    return dumps(merged(json.loads(existing_text), rows))
+
+
 def limits(index):
     """
     Each landlord text key → as many of the widest of its measuring letters as fit its box's
@@ -179,7 +238,9 @@ def main():
     built = schema(index, sha256)
     (SCHEMAS_DIR / f"{FORM_TYPE}.json").write_text(dumps(built))
     (SCHEMAS_DIR / f"{FORM_TYPE}.limits.json").write_text(dumps(limits(index)))
-    print(f"bindings for {FORM_TYPE}: {len(built['fields'])}")
+    rows = addendum_rows(index)
+    ADDENDUM.write_text(merged_text(ADDENDUM.read_text(), rows))
+    print(f"bindings for {FORM_TYPE}: {len(built['fields'])}; addendum rows: {len(rows)}")
 
 
 if __name__ == "__main__":

@@ -35,11 +35,14 @@ def _index():
     return json.loads((INDEX_DIR / "form_b101a_fillable.index.json").read_text())
 
 
-def test_the_schema_and_its_caps_are_what_the_tool_writes():
+def test_the_schema_its_rows_and_its_caps_are_what_the_tool_writes():
     index = _index()
     digest = hashlib.sha256((PDF_DIR / TEMPLATE).read_bytes()).hexdigest()
     assert (SCHEMAS / "form_101a.json").read_text() == tool.dumps(tool.schema(index, digest))
     assert (SCHEMAS / "form_101a.limits.json").read_text() == tool.dumps(tool.limits(index))
+    rows = tool.addendum_rows(index)
+    assert len(rows) == 7
+    assert tool.ADDENDUM.read_text() == tool.merged_text(tool.ADDENDUM.read_text(), rows)
 
 
 def test_form_101a_binds_seven_boxes_and_nothing_sworn():
