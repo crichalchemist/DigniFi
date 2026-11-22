@@ -285,7 +285,15 @@ export function PetitionQuestions({
         question={question}
         name={key}
         value={answer}
-        onChange={(next) => set({ [key]: next })}
+        onChange={(next) => {
+          // Show opens a hidden saved number once: a new answer hides it again
+          setShown((current) => ({
+            ...current,
+            [key]: false,
+            [key.replace(/_answer$/, '')]: false,
+          }));
+          set({ [key]: next });
+        }}
         note={note}
         unanswered={touched && answer === null}
       >
@@ -450,9 +458,7 @@ export function PetitionQuestions({
     savedLine: string
   ) => {
     const saved = answers[`${key}_saved`] === true;
-    if (answers[gate] === 'yes' || (saved && shown[key])) {
-      return secretBox(key, label, savedLine, saved);
-    }
+    if (answers[gate] === 'yes') return secretBox(key, label, savedLine, saved);
     if (!saved) return null;
     const remove = async () => {
       setDeleteFailed((current) => ({ ...current, [key]: false }));
@@ -462,14 +468,27 @@ export function PetitionQuestions({
         setDeleteFailed((current) => ({ ...current, [key]: true }));
       }
     };
+    const failure = deleteFailed[key] && (
+      <p className="form-error" role="alert">
+        {NOT_SAVED_TRY_AGAIN}
+      </p>
+    );
+    // Shown under a No: the saved line keeps a Delete beside it, so the filer can still remove it
+    if (shown[key]) {
+      return (
+        <>
+          {secretBox(key, label, savedLine, saved)}
+          <Button variant="outline" size="sm" type="button" onClick={remove}>
+            {DELETE_HIDDEN}
+          </Button>
+          {failure}
+        </>
+      );
+    }
     return (
       <>
         <HiddenLine sentence={HIDDEN_ANSWERS} onShow={() => show(key)} onDelete={remove} />
-        {deleteFailed[key] && (
-          <p className="form-error" role="alert">
-            {NOT_SAVED_TRY_AGAIN}
-          </p>
-        )}
+        {failure}
       </>
     );
   };

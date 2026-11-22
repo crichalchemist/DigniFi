@@ -1072,6 +1072,12 @@ export function IntakeWizard() {
   // failure. Once the server has removed it, it reads as not saved
   const deleteSecret = async (key: PetitionSecret) => {
     if (!session) throw new Error('no session');
+    // Digits typed for this number are dropped with it, or the next save would send them again
+    setPendingSecrets((current) => {
+      const rest = { ...current };
+      delete rest[key];
+      return rest;
+    });
     await api.intake.deleteSavedSecret(session.id, key);
     setPetitionAnswers((current) => ({ ...current, [`${key}_saved`]: false }));
   };

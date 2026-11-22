@@ -3443,6 +3443,44 @@ describe('IntakeWizard county', { timeout: 15_000 }, () => {
     expect(screen.queryByText(OTHER_SSN_SAVED)).not.toBeInTheDocument();
   });
 
+  it('Delete drops the digits typed for that number, so the next save cannot send them again', async () => {
+    // A number typed under a Yes, then the answer changed to No and Delete pressed: the typed
+    // digits must not ride the next save and undo the Delete
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({
+          ...savedStep1,
+          petition_answers: { ...savedStep1.petition_answers, other_ssn_saved: true },
+        })
+      )
+    );
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    fireEvent.click(
+      document.querySelector('input[name="other_ssn_answer"][value="yes"]') as HTMLElement
+    );
+    const block = (
+      document.querySelector('input[name="other_ssn_answer"][value="no"]') as HTMLElement
+    ).closest('fieldset') as HTMLElement;
+    await userEvent.click(within(block).getByRole('button', { name: REPLACE_SAVED }));
+    fireEvent.change(document.querySelector('input[name="other_ssn"]') as HTMLElement, {
+      target: { value: '900-12-3456' },
+    });
+    fireEvent.click(
+      document.querySelector('input[name="other_ssn_answer"][value="no"]') as HTMLElement
+    );
+    await userEvent.click(within(block).getByRole('button', { name: DELETE_HIDDEN }));
+    await waitFor(() =>
+      expect(patchBodies).toContainEqual({ petition_answers: { other_ssn: null } })
+    );
+    patchBodies.length = 0;
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await waitFor(() => expect(patchBodies.length).toBeGreaterThan(0));
+    for (const body of patchBodies) {
+      expect(body.petition_answers).not.toHaveProperty('other_ssn');
+    }
+  });
+
   it('nine digits that are no ITIN never leave the browser', async () => {
     // PF2-U2: saved would mean it prints, and a number not starting with 9 prints blank
     renderWizard();

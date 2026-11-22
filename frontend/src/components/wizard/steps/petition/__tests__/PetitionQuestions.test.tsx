@@ -61,11 +61,13 @@ function Harness({
   division = null,
   onChange,
   onSecretChange,
+  onSecretDelete,
 }: {
   initial?: PetitionAnswers;
   division?: 'Eastern' | 'Western' | null;
   onChange?: (next: PetitionAnswers) => void;
   onSecretChange?: (key: 'itin' | 'other_ssn', value: string) => void;
+  onSecretDelete?: (key: 'itin' | 'other_ssn') => Promise<void>;
 }) {
   const [answers, setAnswers] = useState<PetitionAnswers>(initial);
   const [secrets, setSecrets] = useState<{ itin?: string; other_ssn?: string }>({});
@@ -82,6 +84,7 @@ function Harness({
           onSecretChange?.(key, value);
           setSecrets((current) => ({ ...current, [key]: value }));
         }}
+        onSecretDelete={onSecretDelete}
         division={division}
       />
     </main>
@@ -446,6 +449,27 @@ describe('PetitionQuestions', () => {
     );
     await user.click(screen.getByRole('button', { name: DELETE_HIDDEN }));
     expect(onSecretDelete).toHaveBeenCalledWith('other_ssn');
+  });
+
+  it('a saved number shown under a No keeps its Delete, and a new answer hides it again', async () => {
+    const user = userEvent.setup();
+    const onSecretDelete = vi.fn().mockResolvedValue(undefined);
+    render(
+      <Harness
+        initial={{ other_ssn_answer: 'no', other_ssn_saved: true }}
+        onSecretDelete={onSecretDelete}
+      />
+    );
+    await user.click(screen.getByRole('button', { name: SHOW_HIDDEN }));
+    expect(screen.getByText(OTHER_SSN_SAVED)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: DELETE_HIDDEN }));
+    expect(onSecretDelete).toHaveBeenCalledWith('other_ssn');
+
+    // Yes then No again: the number is hidden once more, not left showing
+    await user.click(document.querySelector('input[name="other_ssn_answer"][value="yes"]')!);
+    await user.click(document.querySelector('input[name="other_ssn_answer"][value="no"]')!);
+    expect(screen.getByText(HIDDEN_ANSWERS)).toBeInTheDocument();
+    expect(screen.queryByText(OTHER_SSN_SAVED)).not.toBeInTheDocument();
   });
 
   it('a Delete the server refuses keeps the line and says it was not saved', async () => {
