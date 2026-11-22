@@ -822,3 +822,10 @@ def test_every_checkbox_binding_maps_its_answers_to_a_box():
         if not f.choices
     ]
     assert unmapped == [], f"unmapped_choice: no answer value maps to a box yet: {unmapped}"
+
+
+def test_form_101a_binds_neither_certification_box():
+    # The sworn certification stays blank, so Check Box12's "No" state can never print
+    # (spec 5.3, 18.2): DigniFi never prints a No the filer didn't give.
+    names = {f.pdf_field for f in load_schema("form_101a").fields}
+    assert not names & {"Check Box12", "Check Box13"}

@@ -17,14 +17,17 @@ from apps.eligibility.models import MeansTest
 from apps.forms.field_index import load_index
 from apps.forms.models import GeneratedForm
 from apps.forms.registry import (
+    FORM_101A_LANDLORD,
     FORM_REGISTRY,
     PreconditionMissing,
     build_field_values,
+    build_parts,
     get_all_form_types,
     packet,
 )
 from apps.forms.schema import load_schema
 from apps.intake.models import DebtorInfo, FilingFee, Household, IntakeSession
+from apps.intake.tests.builders import answer_petition
 
 User = get_user_model()
 
@@ -88,6 +91,7 @@ def _means_test(session, monthly_cmi, annual_median, above_median_flag=False):
 def test_registry_is_the_chapter_7_forms_in_filing_order():
     assert get_all_form_types() == [
         "form_101",
+        "form_101a",
         "form_103b",
         "form_106dec",
         "form_106sum",
@@ -211,3 +215,70 @@ def test_petition_prints_only_the_last_four_ssn_digits(session, ssn):
     assert digits == ["0", "0", "0", "5"]
     leaks = [name for name, value in values.items() if "900550005" in re.sub(r"\D", "", value)]
     assert leaks == []
+
+
+LANDLORD = {
+    "landlord_name": "Demo Property Holdings LLC",
+    "landlord_street": "100 Demo St",
+    "landlord_city": "Chicago",
+    "landlord_state": "IL",
+    "landlord_zip": "60601",
+}
+
+
+def _evicted(session, **over):
+    answer_petition(session, rents_residence="yes", eviction_judgment="yes", **over)
+
+
+def test_a_renter_with_an_eviction_judgment_gets_form_101a_after_form_101(session):
+    _evicted(session)
+    forms = packet(session)
+    assert forms[:2] == ["form_101", "form_101a"]
+    assert len(forms) == 16
+
+
+def test_a_stale_eviction_yes_under_a_rent_no_gets_no_form_101a(session):
+    # Moving the rent answer to No keeps the eviction Yes stored (S:316).
+    answer_petition(session, rents_residence="no", eviction_judgment="yes")
+    assert "form_101a" not in packet(session)
+
+
+def test_eviction_yes_with_rent_unanswered_gets_no_form_101a(session):
+    answer_petition(session, rents_residence=None, eviction_judgment="yes")
+    assert "form_101a" not in packet(session)
+
+
+def test_a_session_with_no_petition_record_gets_no_form_101a_and_no_error(session):
+    assert not hasattr(session, "petition_answers")
+    assert FORM_REGISTRY["form_101a"].applies(session) is False
+
+
+@pytest.mark.parametrize("key", list(LANDLORD))
+def test_form_101a_refuses_until_the_landlord_block_is_whole(session, key):
+    _debtor(session)
+    _evicted(session, **{**LANDLORD, key: "  "})
+    with pytest.raises(PreconditionMissing) as refused:
+        build_parts("form_101a", session)
+    assert refused.value.step == "contracts"
+    assert str(refused.value) == (
+        "Form 101A asks for your landlord's name and address, on Contracts & Leases."
+    )
+    assert str(refused.value) == FORM_101A_LANDLORD
+
+
+def test_form_101a_builds_once_the_landlord_block_is_whole(session):
+    _debtor(session)
+    _evicted(session, **LANDLORD)
+    (form_part,) = [p for p in build_parts("form_101a", session)["parts"] if p["kind"] == "form"]
+    values = form_part["values"]
+    assert values["Name of landlord"] == LANDLORD["landlord_name"]
+    assert values["Landlord Street address"] == LANDLORD["landlord_street"]
+    assert values["Landlord City"] == LANDLORD["landlord_city"]
+    assert values["Landlord State"] == LANDLORD["landlord_state"]
+    assert values["Landlord ZIP Code_5"] == LANDLORD["landlord_zip"]
+
+
+def test_form_101a_never_refuses_off_the_pair(session):
+    _debtor(session)
+    answer_petition(session, rents_residence="no", eviction_judgment="yes")
+    assert build_parts("form_101a", session)

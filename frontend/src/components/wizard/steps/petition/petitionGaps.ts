@@ -59,6 +59,14 @@ export const HAZARD_KEYS = [
   'hazard_zip',
 ] as const;
 export const RENT_KEYS = ['rents_residence', 'eviction_judgment'] as const;
+/** Form 101A's landlord block (4b2), asked under the rent and eviction pair; pinned to the server */
+export const LANDLORD_KEYS = [
+  'landlord_name',
+  'landlord_street',
+  'landlord_city',
+  'landlord_state',
+  'landlord_zip',
+] as const;
 
 /** Any of a block's keys holds an answer: the block counts as touched (PF2-T8-10) */
 export function anyAnswerIn(

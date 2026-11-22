@@ -491,11 +491,14 @@ def _overshoot(template, widget):
 
 
 # (form type, box, side) where _overshoot finds a letter past the rect: the only boxes the
-# cut-off test lets a letter cross, by that much. Å rises up to 0.228 pt above 39 boxes and
-# µ hangs up to 0.048 pt below 10 of them (g and q 0.024 pt); Ç stays inside. Whether
-# filers' forms may print this hairline is the owner's R38 question. Form 101 (11/26) has no
-# row: each of its text boxes sizes its own text, so none reaches past its rect.
+# cut-off test lets a letter cross, by that much. Å rises up to 0.228 pt above 41 boxes (Form
+# 101A's Case number and Debtor 1 among them) and µ hangs up to 0.048 pt below 10 of them (g and
+# q 0.024 pt); Ç stays inside. Whether filers' forms may print this hairline is the owner's R38
+# question. Form 101 (11/26) has no row: each of its text boxes sizes its own text, so none
+# reaches past its rect.
 _R38_HAIRLINES = [
+    ("form_101a", "Case number@1:T4", "top"),
+    ("form_101a", "Debtor 1@1:T1", "top"),
     ("form_103b", "13 Other real estate city sate@2:T29", "top"),
     ("form_103b", "Case number@1:T4", "top"),
     ("form_103b", "Case number@2:T2", "top"),
@@ -928,7 +931,7 @@ def test_check_agrees_with_the_drawing_on_every_letter():
     # accepts prints as itself, and one it refuses would print as "?", as another glyph,
     # or as nothing. MuPDF reads back a character's code even where the font draws
     # nothing for it, so whether a letter prints is judged by its ink too. Every
-    # template's text font has the same encoding, so one form's boxes stand for all 18
+    # template's text font has the same encoding, so one form's boxes stand for all 19
     # here. Form 107's boxes carry no /DR of their own. Some boxes on five other templates
     # do, and the drawing deletes it (R32): undoing that deletion fails test_pdf_filler.py's
     # test_a_letter_outside_latin_1_prints_on_every_box.

@@ -1675,6 +1675,14 @@ export const PETITION_DETAIL_TOO_LONG =
   'Your answer for {label} is too long for its box on Form 101.';
 export const PETITION_DETAIL_TOO_LONG_ROW =
   'Your answer for {label}, in {noun} {n}, is too long to fit on {forms}.';
+// Form 101A's landlord block (4b2, owner-approved 2026-11-22): the first mirrors
+// DETAIL_LANDLORD, which is also Form 101A's refusal; the second is a {label} template.
+// DRAFT: counsel C-46
+export const PETITION_DETAIL_LANDLORD =
+  "Form 101A asks for your landlord's name and address, on Contracts & Leases.";
+// DRAFT: counsel C-46
+export const PETITION_DETAIL_TOO_LONG_101A =
+  'Your answer for {label} is too long for its box on Form 101A.';
 
 // The questions step 1 asks in its own words, where the form prints no question (spec §6.1)
 // DRAFT: counsel C-44
@@ -1749,8 +1757,6 @@ export const FORM_101_LINE_11_LEAD = 'Form 101 line 11 says:';
 // DRAFT: counsel C-40
 export const FORM_101A_SAYS = 'Form 101A says:';
 // DRAFT: counsel C-40
-export const FORM_101A_NOT_YET = "DigniFi doesn't prepare Form 101A yet.";
-// DRAFT: counsel C-40
 export const FORM_101A_LINK = 'Get Form 101A and its instructions from the U.S. Courts website';
 // The court's Form 101A page, read 2026-11-21 (the page without "-individuals" is a 404)
 // DRAFT: counsel C-40
@@ -1758,6 +1764,27 @@ export const COURT_FORM_101A_URL =
   'https://www.uscourts.gov/forms-rules/forms/initial-statement-about-eviction-judgment-against-you-individuals';
 // DRAFT: counsel C-40
 export const FORM_101B_NOT_PREPARED = "DigniFi doesn't prepare Form 101B.";
+// Form 101A's certification boxes stay blank (owner-approved 2026-11-22, spec §6.7 item 2, B58).
+// DEPOSIT_WITH_CLERK ends in a colon: the step adds the division's number (CLERK_PHONE_*, 4b-R6)
+// DRAFT: counsel C-46
+export const FORM_101A_BOXES_BLANK =
+  'DigniFi leaves these two boxes blank. They are sworn statements about the law that applies to your eviction judgment and about a rent deposit given to the clerk when you file.';
+// DRAFT: counsel C-46
+export const FORM_101A_DEPOSIT = "The clerk's office can tell you how the deposit is made.";
+// DRAFT: counsel C-46
+export const FORM_101A_DEPOSIT_WITH_CLERK =
+  "The clerk's office can tell you how the deposit is made:";
+// The landlord's pick from a lease listed on the same step (4b2-R7)
+// DRAFT: counsel C-46
+export const LANDLORD_PICK_LABEL = 'Copy a name and address from a lease you listed on this step';
+// DRAFT: counsel C-46
+export const LANDLORD_PICK_PLACEHOLDER = 'Choose a lease';
+// DRAFT: counsel C-46
+export const LANDLORD_PICK_HINT = 'You can change what is copied.';
+// Signing guide, Form 101A bullet (spec §16.3): rendered from 4i
+// DRAFT: counsel C-46
+export const GUIDE_FORM_101A_BOXES_BLANK =
+  'On Form 101A, DigniFi leaves both boxes of the sworn statement blank.';
 // DRAFT: counsel C-40
 export const FORM_101B_LINK = 'Get Form 101B from the U.S. Courts website';
 // The court's Form 101B page, read 2026-11-21

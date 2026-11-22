@@ -290,7 +290,18 @@ describe('PetitionQuestions', () => {
     // The record also holds the hazard (Assets) and the rent (Contracts & Leases): a filer who
     // comes back to step 1 sees nothing said about its own questions until they touch them
     render(
-      <Harness initial={{ hazard_answer: 'no', hazard_what: 'Barn roof', rents_residence: 'no' }} />
+      <Harness
+        initial={{
+          hazard_answer: 'no',
+          hazard_what: 'Barn roof',
+          rents_residence: 'no',
+          landlord_name: 'Demo Property Holdings LLC',
+          landlord_street: '100 Demo St',
+          landlord_city: 'Chicago',
+          landlord_state: 'IL',
+          landlord_zip: '60601',
+        }}
+      />
     );
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
     expect(screen.queryByText('Not answered yet')).not.toBeInTheDocument();

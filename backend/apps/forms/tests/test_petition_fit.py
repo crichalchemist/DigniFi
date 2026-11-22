@@ -28,6 +28,7 @@ from apps.intake.models import DebtorInfo, IntakeSession, PetitionAnswers
 from apps.intake.petition import (
     CELL_LABELS,
     DETAIL_TOO_LONG,
+    DETAIL_TOO_LONG_101A,
     DETAIL_TOO_LONG_ROW,
     petition_step_gaps,
 )
@@ -157,6 +158,72 @@ def test_a_text_at_its_cap_is_listed_exactly_when_check_refuses_it(session, key,
         assert refusal.label in _boxes_of(key)
     # Never two lines for one key.
     assert len(_too_long_lines(session)) == int(listed)
+
+
+LANDLORD_KEYS = sorted(
+    key for key in PetitionAnswers.TEXT_LIMITS if PETITION_STEP_OF_KEY.get(key) == "contracts"
+)
+PAIR = {"rents_residence": "yes", "eviction_judgment": "yes"}
+LANDLORD_PARITY_CASES = [(key, text) for key in LANDLORD_KEYS for text in _texts_at_cap(key)]
+
+
+def _refusal_101a(session):
+    try:
+        PDFFormFiller().check("form_101a", resolve_parts(load_schema("form_101a"), session))
+    except ValueTooLong as refused:
+        return refused
+    return None
+
+
+def test_form_101a_is_measured_only_while_it_is_in_the_packet(session):
+    _answer(session, {**PAIR, "landlord_name": "W" * 65})
+    assert too_long(session, ["landlord_name"]) == {
+        ("landlord_name", None, None): frozenset({"form_101a"})
+    }
+    _answer(session, {**PAIR, "rents_residence": "no", "landlord_name": "W" * 65})
+    assert too_long(session, ["landlord_name"]) == {}
+
+
+def test_the_landlord_parity_cases_cover_all_five_keys():
+    assert LANDLORD_KEYS == [
+        "landlord_city",
+        "landlord_name",
+        "landlord_state",
+        "landlord_street",
+        "landlord_zip",
+    ]
+
+
+@pytest.mark.parametrize("key", LANDLORD_KEYS)
+def test_the_landlord_texts_are_measured_on_form_101a_boxes(session, key):
+    # Parity could hold with nothing ever listed: capitals at the cap don't fit their box, digits
+    # at a ZIP's or state's cap do, and the list and Form 101A's own check agree on each
+    cap = PetitionAnswers.TEXT_LIMITS[key]
+    fits = key in ("landlord_zip", "landlord_state")
+    text = ("0" if key == "landlord_zip" else "W") * cap
+    _answer(session, {**PAIR, key: text})
+    label = DETAIL_TOO_LONG_101A.format(label=PetitionAnswers.TEXT_LABELS[key])
+    listed = label in [str(g) for g in petition_step_gaps(session)]
+    refusal = _refusal_101a(session)
+    if key == "landlord_state":
+        # Capitals at the state cap: the box's two characters
+        assert listed == (refusal is not None)
+    else:
+        assert listed is (not fits)
+        assert (refusal is not None) is (not fits)
+
+
+@pytest.mark.parametrize("key,text", LANDLORD_PARITY_CASES)
+def test_a_landlord_text_at_its_cap_is_listed_exactly_when_form_101a_refuses_it(session, key, text):
+    assert len(text) <= PetitionAnswers.TEXT_LIMITS[key]
+    _answer(session, {**PAIR, key: text})
+    refusal = _refusal_101a(session)
+    listed = DETAIL_TOO_LONG_101A.format(label=PetitionAnswers.TEXT_LABELS[key]) in [
+        str(g) for g in petition_step_gaps(session)
+    ]
+    assert listed == (refusal is not None), (key, text, refusal)
+    if refusal is not None:
+        assert (refusal.step, refusal.page) == ("contracts", None)
 
 
 def test_capitals_at_a_cap_are_listed_and_digits_in_a_zip_or_state_are_not(session):

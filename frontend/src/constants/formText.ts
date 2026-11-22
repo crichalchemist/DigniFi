@@ -811,6 +811,7 @@ export const FORM_122A2_LINE_43_AMOUNT = 'Average monthly expense or income adju
 // test_petition_frontend_copy.py pins it to page 1's title line
 export const FORM_REVISIONS: Record<string, string> = {
   form_101: '11/26',
+  form_101a: '12/15',
 };
 
 // Line 1, the label under the suffix box
@@ -917,6 +918,14 @@ export const FORM_101A_SERVICE_CONDITIONS = [
   'you rent your residence; and',
   'your landlord has obtained a judgment for possession in an eviction, unlawful detainer action, or similar proceeding (called eviction judgment) against you to possess your residence.',
 ];
+// Form 101A (form_b101a_0.pdf, 12/15) page 1, the label of the landlord's name box, the ’ kept
+export const FORM_101A_LANDLORD_NAME = 'Landlord’s name';
+// Form 101A (form_b101a_0.pdf, 12/15) page 1, the label over the landlord's address boxes, the ’ kept
+export const FORM_101A_LANDLORD_ADDRESS = 'Landlord’s address';
+// Form 101A (form_b101a_0.pdf, 12/15) page 1, the sentence after the address boxes, line breaks
+// joined (4b2-R10)
+export const FORM_101A_GATE_SENTENCE =
+  'If you want to stay in your rented residence after you file your case for bankruptcy, also complete the certification below.';
 // Form 101A (12/15) page 1, the certification's heading as printed. Owner ruling Q11: quoted
 // before paragraph (a), so (a)'s "both boxes above" has its two boxes
 export const FORM_101A_CERTIFICATION_HEADING =

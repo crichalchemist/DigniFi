@@ -15,6 +15,7 @@ class GeneratedForm(models.Model):
 
     FORM_TYPE_CHOICES = [
         ("form_101", "Form 101 - Voluntary Petition"),
+        ("form_101a", "Form 101A - Eviction Judgment Statement"),
         ("form_103b", "Form 103B - Fee Waiver Application"),
         ("form_106dec", "Form 106Dec - Declaration"),
         ("form_106sum", "Form 106Sum - Summary of Assets/Liabilities"),

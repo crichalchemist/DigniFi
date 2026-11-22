@@ -8,6 +8,7 @@ import json
 
 import pytest
 
+from apps.forms.services import petition_fit
 from apps.intake.models import FilingFee, PetitionAnswers
 from apps.intake.petition import (
     CELL_LABELS,
@@ -16,6 +17,7 @@ from apps.intake.petition import (
     DETAIL_HAZARD,
     DETAIL_ITIN,
     DETAIL_ITIN_NINE,
+    DETAIL_LANDLORD,
     DETAIL_MAILING,
     DETAIL_OTHER_NAMES,
     DETAIL_OTHER_SSN,
@@ -24,6 +26,7 @@ from apps.intake.petition import (
     DETAIL_PRIOR_CASE,
     DETAIL_PRIOR_DATE,
     DETAIL_TOO_LONG,
+    DETAIL_TOO_LONG_101A,
     DETAIL_TOO_LONG_ROW,
     DETAIL_VENUE,
     DETAIL_VENUE_REASON,
@@ -266,16 +269,87 @@ def test_a_too_long_answer_to_another_steps_question_is_not_listed_here(filer, m
     monkeypatch.setattr(
         PetitionAnswers,
         "TEXT_LIMITS",
-        {"preparer_name": 3, "debt_nature_text": 3, "landlord_name": 3},
+        {"preparer_name": 3, "debt_nature_text": 3},
     )
     answers = {
         **NO,
         "venue_choice": "lived_here",
         "preparer_name": "A" * 10,
         "debt_nature_text": "B" * 10,
-        "landlord_name": "C" * 10,
     }
     assert _gaps(session, answers) == []
+
+
+LANDLORD = {
+    "landlord_name": "Demo Property Holdings LLC",
+    "landlord_street": "100 Demo St Apt 2",
+    "landlord_city": "Springfield",
+    "landlord_state": "IL",
+    "landlord_zip": "62701",
+}
+PAIR = {**NO, "venue_choice": "lived_here", "rents_residence": "yes", "eviction_judgment": "yes"}
+
+
+def test_a_renter_with_an_eviction_judgment_and_no_landlord_has_one_detail_for_form_101a(filer):
+    _, session = filer
+    answers = {**PAIR, "landlord_name": "Demo Property Holdings LLC", "landlord_street": "1 A St"}
+    gaps = petition_step_gaps_of(session, answers)
+    assert [(g.step, g.kind, str(g)) for g in gaps][-1] == ("contracts", "detail", DETAIL_LANDLORD)
+    assert gaps[-1].forms == ("form_101a",)
+    assert [str(g) for g in gaps].count(DETAIL_LANDLORD) == 1
+
+
+def petition_step_gaps_of(session, answers):
+    _gaps(session, answers)
+    return petition_step_gaps(session)
+
+
+def test_a_whole_landlord_block_clears_the_detail(filer):
+    _, session = filer
+    assert _gaps(session, {**PAIR, **LANDLORD}) == []
+
+
+def test_a_stale_eviction_yes_under_a_rent_no_gets_no_landlord_gap_and_no_measure(
+    filer, monkeypatch
+):
+    _, session = filer
+    monkeypatch.setattr(PetitionAnswers, "TEXT_LIMITS", {"landlord_name": 3})
+    measured = []
+
+    def spy(session, keys):
+        measured.append(list(keys))
+        return {}
+
+    monkeypatch.setattr(petition_fit, "too_long", spy)
+    stale = {**PAIR, "rents_residence": "no", "landlord_name": "N" * 10}
+    assert _gaps(session, stale) == []
+    assert all("landlord_name" not in keys for keys in measured)
+    assert measured
+
+
+def test_a_landlord_name_over_its_cap_is_listed_for_form_101a_under_the_pair(filer):
+    _, session = filer
+    cap = PetitionAnswers.TEXT_LIMITS["landlord_name"]
+    answers = {**PAIR, **LANDLORD, "landlord_name": "N" * (cap + 1)}
+    gaps = petition_step_gaps_of(session, answers)
+    assert [(g.step, g.kind, str(g)) for g in gaps] == [
+        (
+            "contracts",
+            "detail",
+            DETAIL_TOO_LONG_101A.format(label=PetitionAnswers.TEXT_LABELS["landlord_name"]),
+        )
+    ]
+    assert PetitionAnswers.TEXT_LABELS["landlord_name"] == "the landlord's name"
+    assert gaps[0].forms == ("form_101a",)
+
+
+def test_the_landlord_detail_is_form_101as_refusal_word_for_word():
+    # Written out, not compared with the registry's own name (PF-4b2-6).
+    assert (
+        DETAIL_LANDLORD
+        == "Form 101A asks for your landlord's name and address, on Contracts & Leases."
+    )
+    assert DETAIL_TOO_LONG_101A == "Your answer for {label} is too long for its box on Form 101A."
 
 
 def test_the_owner_approved_gate_and_pending_date_sentences_are_exact():

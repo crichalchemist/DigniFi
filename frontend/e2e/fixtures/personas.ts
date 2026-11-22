@@ -270,7 +270,11 @@ export interface PersonaPetition {
   hazard_answer: 'no';
   rents_residence: 'yes' | 'no';
   // Asked only under a rent Yes
-  eviction_judgment?: 'no';
+  eviction_judgment?: 'yes' | 'no';
+  // Under an eviction Yes (Form 101A): the lease to copy the landlord from (an option's label),
+  // then the landlord's name typed over the copy
+  landlord_pick?: string;
+  landlord_name?: string;
 }
 
 /**

@@ -6,8 +6,11 @@ other Social Security number never leave the server, and a change reopens a comp
 
 import datetime
 import json
+import shutil
+from pathlib import Path
 
 import pytest
+from django.core.exceptions import ImproperlyConfigured
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
@@ -310,6 +313,51 @@ def test_a_missing_caps_file_fails_loudly(settings, tmp_path):
     # Read at import: without it every text would lose its cap with no sign of it.
     settings.FORM_SCHEMAS_DIRECTORY = tmp_path
     with pytest.raises(FileNotFoundError):
+        _read_text_limits()
+
+
+LIMITS_DIR = Path(__file__).resolve().parents[4] / "data" / "forms" / "schemas"
+
+
+def test_a_missing_form_101a_caps_file_fails_loudly(settings, tmp_path):
+    # Form 101A's landlord caps come from its own file; without it the five keys lose their caps.
+    shutil.copy(LIMITS_DIR / "form_101.limits.json", tmp_path)
+    settings.FORM_SCHEMAS_DIRECTORY = tmp_path
+    with pytest.raises(FileNotFoundError):
+        _read_text_limits()
+
+
+def test_a_key_capped_in_both_files_fails_loudly(settings, tmp_path):
+    # Two caps for one key would leave the record to pick one silently.
+    shutil.copy(LIMITS_DIR / "form_101.limits.json", tmp_path)
+    key = next(iter(json.loads((tmp_path / "form_101.limits.json").read_text())["limits"]))
+    (tmp_path / "form_101a.limits.json").write_text(
+        json.dumps({"limits": {key: 5}, "labels": {key: "x"}})
+    )
+    settings.FORM_SCHEMAS_DIRECTORY = tmp_path
+    with pytest.raises(ImproperlyConfigured):
+        _read_text_limits()
+
+
+def test_a_label_in_both_files_fails_loudly(settings, tmp_path):
+    # Form 101A's label would override Form 101's silently, so the sentence naming a box changes
+    shutil.copy(LIMITS_DIR / "form_101.limits.json", tmp_path)
+    key = next(iter(json.loads((tmp_path / "form_101.limits.json").read_text())["labels"]))
+    (tmp_path / "form_101a.limits.json").write_text(
+        json.dumps({"limits": {"landlord_name": 65}, "labels": {key: "x"}})
+    )
+    settings.FORM_SCHEMAS_DIRECTORY = tmp_path
+    with pytest.raises(ImproperlyConfigured):
+        _read_text_limits()
+
+
+@pytest.mark.parametrize("body", [{}, {"limits": {}, "labels": {}}])
+def test_an_empty_form_101a_caps_file_fails_loudly(settings, tmp_path, body):
+    # The landlord keys would be text with no caps, which the import must never allow
+    shutil.copy(LIMITS_DIR / "form_101.limits.json", tmp_path)
+    (tmp_path / "form_101a.limits.json").write_text(json.dumps(body))
+    settings.FORM_SCHEMAS_DIRECTORY = tmp_path
+    with pytest.raises(ImproperlyConfigured):
         _read_text_limits()
 
 

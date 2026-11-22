@@ -18,8 +18,9 @@ from apps.forms.services.fill_resolver import _emit, _key, _scalar_value, resolv
 from apps.forms.services.pdf_filler import PDFFormFiller, UnprintableLetter, ValueTooLong
 
 # The forms whose boxes print a petition answer: Form 103B line 20 prints line 9's earlier cases
-# (PF2-T10-6). A form is measured only while it is in the filer's packet.
-MEASURED_FORMS = ("form_101", "form_103b")
+# (PF2-T10-6) and Form 101A the landlord's block (4b2). Each form is measured only while it is in
+# the filer's packet.
+MEASURED_FORMS = ("form_101", "form_101a", "form_103b")
 
 # The derivations that print a petition key's text, by rule: each street's Number box too, which
 # has no cap of its own (PF2-10d), and the venue reason's four lines.
@@ -123,7 +124,9 @@ def too_long(session, keys: Collection[str]) -> dict[Measured, frozenset[str]]:
 
     found: dict[Measured, set[str]] = {}
     for form_type in MEASURED_FORMS:
-        # Form 103B is in the packet only under a fee waiver; a box no form prints is no gap.
+        # Form 103B is in the packet only under a fee waiver, and Form 101A only under a rent Yes
+        # and an eviction Yes: each is measured only while it is in the packet, since a box no
+        # form prints is no gap.
         if not FORM_REGISTRY[form_type].applies(session):
             continue
         schema = load_schema(form_type)

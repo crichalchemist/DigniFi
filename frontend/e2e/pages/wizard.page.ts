@@ -603,7 +603,8 @@ export class WizardPage {
 
   // ── Step 7: Contracts & Leases ──────────────────────────────────
 
-  /** Form 101 line 11: the rent answer, and under a Yes the eviction answer. */
+  /** Form 101 line 11: the rent answer, under a Yes the eviction answer, and under the pair the
+   * landlord (a lease picked to copy from, then the boxes typed). */
   private async answerRentQuestion(petition: PersonaPetition) {
     await this.page
       .locator(`input[name="rents_residence"][value="${petition.rents_residence}"]`)
@@ -615,10 +616,22 @@ export class WizardPage {
       await this.page
         .locator(`input[name="eviction_judgment"][value="${petition.eviction_judgment}"]`)
         .check();
+      if (petition.eviction_judgment === 'yes') {
+        if (petition.landlord_pick) {
+          await this.pick(
+            this.page.locator('select[name="landlord_pick"]'),
+            petition.landlord_pick
+          );
+        }
+        if (petition.landlord_name) {
+          await this.page.locator('input[name="landlord_name"]').fill(petition.landlord_name);
+        }
+      }
     }
   }
 
-  async walkContracts(persona: Pick<PersonaData, 'contracts' | 'claim_answers' | 'petition'>) {
+  /** Step 7's answers, leaving the step on screen so a spec can read what the answers opened */
+  async fillContracts(persona: Pick<PersonaData, 'contracts' | 'claim_answers' | 'petition'>) {
     const page = this.page;
     await page
       .locator(`input[name="contracts_answer"][value="${persona.claim_answers.contracts_answer}"]`)
@@ -644,6 +657,10 @@ export class WizardPage {
       await page.locator(`input[name="owes_now_${i}"][value="${contract.owes_now}"]`).check();
     }
     await this.answerRentQuestion(persona.petition);
+  }
+
+  async walkContracts(persona: Pick<PersonaData, 'contracts' | 'claim_answers' | 'petition'>) {
+    await this.fillContracts(persona);
     await this.nextStep();
   }
 

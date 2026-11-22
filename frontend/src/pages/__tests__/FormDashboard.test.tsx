@@ -5,7 +5,12 @@ import { delay, http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider } from '../../context/IntakeContext';
 import { FormDashboard } from '../FormDashboard';
-import { DASHBOARD_ERROR, DASHBOARD_GATES_ONE, FORM_103A_LINK } from '../../constants/copy';
+import {
+  DASHBOARD_ERROR,
+  DASHBOARD_GATES_ONE,
+  FORM_103A_LINK,
+  PETITION_DETAIL_LANDLORD,
+} from '../../constants/copy';
 import { FORM_103A_URL } from '../../constants/copy';
 import {
   MEANS_FILED_BEFORE_122A1,
@@ -38,6 +43,12 @@ function renderFormDashboard() {
       </IntakeProvider>
     </MemoryRouter>
   );
+}
+
+/** The path and query the router is at, for a test that follows a button */
+function WhereNow() {
+  const { pathname, search } = useLocation();
+  return <p data-testid="where-now">{pathname + search}</p>;
 }
 
 /** Forms are prepared only from an intake the server marked complete. */
@@ -380,6 +391,127 @@ describe('FormDashboard', () => {
   // Generate All
   // ---------------------------------------------------------------------------
 
+  // Form 101A is in the packet of a renter with an eviction judgment only (4b2-R11: the default
+  // packet stays the 15 forms, so these tests give their own)
+  describe('Form 101A on the dashboard', () => {
+    const CARD_101A = 'Form 101A - Eviction Judgment Statement';
+
+    function withForm101A(gaps: unknown[] = []) {
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () =>
+          HttpResponse.json({ session: 1, form_types: ['form_101', 'form_101a', 'form_121'] })
+        ),
+        http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+          HttpResponse.json({ gaps })
+        )
+      );
+    }
+
+    const landlordGap = {
+      message: PETITION_DETAIL_LANDLORD,
+      step: 'contracts',
+      kind: 'detail',
+      forms: ['form_101a'],
+    };
+
+    it('the landlord detail shows on Form 101A’s card and on no other', async () => {
+      withForm101A([landlordGap]);
+      renderFormDashboard();
+
+      const card101a = await screen.findByRole('article', { name: CARD_101A });
+      expect(await within(card101a).findByText(PETITION_DETAIL_LANDLORD)).toBeInTheDocument();
+      expect(
+        within(card101a).getByRole('link', { name: 'Go to Contracts & Leases' })
+      ).toHaveAttribute('href', '/intake?step=contracts');
+      for (const name of ['Form 101 - Voluntary Petition', 'Form 121 - SSN Statement']) {
+        const other = screen.getByRole('article', { name });
+        expect(within(other).queryByText(PETITION_DETAIL_LANDLORD)).not.toBeInTheDocument();
+      }
+      // Once on the card, once in the notice
+      expect(screen.getAllByText(PETITION_DETAIL_LANDLORD)).toHaveLength(2);
+    });
+
+    // The refusal is the same sentence: one sentence twice on one card reads as two problems
+    it('a card refused in the detail’s own words shows the sentence once', async () => {
+      withForm101A([landlordGap]);
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate/', () =>
+          HttpResponse.json(
+            { form_type: 'form_101a', error: PETITION_DETAIL_LANDLORD, step: 'contracts' },
+            { status: 422 }
+          )
+        )
+      );
+      renderFormDashboard();
+
+      const card = await screen.findByRole('article', { name: CARD_101A });
+      // The detail is on the card before any refusal, so a pass after the 422 means it was skipped
+      expect(within(card).getAllByText(PETITION_DETAIL_LANDLORD)).toHaveLength(1);
+      await userEvent.click(within(card).getByRole('button', { name: 'Generate' }));
+      await userEvent.click(screen.getByRole('checkbox'));
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+      // A pending card's one way forward is its button, which the refusal brings: it can't pass
+      // before the 422 lands
+      expect(
+        await within(card).findByRole('button', { name: /Contracts & Leases/ })
+      ).toBeInTheDocument();
+      expect(within(card).getAllByText(PETITION_DETAIL_LANDLORD)).toHaveLength(1);
+      expect(within(card).getAllByRole('button', { name: /Contracts & Leases/ })).toHaveLength(1);
+      expect(within(card).queryByRole('link')).not.toBeInTheDocument();
+    });
+
+    // Generate All clears every card's own refusal and lists its refusals apart, so the card has
+    // none to match: it skips a detail equal to its own form's Generate All error (FR-W1)
+    it('after Generate All refuses Form 101A for the missing landlord, the sentence shows twice, not three times', async () => {
+      withForm101A([landlordGap]);
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({
+            generated: [],
+            errors: [
+              { form_type: 'form_101a', error: PETITION_DETAIL_LANDLORD, step: 'contracts' },
+            ],
+            total_generated: 0,
+            total_errors: 1,
+          })
+        )
+      );
+      renderFormDashboard();
+
+      const card = await screen.findByRole('article', { name: CARD_101A });
+      // Before Generate All: once on the card and once in the notice
+      expect(screen.getAllByText(PETITION_DETAIL_LANDLORD)).toHaveLength(2);
+      await userEvent.click(await screen.findByRole('button', { name: /generate all/i }));
+      await userEvent.click(screen.getByRole('checkbox'));
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent(PETITION_DETAIL_LANDLORD);
+      // The alert and the notice say it; the card says nothing more
+      expect(within(card).queryByText(PETITION_DETAIL_LANDLORD)).not.toBeInTheDocument();
+      expect(screen.getAllByText(PETITION_DETAIL_LANDLORD, { exact: false })).toHaveLength(2);
+    });
+
+    it('a pending Form 101A card’s Answer Questions goes to Contracts & Leases', async () => {
+      withForm101A();
+      localStorage.setItem('current_session_id', '1');
+      render(
+        <MemoryRouter>
+          <IntakeProvider>
+            <FormDashboard />
+            <WhereNow />
+          </IntakeProvider>
+        </MemoryRouter>
+      );
+
+      const card = await screen.findByRole('article', { name: CARD_101A });
+      await userEvent.click(within(card).getByRole('button', { name: 'Answer Questions' }));
+
+      expect(screen.getByTestId('where-now')).toHaveTextContent('/intake?step=contracts');
+    });
+  });
+
   describe('the median table notice', () => {
     const aprilTable = {
       name: 'Census median income',
@@ -665,6 +797,42 @@ describe('FormDashboard', () => {
     expect(screen.getByText('Form 121 - SSN Statement')).toBeInTheDocument();
     expect(screen.queryByText('Form 103B - Fee Waiver Application')).not.toBeInTheDocument();
     expect(screen.queryByText('Form 122A-2 - Means Test Expenses')).not.toBeInTheDocument();
+  });
+
+  it('a packet holding Form 101A shows its card under its label', async () => {
+    // A renter with an eviction judgment: Form 101A follows Form 101 (4b2). The packet is this
+    // test's own literal list, since the shared mockPacket stays the 15 forms every filer gets.
+    server.use(
+      http.get('http://localhost:8000/api/forms/packet/', () =>
+        HttpResponse.json({
+          session: 1,
+          form_types: [
+            'form_101',
+            'form_101a',
+            'form_106dec',
+            'form_106sum',
+            'form_107',
+            'form_121',
+            'list_of_creditors',
+            'form_122a1',
+            'schedule_a_b',
+            'schedule_c',
+            'schedule_d',
+            'schedule_e_f',
+            'schedule_g',
+            'schedule_h',
+            'schedule_i',
+            'schedule_j',
+          ],
+        })
+      ),
+      http.get('http://localhost:8000/api/forms/', () => HttpResponse.json([]))
+    );
+
+    renderFormDashboard();
+
+    expect(await screen.findByText('Form 101A - Eviction Judgment Statement')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /generate all 16 forms/i })).toBeInTheDocument();
   });
 
   it('keeps showing a filed form after it leaves the packet, and says so', async () => {

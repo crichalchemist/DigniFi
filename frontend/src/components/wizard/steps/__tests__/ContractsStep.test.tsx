@@ -80,6 +80,7 @@ interface HarnessProps {
   /** Form 101 line 11's answers; answered No unless a test says otherwise, so G's own gaps show */
   rent?: PetitionAnswers;
   onRentChange?: (next: PetitionAnswers) => void;
+  division?: 'Eastern' | 'Western' | null;
 }
 
 /** The wizard's part: it holds the rows and the answer the step shows */
@@ -93,6 +94,7 @@ function StepWithRows({
   onGoToStep = vi.fn(),
   rent: initialRent = { rents_residence: 'no' },
   onRentChange = () => {},
+  division = null,
 }: HarnessProps) {
   const [rows, setRows] = useState<ContractRow[]>(initial);
   const [answer, setAnswer] = useState<YesNo | null>(initialAnswer);
@@ -111,6 +113,7 @@ function StepWithRows({
         setRent(next);
         onRentChange(next);
       }}
+      division={division}
       debts={heldDebts}
       assets={heldAssets}
       onValidationChange={onValidationChange}
@@ -124,6 +127,33 @@ const nameBox = () =>
   screen.getByRole('textbox', { name: new RegExp(`^${SCHEDULE_G_NAME_LABEL}`) });
 
 describe('ContractsStep', () => {
+  // The landlord block reads the step's own rows and the county's division (4b2): passing either
+  // empty would leave every other test green
+  it("offers the step's residential leases to copy a landlord from, and not a vehicle lease", () => {
+    render(
+      <StepWithRows
+        initial={[leaseRow, { ...leaseRow, _key: '5', id: 5, lease_kind: 'residential' }]}
+        rent={{ rents_residence: 'yes', eviction_judgment: 'yes' }}
+      />
+    );
+    const pick = field('landlord_pick') as unknown as HTMLSelectElement;
+    expect(pick).not.toBeNull();
+    // The placeholder and the one residential lease
+    expect(pick.options).toHaveLength(2);
+  });
+
+  it("names the county's clerk in the deposit sentence", () => {
+    render(
+      <StepWithRows
+        rent={{ rents_residence: 'yes', eviction_judgment: 'yes' }}
+        division="Eastern"
+      />
+    );
+    expect(
+      screen.getByText(`${copy.FORM_101A_DEPOSIT_WITH_CLERK} ${copy.CLERK_PHONE_EASTERN}.`)
+    ).toBeInTheDocument();
+  });
+
   it("keeps the other party's name within the length the server stores, so a long name never blocks Continue", async () => {
     const onRowsChange = vi.fn();
     render(<StepWithRows initial={[leaseRow]} onRowsChange={onRowsChange} />);
@@ -418,6 +448,25 @@ describe("Form 101 line 11's rent and eviction, after the contracts (4b)", () =>
     // Answering G clears its gap, and the rent gate is named at once
     await user.click(document.querySelector('[name="contracts_answer"][value="no"]')!);
     expect(screen.getByRole('status')).toHaveTextContent(copy.PETITION_GATE_RENTS);
+  });
+
+  it('the landlord block never holds Continue', async () => {
+    // Form 101A's landlord is a detail, never a gate (§5.7): an empty block, and a block after a
+    // name is typed into it, leave Continue as the rent answers leave it
+    const user = userEvent.setup();
+    const valid = vi.fn();
+    render(
+      <StepWithRows
+        answer="no"
+        rent={{ rents_residence: 'yes', eviction_judgment: 'yes' }}
+        onValidationChange={valid}
+      />
+    );
+    expect(field('landlord_name')).toBeInTheDocument();
+    expect(valid).toHaveBeenLastCalledWith(true);
+    await user.type(field('landlord_name'), 'Demo Property Holdings LLC');
+    expect(valid).toHaveBeenLastCalledWith(true);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
 
   it('asks the rent after the contracts and their Add button', () => {
