@@ -577,6 +577,47 @@ describe('RentQuestion', () => {
     expect(screen.getAllByText(HIDDEN_ANSWERS)).toHaveLength(1);
   });
 
+  // R-a: landlord answers typed after Show under a rent No never sit hidden with no line
+  it('landlord answers typed after Show under a rent No, then an eviction No, sit behind one hidden line', async () => {
+    const user = userEvent.setup();
+    const changes: PetitionAnswers[] = [];
+    render(
+      <Harness
+        initial={{ rents_residence: 'no', eviction_judgment: 'no' }}
+        onChange={(next) => changes.push(next)}
+      />
+    );
+    await user.click(screen.getByRole('button', { name: SHOW_HIDDEN }));
+    await user.click(radio('eviction_judgment', 'yes'));
+    await user.type(field('landlord_name'), 'Demo Property Holdings LLC');
+    await user.click(radio('eviction_judgment', 'no'));
+    expect(document.querySelector('input[name="landlord_name"]')).toBeNull();
+    expect(screen.getAllByText(HIDDEN_ANSWERS)).toHaveLength(1);
+    expect(changes.at(-1)).toMatchObject({
+      rents_residence: 'no',
+      eviction_judgment: 'no',
+      landlord_name: 'Demo Property Holdings LLC',
+    });
+    await user.click(screen.getByRole('button', { name: SHOW_HIDDEN }));
+    expect(field('landlord_name')).toHaveValue('Demo Property Holdings LLC');
+  });
+
+  it('Delete and a changed rent answer put the lease pick back to its placeholder', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={PAIR} leaseRows={[LEASE]} />);
+    await user.selectOptions(field('landlord_pick'), 'new-1');
+    expect(field('landlord_pick')).toHaveValue('new-1');
+    await user.click(radio('rents_residence', 'no'));
+    await user.click(radio('rents_residence', 'yes'));
+    await user.click(radio('eviction_judgment', 'yes'));
+    expect(field('landlord_pick')).toHaveValue('');
+    await user.selectOptions(field('landlord_pick'), 'new-1');
+    await user.click(radio('eviction_judgment', 'no'));
+    await user.click(screen.getByRole('button', { name: DELETE_HIDDEN }));
+    await user.click(radio('eviction_judgment', 'yes'));
+    expect(field('landlord_pick')).toHaveValue('');
+  });
+
   it('a landlord stored under a rent No with no eviction answer still sits behind the hidden line', () => {
     render(<Harness initial={{ rents_residence: 'no', ...STORED_LANDLORD }} />);
     expect(screen.getAllByText(HIDDEN_ANSWERS)).toHaveLength(1);

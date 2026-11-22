@@ -70,8 +70,8 @@ def _printed():
     call_command("seed_demo_data", persona="priya", verbosity=0)
     session = IntakeSession.objects.get(user__username="demo_priya")
     printed = {}
-    # Form 101A needs the eviction pair, which changes other forms (Form 101's line 11 eviction box), so every
-    # other form is built first and 101A last.
+    # Form 101A needs the eviction pair, which changes other forms (Form 101's line 11 eviction
+    # box), so every other form is built first and 101A last.
     for form_type in sorted(SIGNING_LINES, key=lambda form_type: form_type == "form_101a"):
         if form_type == "form_101a":
             answer_petition(session, rents_residence="yes", eviction_judgment="yes", **LANDLORD)

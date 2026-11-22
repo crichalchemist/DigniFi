@@ -55,8 +55,9 @@ const TOO_LONG_SENTENCES = [
 /**
  * A too-long answer never prints blank: Generate refuses the form whose box can't take it (Form
  * 101, Form 101A or Form 103B; a row's {forms} names Form 101 or Form 103B, and Form 101A's own
- * sentence names it; Form 101A, like 103B, is measured only while it is in the packet), and a text over its character cap that its box still takes prints
- * whole. So the blank count leaves it out
+ * sentence names it; Form 101A, like 103B, is measured only while it is in the packet), and a
+ * text over its character cap that its box still takes prints whole. So the blank count leaves
+ * it out
  */
 function isTooLong(gap: CompletionGap): boolean {
   return TOO_LONG_SENTENCES.some((pattern) => pattern.test(gap.message));

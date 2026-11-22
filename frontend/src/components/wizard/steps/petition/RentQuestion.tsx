@@ -193,6 +193,7 @@ export function RentQuestion({
           // Show opens a hidden eviction answer once: a new rent answer hides it again
           setShown(false);
           setLandlordShown(false);
+          setPickedLease('');
           set({ rents_residence: next });
         }}
         unanswered={touched && rent === null}
@@ -249,14 +250,17 @@ export function RentQuestion({
               </div>
             )}
             {pair && <NoticeCertification division={division} />}
-            {rent === 'yes' && eviction === 'no' && hasLandlord && !shown && (
+            {eviction === 'no' && hasLandlord && !(shown && landlordShown) && (
               <HiddenLine
                 sentence={HIDDEN_ANSWERS}
                 onShow={() => {
                   setShown(true);
                   setLandlordShown(true);
                 }}
-                onDelete={() => set(NO_LANDLORD)}
+                onDelete={() => {
+                  setPickedLease('');
+                  set(NO_LANDLORD);
+                }}
               />
             )}
           </YesNoThenDetails>
@@ -269,7 +273,10 @@ export function RentQuestion({
                 setShown(true);
                 setLandlordShown(hasLandlord);
               }}
-              onDelete={() => set({ eviction_judgment: null, ...NO_LANDLORD })}
+              onDelete={() => {
+                setPickedLease('');
+                set({ eviction_judgment: null, ...NO_LANDLORD });
+              }}
             />
           )
         )}
