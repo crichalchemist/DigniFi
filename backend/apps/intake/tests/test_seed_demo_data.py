@@ -19,12 +19,13 @@ from django.conf import settings
 from django.core.management import call_command
 
 from apps.districts.dated_tables import fill_date
-from apps.districts.models import MedianIncome
+from apps.districts.models import District, MedianIncome
 from apps.eligibility.cmi import is_above_median
 from apps.eligibility.means_inputs import read_inputs, read_tables
 from apps.eligibility.means_lines import work_out
 from apps.eligibility.models import MeansTest
 from apps.forms.registry import packet
+from apps.forms.services.answer_records import PETITION_STEP_OF_KEY
 from apps.forms.services.exemption_items import exemption_items
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.intake.asset_lines import LINE_BY_KEY, ordered_assets, rows_on, shown_lines
@@ -41,8 +42,11 @@ from apps.intake.models import (
     FilingFee,
     IncomeInfo,
     IntakeSession,
+    PetitionAnswers,
     SpouseIncome,
 )
+from apps.intake.petition import STEP_1_GATES, petition_step_gaps
+from apps.intake.tests.builders import answer_petition, finish_intake
 from apps.users.models import User
 
 
@@ -658,3 +662,57 @@ def test_every_seeded_persona_has_no_gate_gap():
         for g in completion_gaps(s)
         if g.kind == Gap.GATE
     ] == []
+
+
+@pytest.mark.django_db
+def test_every_persona_answers_the_petition_questions():
+    # Each persona answers what Form 101's steps ask (4b-ii), and says it rents exactly when it
+    # has a residential lease, so the seed and the journeys' own answers can't disagree.
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", stdout=StringIO())
+
+    sessions = list(IntakeSession.objects.filter(status="completed"))
+    assert len(sessions) == len(PERSONAS)
+    for session in sessions:
+        name = session.user.username
+        answers = session.petition_answers.get_answers()
+        asked = (*STEP_1_GATES, "hazard_answer", "rents_residence")
+        assert {key: answers.get(key) in ("yes", "no") for key in asked} == dict.fromkeys(
+            asked, True
+        ), name
+        rents = any(c.lease_kind == "residential" for c in session.executory_contracts.all())
+        assert answers["rents_residence"] == ("yes" if rents else "no"), name
+        # Nothing left open, not even a line Form 101 would print blank.
+        assert [str(g) for g in petition_step_gaps(session)] == [], name
+
+
+@pytest.mark.django_db
+def test_no_seed_builder_or_fixture_writes_a_4d_or_4i_key():
+    # 4d and 4i ask these on other steps; until then a stored answer would be a sworn answer no
+    # screen collected, printed on Form 101 (PF-R2, PF2-8). The set is derived, so a key 4d or 4i
+    # adds to the record is caught by name.
+    forbidden = {
+        key
+        for key, step in PETITION_STEP_OF_KEY.items()
+        if step not in ("debtor_info", "assets", "contracts")
+    }
+    assert {"paid_preparer", "debt_nature", "credit_counseling"} <= forbidden
+
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", stdout=StringIO())
+    seeded = [s.petition_answers.get_answers() for s in IntakeSession.objects.all()]
+    assert len(seeded) == len(PERSONAS)
+
+    user = User.objects.create_user(username="builder_filer", password="pw")
+    built = IntakeSession.objects.create(user=user, district=District.objects.get(code="ilnd"))
+    finished = IntakeSession.objects.create(user=user, district=built.district)
+    answer_petition(built)
+    finish_intake(finished)
+    written = [
+        *seeded,
+        PetitionAnswers.objects.get(session=built).get_answers(),
+        PetitionAnswers.objects.get(session=finished).get_answers(),
+    ]
+
+    assert all(written)
+    assert [sorted(forbidden & set(answers)) for answers in written] == [[]] * len(written)

@@ -19,6 +19,7 @@ from apps.intake.tests.builders import (
     answer_asset_lines,
     answer_claims,
     answer_household,
+    answer_petition,
     linked_loan,
 )
 from apps.users.models import User
@@ -64,6 +65,7 @@ def filer(db):
     )
     ExpenseInfo.objects.create(session=session, expenses_include_others="no")
     answer_household(session, claims=None)
+    answer_petition(session)
     return client, session
 
 

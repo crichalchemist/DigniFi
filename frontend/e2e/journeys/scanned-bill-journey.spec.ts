@@ -93,6 +93,7 @@ test.describe('Scanned bill — upload to Amounts Owed', () => {
 
       // Step 1, then the upload detour
       await wizard.fillDebtorInfo(FILER.debtor);
+      await wizard.fillPetitionQuestions(FILER.petition);
       await wizard.nextStep();
       await expect(
         page.getByRole('heading', { level: 1, name: 'Upload your documents' })
@@ -117,7 +118,7 @@ test.describe('Scanned bill — upload to Amounts Owed', () => {
       await wizard.fillExpenses(FILER);
       await wizard.nextStep();
       await expect(stepTitle).toHaveText('Assets');
-      await wizard.walkAssets({ assets: [] }); // No on every line
+      await wizard.walkAssets({ assets: [], petition: FILER.petition }); // No on every line
       await expect(stepTitle).toHaveText('Amounts Owed');
 
       // First visit: the bill is there, marked as coming from the scan

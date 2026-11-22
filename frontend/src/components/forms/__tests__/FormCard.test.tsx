@@ -2,7 +2,7 @@ import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { FormCard } from '../FormCard';
-import type { GeneratedForm } from '../../../types/api';
+import type { CompletionGap, GeneratedForm } from '../../../types/api';
 import {
   MEANS_FILED_BEFORE_122A2,
   MEANS_PAIR_CANCEL,
@@ -582,5 +582,120 @@ describe('FormCard', () => {
       </MemoryRouter>
     );
     expect(screen.getByRole('status')).toHaveTextContent('Generated');
+  });
+});
+
+describe('the details on a card', () => {
+  const props = {
+    formType: 'form_101' as const,
+    onGenerate: vi.fn().mockResolvedValue(undefined),
+    onDownload: vi.fn().mockResolvedValue(undefined),
+    onMarkFiled: vi.fn().mockResolvedValue(undefined),
+  };
+  const district: CompletionGap = {
+    message: 'Choose why you are filing in this district.',
+    step: 'debtor_info',
+    kind: 'detail',
+    forms: ['form_101'],
+  };
+
+  it("a detail shows on the card in the gap's own words with its link", () => {
+    render(
+      <MemoryRouter>
+        <FormCard {...props} details={[district]} />
+      </MemoryRouter>
+    );
+    expect(screen.getByText(district.message)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Go to Your Information' })).toHaveAttribute(
+      'href',
+      '/intake?step=debtor_info'
+    );
+  });
+
+  it('a card with no details shows no gap line', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <FormCard {...props} details={[]} />
+      </MemoryRouter>
+    );
+    expect(container.querySelector('.form-card-notice')).toBeNull();
+    expect(screen.queryByRole('link', { name: /^Go to/ })).not.toBeInTheDocument();
+  });
+
+  // One destination a card: three lines about one step don't make three links
+  it('several details of one step share one link', () => {
+    render(
+      <MemoryRouter>
+        <FormCard
+          {...props}
+          details={[district, { ...district, message: 'Say whether you have another name.' }]}
+        />
+      </MemoryRouter>
+    );
+    expect(screen.getByText(district.message)).toBeInTheDocument();
+    expect(screen.getByText('Say whether you have another name.')).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Go to Your Information' })).toHaveLength(1);
+  });
+
+  it("leaves its link out when the card's own refusal already links to the same address", () => {
+    render(
+      <MemoryRouter>
+        <FormCard
+          {...props}
+          generatedForm={{ ...mockForm, status: 'generated' }}
+          details={[district]}
+          refusal={{
+            message: 'Fill in your information.',
+            link: { to: '/intake?step=debtor_info', label: 'Go to Your Information' },
+          }}
+        />
+      </MemoryRouter>
+    );
+    expect(screen.getByText(district.message)).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Go to Your Information' })).toHaveLength(1);
+  });
+
+  it("a pending card's button carries the refusal's address and no second link goes to the same step", async () => {
+    const user = userEvent.setup();
+    function Where() {
+      return <p data-testid="where">{useLocation().search}</p>;
+    }
+    render(
+      <MemoryRouter>
+        <FormCard
+          {...props}
+          details={[district]}
+          refusal={{
+            message: 'Fill in your information.',
+            link: { to: '/intake?step=debtor_info', label: 'Go to Your Information' },
+          }}
+        />
+        <Where />
+      </MemoryRouter>
+    );
+    expect(screen.getByText(district.message)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Go to Your Information' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Go to Your Information' }));
+    expect(screen.getByTestId('where')).toHaveTextContent('?step=debtor_info');
+  });
+
+  it('puts the lines after the card notice and before the refusal', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <FormCard
+          {...props}
+          notice="A notice."
+          details={[district]}
+          refusal={{ message: 'A refusal.' }}
+        />
+      </MemoryRouter>
+    );
+    const notice = screen.getByText('A notice.');
+    const line = screen.getByText(district.message);
+    const refusal = container.querySelector('.form-card-refusal') as Element;
+    expect(notice.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(line.compareDocumentPosition(refusal) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // No live region: the gaps arrive after the cards, and every card would read its line again
+    expect(line).not.toHaveAttribute('role');
   });
 });

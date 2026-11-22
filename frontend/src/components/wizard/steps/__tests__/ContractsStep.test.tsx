@@ -10,7 +10,14 @@ import {
   SCHEDULE_G_NAME_LABEL,
   SCHEDULE_G_PURPOSE_LABEL,
 } from '../../../../constants/formText';
-import type { AssetInfo, ContractRow, DebtRow, WizardRow, YesNo } from '../../../../types/api';
+import type {
+  AssetInfo,
+  ContractRow,
+  DebtRow,
+  PetitionAnswers,
+  WizardRow,
+  YesNo,
+} from '../../../../types/api';
 
 // The server refuses a contract whose other party's name is longer than its column holds,
 // and the wizard can only say it couldn't save, so Continue would never succeed. The box
@@ -70,6 +77,9 @@ interface HarnessProps {
   onRowsChange?: (rows: ContractRow[]) => void;
   onValidationChange?: (isValid: boolean) => void;
   onGoToStep?: (stepNumber: number) => void;
+  /** Form 101 line 11's answers; answered No unless a test says otherwise, so G's own gaps show */
+  rent?: PetitionAnswers;
+  onRentChange?: (next: PetitionAnswers) => void;
 }
 
 /** The wizard's part: it holds the rows and the answer the step shows */
@@ -81,9 +91,12 @@ function StepWithRows({
   onRowsChange = () => {},
   onValidationChange = () => {},
   onGoToStep = vi.fn(),
+  rent: initialRent = { rents_residence: 'no' },
+  onRentChange = () => {},
 }: HarnessProps) {
   const [rows, setRows] = useState<ContractRow[]>(initial);
   const [answer, setAnswer] = useState<YesNo | null>(initialAnswer);
+  const [rent, setRent] = useState<PetitionAnswers>(initialRent);
   return (
     <ContractsStep
       rows={rows}
@@ -93,6 +106,11 @@ function StepWithRows({
       }}
       answer={answer}
       onAnswerChange={setAnswer}
+      rent={rent}
+      onRentChange={(next) => {
+        setRent(next);
+        onRentChange(next);
+      }}
       debts={heldDebts}
       assets={heldAssets}
       onValidationChange={onValidationChange}
@@ -330,5 +348,82 @@ describe('ContractsStep', () => {
 
     const empty = render(<StepWithRows answer={null} />);
     expect(await axe(empty.container)).toHaveNoViolations();
+  });
+});
+
+describe("Form 101 line 11's rent and eviction, after the contracts (4b)", () => {
+  const rentRadio = (name: string, value: YesNo) =>
+    document.querySelector(`input[name="${name}"][value="${value}"]`) as HTMLInputElement;
+
+  it('the step waits for the rent answer and, under a Yes, for the eviction answer', async () => {
+    const user = userEvent.setup();
+    const valid = vi.fn();
+    const rent = vi.fn();
+    render(<StepWithRows answer="no" rent={{}} onValidationChange={valid} onRentChange={rent} />);
+    // G answered No with no rows: only the rent question holds Continue
+    expect(valid).toHaveBeenLastCalledWith(false);
+    await user.click(rentRadio('rents_residence', 'yes'));
+    expect(rent).toHaveBeenLastCalledWith({ rents_residence: 'yes' });
+    expect(valid).toHaveBeenLastCalledWith(false);
+    await user.click(rentRadio('eviction_judgment', 'no'));
+    expect(valid).toHaveBeenLastCalledWith(true);
+    await user.click(rentRadio('rents_residence', 'no'));
+    expect(valid).toHaveBeenLastCalledWith(true);
+  });
+
+  it('a stored eviction Yes under an unanswered rent still holds Continue', () => {
+    const valid = vi.fn();
+    render(
+      <StepWithRows answer="no" rent={{ eviction_judgment: 'yes' }} onValidationChange={valid} />
+    );
+    expect(valid).toHaveBeenLastCalledWith(false);
+  });
+
+  it("shows the step's own gap first, then the rent's, in its one status region", async () => {
+    const user = userEvent.setup();
+    // PF2-T9-6: one region per step. G unanswered: G's own gap shows, though the filer has left
+    // the rent block unanswered
+    render(<StepWithRows answer={null} rent={{}} />);
+    rentRadio('rents_residence', 'no').focus();
+    await user.click(screen.getByRole('heading', { name: 'Contracts & Leases' }));
+    expect(screen.getByText(copy.NOT_ANSWERED_YET)).toBeInTheDocument();
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+    expect(screen.getByRole('status')).toHaveTextContent(copy.CONTRACT_GAP_NO_ANSWER);
+    expect(screen.getByRole('status')).not.toHaveTextContent(copy.PETITION_GATE_RENTS);
+
+    await user.click(document.querySelector('[name="contracts_answer"][value="no"]')!);
+    expect(screen.getByRole('status')).toHaveTextContent(copy.PETITION_GATE_RENTS);
+    await user.click(rentRadio('rents_residence', 'yes'));
+    expect(screen.getByRole('status')).toHaveTextContent(copy.PETITION_GATE_EVICTION);
+    await user.click(rentRadio('eviction_judgment', 'yes'));
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
+  it('names the rent question in the status region whenever it alone holds Continue', async () => {
+    // F8: Continue held with a silent region leaves a screen reader user, or a filer sent here
+    // from Review, with nothing saying why. Once Schedule G's own gap is gone, the rent gate is
+    // named before the filer has touched the block (as the Assets step names the hazard once Part
+    // 7's lines are done)
+    const valid = vi.fn();
+    const { unmount } = render(<StepWithRows answer="no" rent={{}} onValidationChange={valid} />);
+    expect(valid).toHaveBeenLastCalledWith(false);
+    expect(screen.getByRole('status')).toHaveTextContent(copy.PETITION_GATE_RENTS);
+    unmount();
+
+    // While G's own gap stands, that gap is the one named, until the filer touches the rent
+    const user = userEvent.setup();
+    render(<StepWithRows answer={null} rent={{}} />);
+    expect(screen.getByRole('status')).toHaveTextContent(copy.CONTRACT_GAP_NO_ANSWER);
+    expect(screen.getByRole('status')).not.toHaveTextContent(copy.PETITION_GATE_RENTS);
+    // Answering G clears its gap, and the rent gate is named at once
+    await user.click(document.querySelector('[name="contracts_answer"][value="no"]')!);
+    expect(screen.getByRole('status')).toHaveTextContent(copy.PETITION_GATE_RENTS);
+  });
+
+  it('asks the rent after the contracts and their Add button', () => {
+    render(<StepWithRows initial={[leaseRow]} debts={debts} assets={assets} />);
+    const add = screen.getByRole('button', { name: /add contract/i });
+    const rent = rentRadio('rents_residence', 'no');
+    expect(add.compareDocumentPosition(rent) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

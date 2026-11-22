@@ -918,8 +918,10 @@ class PetitionAnswers(models.Model):
     )
     # Never read back: the serializer drops them and says only whether one is stored.
     SECRET_KEYS: ClassVar[tuple[str, ...]] = ("itin", "other_ssn")
-    # The keys a {no, yes} radio prints: a stored stranger makes `_emit` raise UnmappedChoice
-    # (a 422), so the save refuses it. prior_bankruptcy_answer also feeds 103B's check_20.
+    # The keys a {no, yes} radio prints: a stored stranger would make `_emit` raise
+    # UnmappedChoice (a 422). Each is in YES_NO_KEYS, so the save's own guard
+    # (`_petition_value_ok`) refuses any other value. prior_bankruptcy_answer also feeds 103B's
+    # check_20.
     RADIO_KEYS: ClassVar[tuple[str, ...]] = (
         "prior_bankruptcy_answer",
         "pending_case_answer",
@@ -934,6 +936,8 @@ class PetitionAnswers(models.Model):
     # Measured from Form 101's boxes at 6 pt by build_form_101.py, read from form_101.limits.json.
     TEXT_LIMITS: ClassVar[dict[str, int]]
     TEXT_LABELS: ClassVar[dict[str, str]]
+    # Each row list's cells in plain words, from the same file, for the too-long lines.
+    CELL_LABELS: ClassVar[dict[str, dict[str, str]]]
 
     session = models.OneToOneField(
         IntakeSession, on_delete=models.CASCADE, related_name="petition_answers"
@@ -983,6 +987,7 @@ def _read_text_limits() -> dict:
 _LIMITS = _read_text_limits()
 PetitionAnswers.TEXT_LIMITS = _LIMITS.get("limits", {})
 PetitionAnswers.TEXT_LABELS = _LIMITS.get("labels", {})
+PetitionAnswers.CELL_LABELS = _LIMITS["cell_labels"]
 
 
 class DebtInfoQuerySet(models.QuerySet):

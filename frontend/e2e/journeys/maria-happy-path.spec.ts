@@ -37,6 +37,7 @@ test.describe('Maria Torres — Happy Path', () => {
 
     // Step 1: Debtor Info
     await wizard.fillDebtorInfo(MARIA.debtor);
+    await wizard.fillPetitionQuestions(MARIA.petition);
     await wizard.nextStep();
 
     // Uploads come between basic info and Income; this journey types everything in

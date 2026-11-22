@@ -33,6 +33,7 @@ test.describe('Sarah Chen — Simplest Case', () => {
 
     // Step 1: Debtor Info
     await wizard.fillDebtorInfo(SARAH.debtor);
+    await wizard.fillPetitionQuestions(SARAH.petition);
     await wizard.nextStep();
 
     // Uploads come between basic info and Income; this journey types everything in

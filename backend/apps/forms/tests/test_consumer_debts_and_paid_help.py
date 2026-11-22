@@ -216,6 +216,47 @@ def test_each_form_103b_payment_question_prints_its_own_answer(session, yes_line
     }
 
 
+# Form 101 line 9 and Form 103B line 20 ask the same question: (the answer's box and its Yes
+# state, then each case's district, when and case number boxes), from each form's index, all on
+# page 3. Form 101's "District" is also the court on page 1, so a box is read on its page.
+PRIOR_CASES = {
+    "form_101": (
+        ("bankruptcy within the", "/Yes"),
+        (("District", "When", "Case number"), ("District_2", "When_2", "Case number_2")),
+    ),
+    "form_103b": (
+        ("check_20", "/yes"),
+        (("undefined_37", "When", "Case number_2"), ("District", "When_2", "Case number_3")),
+    ),
+}
+
+
+@pytest.mark.slow
+def test_the_prior_cases_print_the_same_on_form_101_and_103b(session):
+    # One answer, stored once in the petition record, prints the same on both forms that ask.
+    cases = [
+        {"district": "Demo Northern Illinois", "filed_on": "03/02/2018", "case_number": "18-01"},
+        {"district": "Demo Central Illinois", "filed_on": "11/20/2019", "case_number": "19-02"},
+    ]
+    record, _ = PetitionAnswers.objects.get_or_create(session=session)
+    record.merge({"prior_bankruptcy_answer": "yes", "prior_cases": cases})
+    record.save()
+    session.refresh_from_db()
+    for form_type, ((answer_box, yes), rows) in PRIOR_CASES.items():
+        values = resolve(load_schema(form_type), session)
+        on_page_3 = {}
+        for widget in read_drawn(form_type, PDFFormFiller().fill(form_type, values)):
+            if widget.page == 3 and widget.state not in (None, "", "/Off"):
+                on_page_3.setdefault(widget.full_name, set()).add(widget.state)
+            elif widget.page == 3 and not widget.state:
+                on_page_3.setdefault(widget.full_name, set()).add(widget.value)
+        assert on_page_3.get(answer_box) == {yes}, form_type
+        printed = [tuple(on_page_3.get(box) for box in row) for row in rows]
+        assert printed == [
+            ({case["district"]}, {case["filed_on"]}, {case["case_number"]}) for case in cases
+        ], form_type
+
+
 @pytest.mark.slow
 def test_a_question_the_filer_has_not_answered_prints_nothing(session):
     boxes = {

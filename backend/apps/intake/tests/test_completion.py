@@ -30,11 +30,23 @@ from apps.intake.models import (
     IntakeSession,
     SpouseIncome,
 )
+from apps.intake.petition import (
+    GATE_HAZARD,
+    GATE_ITIN,
+    GATE_MAILING,
+    GATE_OTHER_NAMES,
+    GATE_OTHER_SSN,
+    GATE_PENDING_CASE,
+    GATE_PRIOR_BANKRUPTCY,
+    GATE_RENTS,
+    GATE_SOLE_PROPRIETOR,
+)
 from apps.intake.tests.builders import (
     answer_asset_lines,
     answer_claims,
     answer_household,
     answer_income_detail,
+    answer_petition,
     complete_debt,
 )
 from apps.users.models import User
@@ -85,6 +97,7 @@ def completed(filer, district):
     )
     answer_household(session)
     ExpenseInfo.objects.create(session=session, expenses_include_others="no")
+    answer_petition(session)
     return session
 
 
@@ -171,6 +184,7 @@ def test_filer_who_leaves_every_expense_blank_can_complete(filer, district):
     )
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("0.00"))
     answer_household(session)
+    answer_petition(session)
 
     saved = client.patch(
         _session_url(session),
@@ -489,6 +503,14 @@ def test_complete_lists_every_gap_in_wizard_order(filer, district):
     assert response.data["errors"] == [
         {"step": "debtor_info", "message": NAME_AND_ADDRESS},
         {"step": "debtor_info", "message": COUNTY},
+        # Form 101's step 1 questions, on the same step as the county (4b-R4).
+        {"step": "debtor_info", "message": GATE_OTHER_NAMES},
+        {"step": "debtor_info", "message": GATE_ITIN},
+        {"step": "debtor_info", "message": GATE_OTHER_SSN},
+        {"step": "debtor_info", "message": GATE_MAILING},
+        {"step": "debtor_info", "message": GATE_PRIOR_BANKRUPTCY},
+        {"step": "debtor_info", "message": GATE_PENDING_CASE},
+        {"step": "debtor_info", "message": GATE_SOLE_PROPRIETOR},
         {"step": "income_info", "message": MARRIAGE},
         {"step": "income_info", "message": HOUSEHOLD_LIST},
         {"step": "income_info", "message": INCOME_BY_SOURCE},
@@ -496,8 +518,12 @@ def test_complete_lists_every_gap_in_wizard_order(filer, district):
         {"step": "income_info", "message": NOW_DIFFERENT_UNANSWERED},
         {"step": "income_info", "message": ASSISTANCE_UNANSWERED},
         {"step": "expense_info", "message": EXPENSES_STEP},
+        # The hazard ends the Assets step, whose own lines are all answered here.
+        {"step": "assets", "message": GATE_HAZARD},
         {"step": "debts", "message": SCANNED_DEBTS},
         {"step": "contracts", "message": CONTRACT_GAP_NO_ANSWER},
+        # The rent question follows the Contracts gaps, before Codebtors'.
+        {"step": "contracts", "message": GATE_RENTS},
         {"step": "codebtors", "message": CODEBTOR_GAP_NO_ANSWER},
         {"step": "codebtors", "message": CODEBTOR_GAP_COMMUNITY},
     ]

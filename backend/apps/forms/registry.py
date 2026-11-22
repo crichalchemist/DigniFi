@@ -29,7 +29,9 @@ from apps.intake.exemptions import exemption_gaps
 from apps.intake.means_test import means_test_gaps
 from apps.intake.models import IntakeSession
 
-_SSN = re.compile(r"\d{3}-\d{2}-\d{4}|\d{9}")
+# A Social Security number Form 101 and Complete take: 0-9 only, since \d would also take
+# other scripts' digits, which the forms' font can't print. The serializer's `ssn_saved` reads it.
+SSN_PATTERN = re.compile(r"[0-9]{3}-[0-9]{2}-[0-9]{4}|[0-9]{9}")
 
 
 class PreconditionMissing(Exception):
@@ -97,7 +99,7 @@ def _needs_debtor_info(session: IntakeSession) -> None:
 
 def _needs_ssn(session: IntakeSession) -> None:
     _needs_debtor_info(session)
-    if not _SSN.fullmatch((session.debtor_info.ssn or "").strip()):
+    if not SSN_PATTERN.fullmatch((session.debtor_info.ssn or "").strip()):
         raise PreconditionMissing(
             "Enter your 9-digit Social Security number on the Your Information step.",
             step="debtor_info",

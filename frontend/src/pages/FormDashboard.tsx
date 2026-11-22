@@ -469,6 +469,13 @@ export function FormDashboard() {
       ? { kind: 'alone', partnerLabel: FORM_TYPE_METADATA[partner.form_type].label, partnerNotice }
       : undefined;
   };
+  // A detail shows on the card of each form it concerns, unless the form is filed: it prints what
+  // was filed (DIG-155), which no answer given now changes
+  const details = gaps.filter((gap) => gap.kind === 'detail');
+  const detailsOf = (formType: FormType): CompletionGap[] =>
+    formsByType.get(formType)?.status === 'filed'
+      ? []
+      : details.filter((gap) => gap.forms.includes(formType));
   const errorList = (errors: GenerateAllError[], links: FormRefusal['link'][]) => (
     <ul>
       {errors.map((e, index) => {
@@ -705,6 +712,7 @@ export function FormDashboard() {
               formType={formType}
               generatedForm={formsByType.get(formType)}
               notice={noticeOf(formsByType.get(formType))}
+              details={detailsOf(formType)}
               answerPath={answerPathOf(formType)}
               refusal={cardRefusals.get(formType)}
               onGenerate={handleGenerate}

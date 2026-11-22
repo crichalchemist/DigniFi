@@ -7,6 +7,8 @@ import {
   DASHBOARD_GAPS_ONE,
   DASHBOARD_GATES_MANY,
   DASHBOARD_GATES_ONE,
+  PETITION_DETAIL_TOO_LONG,
+  PETITION_DETAIL_TOO_LONG_ROW,
 } from '../../../constants/copy';
 import type { CompletionGap } from '../../../types/api';
 
@@ -18,11 +20,17 @@ function renderNotice(gaps: CompletionGap[]) {
   );
 }
 
-const gate = (step: string, message: string): CompletionGap => ({ message, step, kind: 'gate' });
+const gate = (step: string, message: string): CompletionGap => ({
+  message,
+  step,
+  kind: 'gate',
+  forms: [],
+});
 const detail = (step: string, message: string): CompletionGap => ({
   message,
   step,
   kind: 'detail',
+  forms: [],
 });
 
 describe('GapsNotice', () => {
@@ -87,6 +95,41 @@ describe('GapsNotice', () => {
 
     expect(screen.getByText(DASHBOARD_GAPS_ONE)).toBeInTheDocument();
     expect(screen.queryByText(DASHBOARD_GATES_ONE)).not.toBeInTheDocument();
+  });
+
+  // Form 101 refuses a too-long answer; nothing prints blank, so the blank count must not hold it
+  it('a too-long detail is listed with its words but never counted as blank', () => {
+    const tooLong = PETITION_DETAIL_TOO_LONG.replace('{label}', 'your other name');
+    const tooLongRow = PETITION_DETAIL_TOO_LONG_ROW.replace('{label}', 'the court')
+      .replace('{noun}', 'case')
+      .replace('{n}', '2')
+      .replace('{forms}', 'Form 101');
+    renderNotice([detail('debtor_info', tooLong), detail('debtor_info', tooLongRow)]);
+
+    const notice = screen.getByRole('status');
+    expect(within(notice).getByText(tooLong)).toBeInTheDocument();
+    expect(within(notice).getByText(tooLongRow)).toBeInTheDocument();
+    expect(notice).not.toHaveTextContent(/blank/i);
+  });
+
+  // Owner ruling Q10: a row cell's sentence names the forms whose box refuses it, in three ways
+  it.each(['Form 101', 'Form 103B', 'Forms 101 and 103B'])(
+    'a too-long row naming %s is never counted as blank',
+    (forms) => {
+      const tooLongRow = `Your answer for line 9's case number, in case 1, is too long to fit on ${forms}.`;
+      renderNotice([detail('debtor_info', tooLongRow)]);
+
+      const notice = screen.getByRole('status');
+      expect(within(notice).getByText(tooLongRow)).toBeInTheDocument();
+      expect(notice).not.toHaveTextContent(/blank/i);
+    }
+  );
+
+  it('counts only the blank details when a too-long one stands beside them', () => {
+    const tooLong = PETITION_DETAIL_TOO_LONG.replace('{label}', 'your other name');
+    renderNotice([detail('debtor_info', tooLong), detail('assets', 'An asset value is blank.')]);
+
+    expect(screen.getByText(DASHBOARD_GAPS_ONE)).toBeInTheDocument();
   });
 
   it('with both kinds the missing sentence comes first', () => {

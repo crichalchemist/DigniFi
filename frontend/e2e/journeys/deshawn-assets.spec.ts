@@ -33,6 +33,7 @@ test.describe('DeShawn Mitchell — Assets', () => {
 
     // Step 1: Debtor Info
     await wizard.fillDebtorInfo(DESHAWN.debtor);
+    await wizard.fillPetitionQuestions(DESHAWN.petition);
     await wizard.nextStep();
 
     // Uploads come between basic info and Income; this journey types everything in

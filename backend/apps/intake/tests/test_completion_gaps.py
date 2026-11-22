@@ -17,10 +17,40 @@ from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
 from apps.districts.models import District
+from apps.intake.asset_lines import asset_step_gaps
+from apps.intake.claims import claim_step_gaps
 from apps.intake.completion import WIZARD_STEP_COUNT, Gap, completion_gaps
 from apps.intake.models import DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
-from apps.intake.tests.builders import answer_asset_lines, answer_household, complete_debt
+from apps.intake.petition import (
+    DETAIL_VENUE,
+    GATE_HAZARD,
+    GATE_ITIN,
+    GATE_MAILING,
+    GATE_OTHER_NAMES,
+    GATE_OTHER_SSN,
+    GATE_PENDING_CASE,
+    GATE_PRIOR_BANKRUPTCY,
+    GATE_RENTS,
+    GATE_SOLE_PROPRIETOR,
+)
+from apps.intake.tests.builders import (
+    answer_asset_lines,
+    answer_household,
+    answer_petition,
+    complete_debt,
+)
 from apps.users.models import User
+
+# Step 1's seven questions, in the order the step asks them.
+STEP_1_GATE_SENTENCES = [
+    GATE_OTHER_NAMES,
+    GATE_ITIN,
+    GATE_OTHER_SSN,
+    GATE_MAILING,
+    GATE_PRIOR_BANKRUPTCY,
+    GATE_PENDING_CASE,
+    GATE_SOLE_PROPRIETOR,
+]
 
 FRONTEND = settings.BASE_DIR.parent / "frontend" / "src"
 
@@ -68,6 +98,7 @@ def completed(filer, district):
     )
     answer_household(session)
     ExpenseInfo.objects.create(session=session, expenses_include_others="no")
+    answer_petition(session)
     return session
 
 
@@ -119,15 +150,146 @@ def test_the_gap_list_is_what_complete_refuses_in_the_same_order(filer, unfinish
     response = client.post(_session_url(unfinished, "complete/"))
 
     assert response.status_code == 400
-    assert gaps
-    assert [(g.step, str(g)) for g in gaps] == [
+    gates = [g for g in gaps if g.kind == Gap.GATE]
+    assert gates
+    assert [(g.step, str(g)) for g in gates] == [
         (e["step"], e["message"]) for e in response.data["errors"]
     ]
-    assert {g.kind for g in gaps} == {Gap.GATE}
+    # The venue choice is the one detail an untouched intake lists (step 1 asks it, and Form 101
+    # prints the line blank), and Complete never names it (4b-R4).
+    assert [str(g) for g in gaps if g.kind == Gap.DETAIL] == [DETAIL_VENUE]
 
 
 def test_a_finished_intake_has_no_gaps(filer, completed):
     assert completion_gaps(completed) == []
+
+
+def test_the_seven_step_1_gates_come_after_the_county_and_before_the_income_step(filer, unfinished):
+    # Wizard order: Form 101's step 1 questions sit after the county on the same step, so
+    # Review lists them before anything the Income step asks (4b-R4).
+    gaps = completion_gaps(unfinished)
+
+    assert [g.step for g in gaps[:9]] == ["debtor_info"] * 9
+    assert [str(g) for g in gaps[2:9]] == STEP_1_GATE_SENTENCES
+    assert all(g.kind == Gap.GATE for g in gaps[:9])
+    # Then step 1's one detail (the venue left open), and only then the Income step.
+    assert (gaps[9].step, gaps[9].kind, str(gaps[9])) == ("debtor_info", Gap.DETAIL, DETAIL_VENUE)
+    assert gaps[10].step == "income_info"
+    assert all(g.step != "debtor_info" for g in gaps[10:])
+
+
+def test_the_hazard_gate_follows_the_assets_gaps_and_the_rent_gate_sits_among_the_contracts_gaps(
+    filer, district
+):
+    # The hazard question ends the Assets step, so it is listed right after the last Schedule A/B
+    # gap and before the claims walk; the rent question is on Contracts & Leases, after its gaps
+    # and before Codebtors' (4b-R4). No home row is linked, so the claims walk has no Assets gap.
+    _, user = filer
+    session = IntakeSession.objects.create(user=user, district=district, current_step=9)
+    answer_asset_lines(session, yes=("3",))  # Yes on vehicles with no row: an Assets gap
+    asset_messages = [str(g) for g in asset_step_gaps(session)]
+    claim_messages = [str(g) for g in claim_step_gaps(session)]
+    assert asset_messages and claim_messages
+
+    gaps = completion_gaps(session)
+    messages = [str(g) for g in gaps]
+    hazard = messages.index(GATE_HAZARD)
+    rents = messages.index(GATE_RENTS)
+
+    assert messages[hazard - 1] == asset_messages[-1]
+    assert messages[hazard + 1] == claim_messages[0]
+    assert gaps[hazard].step == "assets"
+    assert gaps[rents - 1].step == "contracts"
+    assert gaps[rents + 1].step == "codebtors"
+    assert gaps[rents].step == "contracts"
+
+
+def test_the_rent_gate_stays_before_the_claims_tail_when_the_claims_steps_have_no_gap(
+    filer, completed
+):
+    # With Contracts and Codebtors finished there is nothing to sit beside: the rent question
+    # still belongs to the wizard-order part of the list, never after the legacy figure's gap,
+    # whose step (Amounts Owed) comes before Contracts & Leases in the wizard.
+    completed.status = "in_progress"
+    completed.save(update_fields=["status"])
+    answer_petition(completed, rents_residence=None)
+    ExpenseInfo.objects.filter(session=completed).update(vehicle_payment=Decimal("350.00"))
+    completed.refresh_from_db()
+
+    gaps = [(g.step, str(g)) for g in completion_gaps(completed)]
+
+    assert [step for step, _ in gaps] == ["contracts", "debts"]
+    assert gaps[0][1] == GATE_RENTS
+
+
+def test_a_case_on_the_sheet_before_the_name_is_entered_still_lists_every_gap(filer, district):
+    # The sheet that measures a fourth earlier case is headed by the filer's name; with step 1's
+    # name not saved yet, Review must still list what is missing, never answer with an error.
+    client, user = filer
+    session = IntakeSession.objects.create(user=user, district=district, current_step=9)
+    answer_petition(
+        session,
+        prior_bankruptcy_answer="yes",
+        prior_cases=[{}, {}, {}, {"district": "W" * 40}],
+    )
+
+    gaps = completion_gaps(session)
+    listed = client.get(_session_url(session, "gaps/"))
+
+    assert str(gaps[0]) == "Enter your name and address on the Your Information step."
+    # The sheet was measured, nameless: its case is named too long.
+    too_long = "Your answer for line 9's district, in case 4, is too long to fit on Form 101."
+    assert too_long in [str(g) for g in gaps]
+    assert listed.status_code == 200
+    assert listed.data["gaps"][0]["message"] == str(gaps[0])
+
+
+def test_a_detail_is_listed_and_complete_lets_it_through(filer, completed):
+    # Every gate answered and the venue left open: Review names the open line, with the form
+    # that prints it blank, and Complete still goes through (spec §5.7).
+    client, _ = filer
+    completed.status = "in_progress"
+    completed.save(update_fields=["status"])
+    answer_petition(completed, venue_choice=None)
+
+    listed = client.get(_session_url(completed, "gaps/"))
+    finished = client.post(_session_url(completed, "complete/"))
+
+    assert listed.data == {
+        "gaps": [
+            {
+                "kind": "detail",
+                "message": DETAIL_VENUE,
+                "step": "debtor_info",
+                "forms": ["form_101"],
+            }
+        ]
+    }
+    assert finished.status_code == 200
+    assert finished.data["session"]["status"] == "completed"
+
+
+def test_a_gate_carries_no_forms(filer, unfinished):
+    # A gate refuses every form at once, so no form's card repeats it (4b-R12).
+    client, _ = filer
+
+    entries = client.get(_session_url(unfinished, "gaps/")).data["gaps"]
+
+    gates = [e for e in entries if e["kind"] == "gate"]
+    assert gates
+    assert all(e["forms"] == [] for e in gates)
+
+
+def test_a_gate_is_what_complete_refuses(filer, completed):
+    client, _ = filer
+    completed.status = "in_progress"
+    completed.save(update_fields=["status"])
+    answer_petition(completed, itin_answer=None)
+
+    response = client.post(_session_url(completed, "complete/"))
+
+    assert response.status_code == 400
+    assert response.data["errors"] == [{"step": "debtor_info", "message": GATE_ITIN}]
 
 
 def test_a_detail_gap_never_refuses_complete_but_a_gate_after_it_does(
@@ -164,9 +326,11 @@ def test_the_gaps_endpoint_returns_the_list_and_writes_nothing(filer, unfinished
     assert response.status_code == 200
     assert response.data == {
         "gaps": [
-            {"message": str(g), "step": g.step, "kind": "gate"} for g in completion_gaps(unfinished)
+            {"message": str(g), "step": g.step, "kind": g.kind, "forms": list(g.forms)}
+            for g in completion_gaps(unfinished)
         ]
     }
+    assert {e["kind"] for e in response.data["gaps"]} == {"gate", "detail"}
     assert not _writes(queries)
     unfinished.refresh_from_db()
     assert (unfinished.status, unfinished.current_step, unfinished.completed_at) == before
@@ -243,3 +407,51 @@ def test_update_step_bound_follows_the_wizards_step_count(filer, completed, monk
     assert accepted.status_code == 200
     assert refused.status_code == 400
     assert refused.data == {"current_step": ["Must be a whole number from 1 to 10."]}
+
+
+@pytest.fixture
+def bare_session(filer, district):
+    """A session with no petition record yet, as a test starts one."""
+    _, user = filer
+    return IntakeSession.objects.create(user=user, district=district)
+
+
+def _stored_petition(session) -> dict:
+    return IntakeSession.objects.get(pk=session.pk).petition_answers.get_answers()
+
+
+def test_answer_petition_keeps_what_a_test_stored_and_lets_it_change_or_clear_an_answer(
+    bare_session,
+):
+    # Tasks 8-12 build sessions that answer one question differently and call finish_intake
+    # after; a builder that put its default back over that answer would test the wrong filer.
+    answer_petition(bare_session, hazard_answer="yes", venue_choice="other")
+    answer_petition(bare_session)
+    stored = _stored_petition(bare_session)
+    assert stored["hazard_answer"] == "yes"
+    assert stored["venue_choice"] == "other"
+    assert stored["rents_residence"] == "no"
+
+    answer_petition(bare_session, hazard_answer="no", rents_residence=None)
+    stored = _stored_petition(bare_session)
+    assert stored["hazard_answer"] == "no"
+    assert "rents_residence" not in stored
+
+
+def test_answer_petition_refuses_a_question_form_101_does_not_ask(bare_session):
+    with pytest.raises(KeyError):
+        answer_petition(bare_session, not_a_question="no")
+
+
+def test_the_session_a_test_holds_reads_the_second_answer_petition_without_a_reload(
+    bare_session,
+):
+    # A test calls the builder, then reads the gaps or resolves a form on the same session
+    # object: a stale cached record there would let a negative test pass on old answers.
+    answer_petition(bare_session)
+    answer_petition(bare_session, hazard_answer="yes", rents_residence=None)
+
+    held = bare_session.petition_answers.get_answers()
+    assert held["hazard_answer"] == "yes"
+    assert "rents_residence" not in held
+    assert held == _stored_petition(bare_session)

@@ -9,6 +9,7 @@
  * P2).
  */
 import type {
+  BusinessKind,
   ClaimStatus,
   DeductionField,
   EntryKind,
@@ -20,6 +21,7 @@ import type {
   PaymentChoice,
   PriorityType,
   PropertyKind,
+  VenueChoice,
 } from '../types/api';
 
 // No cut: the question as printed
@@ -801,3 +803,143 @@ export const FORM_122A2_LINE_43_EXPLANATION =
   'Give a detailed explanation of the special circumstances';
 // Line 43, the label of the amount column
 export const FORM_122A2_LINE_43_AMOUNT = 'Average monthly expense or income adjustment';
+
+// Form 101 (form_b101.pdf, the 11/26 revision) and Form 121, asked on Your Information (forms
+// step 4b). Copied from the template's text layer; each constant names its line and any cut.
+
+// The edition each template prints beside its title (4b-R9), one key per line;
+// test_petition_frontend_copy.py pins it to page 1's title line
+export const FORM_REVISIONS: Record<string, string> = {
+  form_101: '11/26',
+};
+
+// Line 1, the label under the suffix box
+export const FORM_101_SUFFIX = 'Suffix (Sr., Jr., II, III)';
+// Line 2, the question as printed, its line breaks joined
+export const FORM_101_LINE_2 = 'All other names you have used in the last 8 years';
+// Line 2, the instructions under the question, no cut
+export const FORM_101_LINE_2_INSTRUCTIONS =
+  'Include your married or maiden names and any assumed, trade names and doing business as names. Do NOT list the name of any separate legal entity such as a corporation, partnership, or LLC that is not filing this petition.';
+// Line 2, the labels under the name boxes
+export const FORM_101_LINE_2_CELLS = {
+  first: 'First name',
+  middle: 'Middle name',
+  last: 'Last name',
+  name: 'Business name (if applicable)',
+};
+// Line 3, cut: "Only the last 4 digits of your Social Security number or federal"
+// DRAFT: counsel C-44
+export const FORM_101_LINE_3_ITIN = 'Individual Taxpayer Identification number (ITIN)';
+// Form 121 line 2 (form_b121.pdf page 1), the question as printed, its line breaks joined
+// DRAFT: counsel C-44
+export const FORM_121_LINE_2_OTHER_SSN = 'All Social Security Numbers you have used';
+// Line 4, the question as printed, its line breaks joined
+export const FORM_101_LINE_4 = 'Your Employer Identification Number (EIN), if any.';
+// Line 5, the sentence above the mailing address, no cut
+export const FORM_101_LINE_5 =
+  'If your mailing address is different from the one above, fill it in here. Note that the court will send any notices to you at this mailing address.';
+// Line 5, the label under the mailing address's second box
+export const FORM_101_PO_BOX = 'P.O. Box';
+// Line 6, the question as printed, its line breaks joined
+export const FORM_101_LINE_6 = 'Why you are choosing this district to file for bankruptcy';
+// Line 6's two choices; the second is cut before its citation "(See 28 U.S.C. § 1408.)"
+export const FORM_101_VENUE_CHOICES: Record<VenueChoice, string> = {
+  lived_here:
+    'Over the last 180 days before filing this petition, I have lived in this district longer than in any other district.',
+  other: 'I have another reason. Explain.',
+};
+// Line 9, the question as printed, its line breaks joined
+export const FORM_101_LINE_9 = 'Have you filed for bankruptcy within the last 8 years?';
+// Line 9, the labels beside each case's boxes
+export const FORM_101_LINE_9_CELLS = {
+  district: 'District',
+  filed_on: 'When',
+  case_number: 'Case number',
+};
+// Line 10, the question as printed, its line breaks and a double space joined
+export const FORM_101_LINE_10 =
+  'Are any bankruptcy cases pending or being filed by a spouse who is not filing this case with you, or by a business partner, or by an affiliate?';
+// Line 10, the labels beside each case's boxes
+export const FORM_101_LINE_10_CELLS = {
+  debtor: 'Debtor',
+  relationship: 'Relationship to you',
+  district: 'District',
+  filed_on: 'When',
+  case_number: 'Case number, if known',
+};
+// Lines 9 and 10, the format printed under each "When" box
+export const FORM_101_DATE_FORMAT = 'MM / DD / YYYY';
+// Line 12, the question as printed, its line breaks joined
+export const FORM_101_LINE_12 = 'Are you a sole proprietor of any full- or part-time business?';
+// Line 12, the Yes box's words, cut: "Yes."
+export const FORM_101_LINE_12_LOCATION = 'Name and location of business';
+// Line 12, the label under the business's name box
+export const FORM_101_LINE_12_NAME = 'Name of business, if any';
+// Line 12, the sentence above the five kinds, its colon kept
+export const FORM_101_LINE_12_KIND = 'Check the appropriate box to describe your business:';
+// Line 12's five kinds, the statutory words included, no cut
+export const FORM_101_BUSINESS_KINDS: Record<BusinessKind, string> = {
+  health_care: 'Health Care Business (as defined in 11 U.S.C. § 101(27A))',
+  single_asset: 'Single Asset Real Estate (as defined in 11 U.S.C. § 101(51B))',
+  stockbroker: 'Stockbroker (as defined in 11 U.S.C. § 101(53A))',
+  commodity_broker: 'Commodity Broker (as defined in 11 U.S.C. § 101(6))',
+  none: 'None of the above',
+};
+
+// Line 11 (page 3), asked on Contracts & Leases: the question as printed, its line break joined
+export const FORM_101_LINE_11_RENT = 'Do you rent your residence?';
+// Line 11's Yes, the question under it as printed
+export const FORM_101_LINE_11_EVICTION =
+  'Has your landlord obtained an eviction judgment against you?';
+// Line 11, the sentence beside that question's Yes, cut: "Yes."
+export const FORM_101_LINE_11_NOTICE =
+  'Fill out Initial Statement About an Eviction Judgment Against You (Form 101A) and file it as part of this bankruptcy petition.';
+// Line 14 (page 4), asked on Assets: the question as printed, its line breaks joined, no cut
+export const FORM_101_LINE_14 =
+  'Do you own or have any property that poses or is alleged to pose a threat of imminent and identifiable hazard to public health or safety? Or do you own any property that needs immediate attention?';
+// Line 14, the example printed under the question, its line breaks joined
+export const FORM_101_LINE_14_EXAMPLE =
+  'For example, do you own perishable goods, or livestock that must be fed, or a building that needs urgent repairs?';
+// Line 14's Yes, the three prompts beside its boxes, the first cut: "Yes."
+export const FORM_101_LINE_14_PROMPTS = {
+  what: 'What is the hazard?',
+  why: 'If immediate attention is needed, why is it needed?',
+  where: 'Where is the property?',
+};
+
+// Form 101A (form_b101a_0.pdf, the 12/15 revision, page 1), quoted on Contracts & Leases under
+// Form 101 line 11's two Yes answers (owner answer Q2). The opening sentence, as printed
+export const FORM_101A_SERVICE_SENTENCE =
+  'File this form with the court and serve a copy on your landlord when you first file bankruptcy only if:';
+// Form 101A page 1, the opening sentence's two conditions, each without its bullet, line breaks
+// joined
+export const FORM_101A_SERVICE_CONDITIONS = [
+  'you rent your residence; and',
+  'your landlord has obtained a judgment for possession in an eviction, unlawful detainer action, or similar proceeding (called eviction judgment) against you to possess your residence.',
+];
+// Form 101A (12/15) page 1, the certification's heading as printed. Owner ruling Q11: quoted
+// before paragraph (a), so (a)'s "both boxes above" has its two boxes
+export const FORM_101A_CERTIFICATION_HEADING =
+  'Certification About Applicable Law and Deposit of Rent';
+// Form 101A (12/15) page 1, the certification's sentence under its heading, as printed
+export const FORM_101A_CERTIFICATION_SENTENCE = 'I certify under penalty of perjury that:';
+// Form 101A (12/15) page 1, the certification's first box, without its check box, line breaks
+// joined
+export const FORM_101A_CERTIFICATION_BOX_1 =
+  'Under the state or other nonbankruptcy law that applies to the judgment for possession (eviction judgment), I have the right to stay in my residence by paying my landlord the entire delinquent amount.';
+// Form 101A (12/15) page 1, the certification's second box, without its check box, line breaks
+// joined
+export const FORM_101A_CERTIFICATION_BOX_2 =
+  'I have given the bankruptcy court clerk a deposit for the rent that would be due during the 30 days after I file the Voluntary Petition for Individuals Filing for Bankruptcy (Official Form 101).';
+// Form 101A (12/15) page 1, "Stay of Eviction:", paragraph (a)'s heading as printed (owner ruling
+// Q9: (b)'s "that 30-day period" starts here)
+export const FORM_101A_STAY_HEADING_A = '(a) First 30 days after bankruptcy.';
+// Form 101A (12/15) page 1, paragraph (a)'s one sentence after its heading, line breaks joined
+export const FORM_101A_STAY_SENTENCE_A =
+  'If you checked both boxes above, signed the form to certify that both apply, and served your landlord with a copy of this statement, the automatic stay under 11 U.S.C. § 362(a)(3) will apply to the continuation of the eviction against you for 30 days after you file your Voluntary Petition for Individuals Filing for Bankruptcy (Official Form 101).';
+// Form 101A (12/15) page 1, "Stay of Eviction:", paragraph (b)'s heading as printed
+export const FORM_101A_STAY_HEADING_B = '(b) Stay after the initial 30 days.';
+// Form 101A (12/15) page 1, "Stay of Eviction: (b) Stay after the initial 30 days.", both sentences
+// after that heading, line breaks joined
+export const FORM_101B_STAY_SENTENCE =
+  'If you wish to stay in your residence after that 30-day period and continue to receive the protection of the automatic stay under 11 U.S.C. § 362(a)(3), you must pay the entire delinquent amount to your landlord as stated in the eviction judgment before the 30-day period ends. You must also fill out Statement About Payment of an Eviction Judgment Against You (Official Form 101B), file it with the bankruptcy court, and serve your landlord a copy of it before the 30-day period ends.';

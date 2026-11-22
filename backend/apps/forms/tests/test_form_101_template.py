@@ -13,9 +13,12 @@ import json
 import re
 from collections import Counter
 
+import pymupdf
 from django.conf import settings
 from pypdf import PdfReader
 
+from apps.forms.schema import load_schema
+from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.services.widgets import parse_key, template_widgets
 from apps.forms.tests.oracle import case_param
 
@@ -146,3 +149,121 @@ def test_labels_are_unique_and_every_silent_box_has_one():
         assert re.search(r"\bDebtor [12]\b", r["label"]), r
         assert f"line {r['line']}" in r["label"], r
         assert re.search(r"\bdigit [1-4] of 4\b|\b(first|last|second)\b", r["label"]), r
+
+
+def test_the_sixteen_digit_boxes_run_left_to_right_in_digit_order():
+    # PF2-12 (c): a swapped pair of boxes prints a filer's SSN or ITIN digits out of order.
+    # Each of the four groups (Debtor 1 and 2, SSN and ITIN) has digit 1..4 of 4 on one row.
+    groups = {}
+    for r in _rows():
+        m = re.search(
+            r"^(Debtor \d, line 3: last 4 of the (?:SSN|ITIN)), digit (\d) of 4$", r["label"]
+        )
+        if m:
+            groups.setdefault(m.group(1), {})[int(m.group(2))] = r["rect"]
+    assert len(groups) == 4
+    for name, digits in groups.items():
+        assert sorted(digits) == [1, 2, 3, 4], name
+        assert len({digits[n][1] for n in digits}) == 1, f"{name} is one row"
+        x0s = [digits[n][0] for n in (1, 2, 3, 4)]
+        assert x0s == sorted(x0s) and len(set(x0s)) == 4, name
+
+
+def test_each_ein_pair_prints_its_first_two_digits_left_of_its_last_seven():
+    rows = _rows()
+    firsts = {
+        r["label"]: r["rect"][0]
+        for r in rows
+        if re.search(r"^Debtor \d, line 4: EIN \d, first 2 digits$", r["label"])
+    }
+    lasts = {
+        r["label"]: r["rect"][0]
+        for r in rows
+        if re.search(r"^Debtor \d, line 4: EIN \d, last 7 digits$", r["label"])
+    }
+    assert len(firsts) == len(lasts) == 4
+    for label, x0 in firsts.items():
+        assert x0 < lasts[label.replace("first 2", "last 7")], label
+
+
+def test_the_digit_rules_reach_the_boxes_in_that_order():
+    # The same order, traced from the rule: each rule's box in the schema is the index box
+    # whose label names that digit (or first-2 / last-7), so a swap in the schema fails too.
+    by_name = {}
+    for r in _rows():
+        by_name.setdefault(r["full_name"], []).append(r)
+    placed = {}
+    for field in load_schema("form_101").fields:
+        if field.rule and re.search(r"_digit_\d$|^ein_(prefix|suffix)$", field.rule):
+            (row,) = [r for r in by_name[field.pdf_field] if r["page"] == field.page]
+            placed.setdefault(field.rule, []).append(row)
+    assert len(placed) == 10
+    # Each rule fills one box: a second binding of a rule would print its digit twice
+    assert all(len(rows) == 1 for rows in placed.values()), placed
+    placed = {rule: rows[0] for rule, rows in placed.items()}
+    for kind in ("ssn", "itin"):
+        for n in (1, 2, 3, 4):
+            row = placed[f"{kind}_last4_digit_{n}"]
+            assert row["label"].startswith("Debtor 1, line 3: last 4 of the " + kind.upper())
+            assert row["label"].endswith(f"digit {n} of 4")
+        x0s = [placed[f"{kind}_last4_digit_{n}"]["rect"][0] for n in (1, 2, 3, 4)]
+        assert x0s == sorted(x0s)
+    assert placed["ein_prefix"]["label"].endswith("EIN 1, first 2 digits")
+    assert placed["ein_suffix"]["label"].endswith("EIN 1, last 7 digits")
+    assert placed["ein_prefix"]["rect"][0] < placed["ein_suffix"]["rect"][0]
+    # The pair is one number on one row of the page
+    assert placed["ein_prefix"]["page"] == placed["ein_suffix"]["page"]
+    assert placed["ein_prefix"]["rect"][1] == placed["ein_suffix"]["rect"][1]
+
+
+SIGNATURE_BOXES = [
+    "Signature of Debtor 1",
+    "Signature of Debtor 2",
+    "Signature of Attorney for Debtor",
+]
+
+
+def _ink(page, rect, annots=True):
+    """
+    Count of pixels inside `rect` (top-left points) that aren't white, inset 1 pt to skip the
+    border: light grey counts too, so a faint mark can't hide under a dark-only threshold.
+    """
+    clip = pymupdf.Rect(*rect) + (1, 1, -1, -1)
+    pixmap = page.get_pixmap(
+        clip=clip, dpi=144, colorspace=pymupdf.csGRAY, alpha=False, annots=annots
+    )
+    return sum(1 for value in pixmap.samples if value < 250)
+
+
+def _signature_rects():
+    rows = [r for r in _rows() if r["type"] == "Signature"]
+    assert sorted(r["full_name"] for r in rows) == sorted(SIGNATURE_BOXES)
+    assert {r["page"] for r in rows} == {7}
+    return {r["full_name"]: r["rect"] for r in rows}
+
+
+def _page_7_filled():
+    # Every text box of page 7 takes a mark, so the bake draws around the signature boxes.
+    values = {r["full_name"]: "W" for r in _rows() if r["page"] == 7 and r["type"] == "Text"}
+    return pymupdf.open("pdf", PDFFormFiller().fill("form_101", values))[6]
+
+
+def test_the_bake_leaves_each_signature_box_as_empty_as_the_court_prints_it():
+    # PF2-12 (b): the filer signs in ink on a sworn petition. Judged by pixels, not by what
+    # a binding would write: whatever the bake does to a /Sig widget must add no ink.
+    # The blank is drawn without its widgets, as the court prints the page: the baked page has
+    # no widget left, so its boxes must hold no more than the court's own print.
+    blank = pymupdf.open(PDF_DIR / TEMPLATE)[6]
+    filled = _page_7_filled()
+    for name, rect in _signature_rects().items():
+        assert _ink(filled, rect) <= _ink(blank, rect, annots=False), name
+
+
+def test_the_ink_measure_sees_a_mark_in_a_signature_box():
+    # Calibration for the test above: the same count rises when a mark is drawn there.
+    blank = pymupdf.open(PDF_DIR / TEMPLATE)[6]
+    filled = _page_7_filled()
+    for name, rect in _signature_rects().items():
+        before = _ink(filled, rect)
+        filled.insert_text((rect[0] + 10, rect[3] - 6), "X Jane Doe", fontsize=14)
+        assert _ink(filled, rect) > max(before, _ink(blank, rect, annots=False)), name

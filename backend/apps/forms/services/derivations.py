@@ -26,7 +26,7 @@ from apps.eligibility.cmi import (
     is_above_median,
     spouse_monthly_income,
 )
-from apps.forms.services.answer_records import PETITION_STEP_OF_KEY, record_value
+from apps.forms.services.answer_records import PETITION_STEP_OF_KEY, is_itin, record_value
 from apps.intake.asset_lines import (
     LINE_BY_KEY,
     LINES,
@@ -906,8 +906,12 @@ def _county(session: IntakeSession) -> str:
 
 
 def digits(value: str) -> str:
-    """The digits of what the filer typed: "900-70-1234" and "900701234" read the same."""
-    return re.sub(r"\D", "", value or "")
+    """The digits of what the filer typed: "900-70-1234" and "900701234" read the same.
+
+    Only 0-9 count: other scripts' digits, which a "\\d" pattern would keep, can't print on the
+    forms.
+    """
+    return re.sub(r"[^0-9]", "", value or "")
 
 
 def nine_digit_slice(value, start: int, stop: int) -> str:
@@ -946,6 +950,12 @@ def split_district_name(name: str) -> tuple[str, str]:
 
 def _petition(session: IntakeSession, key: str) -> str:
     return record_value(session, f"petition.{key}")
+
+
+def _valid_itin(session: IntakeSession) -> str:
+    """The stored ITIN only when it is nine digits starting with 9, else blank (PF2-U2)."""
+    value = _petition(session, "itin")
+    return value if is_itin(value) else ""
 
 
 def _asked(key: str) -> Callable[[IntakeSession], str]:
@@ -1047,11 +1057,29 @@ def _register_digits(prefix: str, reader, start: int, count: int, fix: dict[str,
 _register_digits(
     "ssn_last4_digit", lambda s: _safe_debtor_attr(s, "ssn"), 5, 4, {"step": "debtor_info"}
 )
-_register_digits("itin_last4_digit", _asked("itin"), 5, 4, _step_of("itin"))
-_register("itin_whole", lambda s: nine_digit_slice(_petition(s, "itin"), 0, 9), _step_of("itin"))
+_register_digits("itin_last4_digit", _valid_itin, 5, 4, _step_of("itin"))
+
+
+def _dashed(found: str, *sizes: int) -> str:
+    """The digits in groups of `sizes`, joined by dashes; "" for no digits."""
+    groups, start = [], 0
+    for size in sizes:
+        groups.append(found[start : start + size])
+        start += size
+    return "-".join(groups) if found else ""
+
+
+# Form 121's number boxes are combs, one cell a character (PF2-T10-1). The ITIN's box follows a
+# printed 9 and has ten cells, so it takes the eight digits after that 9 as NN-NN-NNNN; the other
+# Social Security number's box has eleven, NNN-NN-NNNN, as ssn_formatted prints line 2's first.
+_register(
+    "itin_whole",
+    lambda s: _dashed(nine_digit_slice(_valid_itin(s), 1, 9), 2, 2, 4),
+    _step_of("itin"),
+)
 _register(
     "other_ssn_whole",
-    lambda s: nine_digit_slice(_petition(s, "other_ssn"), 0, 9),
+    lambda s: _dashed(nine_digit_slice(_petition(s, "other_ssn"), 0, 9), 3, 2, 4),
     _step_of("other_ssn"),
 )
 _register("ein_prefix", lambda s: nine_digit_slice(_petition(s, "ein"), 0, 2), _step_of("ein"))

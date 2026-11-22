@@ -991,6 +991,68 @@ def test_a_petition_key_the_record_does_not_ask_is_a_startup_error(schema_copy):
     ]
 
 
+@pytest.mark.parametrize(
+    "binding,error",
+    [
+        (
+            "petition.prior_cases[].filed",
+            "form_101: 'petition.prior_cases[].filed': 'filed' is not a cell of the "
+            "'prior_cases' rows",
+        ),
+        (
+            "petition.prior_cases",
+            "form_101: 'petition.prior_cases': 'prior_cases' is a row list, so its binding "
+            "names a cell",
+        ),
+        (
+            "petition.itin[].digits",
+            "form_101: 'petition.itin[].digits': 'itin' is not a row list",
+        ),
+    ],
+)
+def test_a_petition_binding_that_names_no_stored_cell_is_a_startup_error(
+    schema_copy, binding, error
+):
+    # A row attribute the record never stores reads blank at resolve time: a sworn form would
+    # print an empty cell for an answer the filer gave (PF2-10c).
+    _edit(
+        schema_copy,
+        "form_101",
+        lambda d: _field(d, "Suffix Sr Jr II III").update(binding=binding),
+    )
+    assert _errors("form_101") == [("forms.E007", error)]
+
+
+def test_a_petition_sheet_column_that_names_no_stored_cell_is_a_startup_error(schema_copy):
+    # The rows past a slot group's boxes print on the sheet: its column is checked like a slot.
+    def rename(d):
+        column = d["groups"]["prior_cases"]["sheet"]["columns"][0]
+        column["binding"] = "petition.prior_cases[].dstrict"
+
+    _edit(schema_copy, "form_101", rename)
+    assert (
+        "forms.E007",
+        "form_101: 'petition.prior_cases[].dstrict': 'dstrict' is not a cell of the "
+        "'prior_cases' rows",
+    ) in _errors("form_101")
+
+
+def test_a_petition_column_covers_entry_that_names_no_stored_cell_is_a_startup_error(
+    schema_copy,
+):
+    def cover(d):
+        d["groups"]["prior_cases"]["sheet"]["columns"][0]["covers"] = [
+            "petition.prior_cases[].distrct"
+        ]
+
+    _edit(schema_copy, "form_101", cover)
+    assert (
+        "forms.E007",
+        "form_101: 'petition.prior_cases[].distrct': 'distrct' is not a cell of the "
+        "'prior_cases' rows",
+    ) in _errors("form_101")
+
+
 def test_a_total_box_another_binding_fills_is_reported(schedule_d_with_totals):
     # A binding of undefined_24 put back (the rule that once bound it is gone, 3c5 R8): its figure
     # and the group's would fight.

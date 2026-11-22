@@ -382,11 +382,6 @@ def validate_schema(
             errors.append(("E007", f"{f.pdf_field!r}: unknown predicate {f.conditional_on!r}"))
         if f.binding is not None and not f.binding.startswith(_BINDING_NAMESPACES):
             errors.append(("E007", f"{f.pdf_field!r}: unknown binding namespace {f.binding!r}"))
-        # A petition. key the record doesn't list reads blank at resolve time (4b).
-        if (f.binding or "").startswith("petition.") and (
-            f.binding.removeprefix("petition.").partition("[].")[0] not in PETITION_STEP_OF_KEY
-        ):
-            errors.append(("E007", f"{f.binding!r}: not a key PetitionAnswers asks"))
         if f.repeat is not None and not f.repeat_capacity:
             errors.append(("E007", f"repeat group {f.repeat!r} has no repeat_capacity"))
 
@@ -778,7 +773,35 @@ def validate_schema(
         for key in sorted(set(group.number_boxes.values()) - undrawn):
             if _isnt_text_box(key, drawn):
                 errors.append(("E003", f"group {name!r}: number box {key!r} isn't a text box"))
+    # A petition. key or row cell the record doesn't store reads blank at resolve time, so only
+    # this check catches it (4b; PF2-10c): every binding, sheet column and covered binding.
+    petition_bindings = {f.binding for f in schema.fields if f.binding}
+    for group in schema.groups.values():
+        for column in group.sheet.columns if group.sheet is not None else ():
+            petition_bindings.add(column.binding)
+            petition_bindings.update(column.covers or ())
+    for binding in sorted(b for b in petition_bindings if b.startswith("petition.")):
+        problem = _petition_binding_error(binding)
+        if problem:
+            errors.append(("E007", f"{binding!r}: {problem}"))
     return errors
+
+
+def _petition_binding_error(binding: str) -> str | None:
+    """Why a petition. binding names no value PetitionAnswers stores, or None when it does."""
+    from apps.intake.models import PetitionAnswers  # here, as this module's other late imports
+
+    key, is_list, attr = binding.removeprefix("petition.").partition("[].")
+    if key not in PETITION_STEP_OF_KEY:
+        return "not a key PetitionAnswers asks"
+    cells = PetitionAnswers.LIST_KEYS.get(key)
+    if is_list and cells is None:
+        return f"{key!r} is not a row list"
+    if not is_list and cells is not None:
+        return f"{key!r} is a row list, so its binding names a cell"
+    if is_list and attr not in cells:
+        return f"{attr!r} is not a cell of the {key!r} rows"
+    return None
 
 
 def _isnt_text_box(key: str, drawn) -> bool:

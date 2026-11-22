@@ -178,6 +178,11 @@ def _send_through_the_api(persona):
     response = client.patch(session_url, {"claim_answers": answers}, format="json")
     assert response.status_code == 200, response.data
 
+    # Form 101's own answers (steps 1, 5 and 7), through the session PATCH the steps send, so a
+    # seed block the serializer would refuse fails here (PF2-T7-6).
+    response = client.patch(session_url, {"petition_answers": data["petition"]}, format="json")
+    assert response.status_code == 200, response.data
+
     # Complete Intake, then the pages that follow it. Their saves keep the intake complete.
     # No means-test call: Generate All works it out from the stored intake (spec §5.6).
     response = client.post(f"{session_url}complete/")
