@@ -167,6 +167,7 @@ function step1PetitionBody(
   }
   // An ITIN goes only when it is one (nine digits starting with 9, PF2-U2): any other nine digits
   // would print blank, so they stay in the box with the server's sentence beside them
+  // (PETITION_DETAIL_ITIN_NINE, owner ruling Q7)
   if (isItin(secrets.itin)) body.itin = secrets.itin;
   if (isNineDigits(secrets.other_ssn)) body.other_ssn = secrets.other_ssn;
   return body;

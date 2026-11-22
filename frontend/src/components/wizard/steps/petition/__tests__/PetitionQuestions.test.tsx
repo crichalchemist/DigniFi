@@ -16,6 +16,7 @@ import {
   PETITION_ADD_OTHER_NAME,
   PETITION_ADD_PRIOR_CASE,
   PETITION_DETAIL_ITIN,
+  PETITION_DETAIL_ITIN_NINE,
   PETITION_GATE_ITIN,
   PETITION_GATE_OTHER_NAMES,
   PUBLIC_RECORD_NOTICE,
@@ -342,14 +343,17 @@ describe('PetitionQuestions', () => {
   });
 
   it('nine digits that are no ITIN stay in the box with the server sentence beside them', async () => {
-    // PF2-U2: an ITIN starts with 9; any other number would print blank on Forms 101 and 121
+    // PF2-U2: an ITIN starts with 9; any other number would print blank on Forms 101 and 121.
+    // Owner ruling Q7: the sentence says why nine digits aren't one, not "type your 9-digit ITIN"
     render(<Harness initial={{ itin_answer: 'yes' }} />);
     const box = screen.getByRole('textbox', { name: /ITIN/ });
     await userEvent.type(box, '812345678');
     expect(box).toHaveValue('812-34-5678');
-    expect(box).toHaveAccessibleDescription(PETITION_DETAIL_ITIN);
+    expect(box).toHaveAccessibleDescription(PETITION_DETAIL_ITIN_NINE);
+    expect(screen.queryByText(PETITION_DETAIL_ITIN)).not.toBeInTheDocument();
     await userEvent.clear(box);
     await userEvent.type(box, '912345678');
+    expect(screen.queryByText(PETITION_DETAIL_ITIN_NINE)).not.toBeInTheDocument();
     expect(screen.queryByText(PETITION_DETAIL_ITIN)).not.toBeInTheDocument();
   });
 

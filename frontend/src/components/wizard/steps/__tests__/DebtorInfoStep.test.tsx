@@ -6,6 +6,7 @@ import { ILND_COUNTIES } from '../../../../constants/counties';
 import {
   COUNSELING_REQUIREMENT_INTRO,
   COUNTY_OUTSIDE_DISTRICT,
+  HOME_ZIP_ERROR,
   SSN_SAVED,
 } from '../../../../constants/copy';
 import type { DebtorInfo, PetitionAnswers } from '../../../../types/api';
@@ -167,5 +168,37 @@ describe("DebtorInfoStep and Form 101's questions", () => {
     await userEvent.click(zip);
     await userEvent.paste('60201-1234');
     expect(zip).toHaveValue('602011234');
+  });
+
+  it('a home ZIP of the wrong length says what the box takes, in the approved words', async () => {
+    // Owner ruling Q7
+    renderStep();
+    const zip = screen.getByRole('textbox', { name: /zip code/i });
+    await userEvent.type(zip, '6020');
+    expect(screen.getByText(HOME_ZIP_ERROR)).toBeInTheDocument();
+    await userEvent.type(zip, '1');
+    expect(screen.queryByText(HOME_ZIP_ERROR)).not.toBeInTheDocument();
+  });
+
+  it('a home ZIP stored with a hyphen loads with the ZIP error and holds Continue until edited', async () => {
+    // Ruling T8-zip-load: masking on load would change the saved body and reopen a completed
+    // intake, so the stored spelling shows as typed until the filer edits it
+    const onValidationChange = vi.fn();
+    renderStep({
+      initialData: { ...LOADED, zip_code: '60201-1234', ssn_saved: true },
+      county: 'Cook',
+      petition: EVERY_GATE_NO,
+      onValidationChange,
+    });
+    const zip = screen.getByRole('textbox', { name: /zip code/i });
+    expect(zip).toHaveValue('60201-1234');
+    expect(screen.getByText(HOME_ZIP_ERROR)).toBeInTheDocument();
+    expect(onValidationChange).toHaveBeenLastCalledWith(false);
+
+    await userEvent.clear(zip);
+    await userEvent.type(zip, '60201-1234');
+    expect(zip).toHaveValue('602011234');
+    expect(screen.queryByText(HOME_ZIP_ERROR)).not.toBeInTheDocument();
+    expect(onValidationChange).toHaveBeenLastCalledWith(true);
   });
 });

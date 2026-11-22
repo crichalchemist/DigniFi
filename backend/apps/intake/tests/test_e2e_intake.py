@@ -22,7 +22,12 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
-from apps.intake.tests.builders import answer_asset_lines, answer_household, complete_debt
+from apps.intake.tests.builders import (
+    answer_asset_lines,
+    answer_household,
+    answer_petition,
+    complete_debt,
+)
 
 User = get_user_model()
 
@@ -399,6 +404,7 @@ class TestIntakeSessionCompletion:
             monthly_gross_wages=Decimal("5000.00"),
         )
         answer_household(session)
+        answer_petition(session)
 
         # Add expense info
         ExpenseInfo.objects.create(

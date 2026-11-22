@@ -28,7 +28,7 @@ import {
   PETITION_ASKED_AS_MAILING,
   PETITION_ASKED_AS_OTHER_SSN,
   PETITION_BUSINESS_NAME_ROW,
-  PETITION_DETAIL_ITIN,
+  PETITION_DETAIL_ITIN_NINE,
   PETITION_OTHER_NAME_ROW,
   PETITION_PENDING_CASE_ROW,
   PETITION_PRIOR_CASE_ROW,
@@ -378,7 +378,7 @@ export function PetitionQuestions({
       );
     }
     // Nine digits that aren't an ITIN would print blank, so they stay here, unsent, with the
-    // server's own sentence beside them (PF2-U2)
+    // server's own sentence beside them (PF2-U2, owner ruling Q7)
     const notAnItin = key === 'itin' && isNineDigits(pending) && !isItin(pending);
     return (
       <FormField
@@ -388,7 +388,7 @@ export function PetitionQuestions({
         inputMode="numeric"
         autoComplete="off"
         placeholder="XXX-XX-XXXX"
-        helpText={notAnItin ? PETITION_DETAIL_ITIN : undefined}
+        helpText={notAnItin ? PETITION_DETAIL_ITIN_NINE : undefined}
         value={nineDigitNumber(pending)}
         onChange={(e) => {
           const digits = nineDigitNumber(e.target.value).replace(/\D/g, '');

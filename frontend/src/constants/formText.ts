@@ -842,7 +842,7 @@ export const FORM_101_LINE_5 =
 export const FORM_101_PO_BOX = 'P.O. Box';
 // Line 6, the question as printed, its line breaks joined
 export const FORM_101_LINE_6 = 'Why you are choosing this district to file for bankruptcy';
-// Line 6's two choices, no cut
+// Line 6's two choices; the second is cut before its citation "(See 28 U.S.C. § 1408.)"
 export const FORM_101_VENUE_CHOICES: Record<VenueChoice, string> = {
   lived_here:
     'Over the last 180 days before filing this petition, I have lived in this district longer than in any other district.',

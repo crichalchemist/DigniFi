@@ -12,7 +12,12 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
 from apps.intake.models import PetitionAnswers, _read_text_limits
-from apps.intake.petition import DETAIL_ITIN, DETAIL_OTHER_SSN, petition_step_gaps
+from apps.intake.petition import (
+    DETAIL_ITIN,
+    DETAIL_ITIN_NINE,
+    DETAIL_OTHER_SSN,
+    petition_step_gaps,
+)
 
 
 def _url(session):
@@ -329,7 +334,8 @@ def test_itin_saved_means_it_will_print_and_no_detail_is_listed(filer, itin, sav
     read = client.get(_url(session)).json()["petition_answers"]
     assert read["itin_saved"] is saved
     session.refresh_from_db()
-    assert (DETAIL_ITIN in [str(g) for g in petition_step_gaps(session)]) is listed
+    texts = [str(g) for g in petition_step_gaps(session)]
+    assert (DETAIL_ITIN in texts or DETAIL_ITIN_NINE in texts) is listed
 
 
 @pytest.mark.parametrize("other,saved", [("", False), ("9007012", False), ("812345678", True)])

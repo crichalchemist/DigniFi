@@ -15,6 +15,7 @@ from apps.intake.petition import (
     DETAIL_EIN,
     DETAIL_HAZARD,
     DETAIL_ITIN,
+    DETAIL_ITIN_NINE,
     DETAIL_MAILING,
     DETAIL_OTHER_NAMES,
     DETAIL_OTHER_SSN,
@@ -314,14 +315,24 @@ def test_a_too_long_text_under_a_no_is_not_listed(filer, monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "itin,listed",
-    [("812345678", True), ("912345678", False), ("9-12-34-5678", False), ("91234567", True)],
+    "itin,sentence",
+    [
+        # Nine digits not starting with 9 get the reason they aren't an ITIN (owner ruling Q7).
+        ("812345678", DETAIL_ITIN_NINE),
+        ("812-34-5678", DETAIL_ITIN_NINE),
+        ("912345678", None),
+        ("9-12-34-5678", None),
+        ("91234567", DETAIL_ITIN),
+        ("8123456789", DETAIL_ITIN),
+        ("", DETAIL_ITIN),
+    ],
 )
-def test_an_itin_is_nine_digits_starting_with_9(filer, itin, listed):
+def test_an_itin_is_nine_digits_starting_with_9(filer, itin, sentence):
     _, session = filer
     answers = {**NO, "venue_choice": "lived_here", "itin_answer": "yes", "itin": itin}
     texts = [t for _, _, t in _gaps(session, answers)]
-    assert (DETAIL_ITIN in texts) is listed
+    itin_details = [t for t in texts if t in (DETAIL_ITIN, DETAIL_ITIN_NINE)]
+    assert itin_details == ([sentence] if sentence else [])
 
 
 def _too_long(label):

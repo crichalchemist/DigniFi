@@ -16,6 +16,7 @@ import { ILND_COUNTIES } from '../../../constants/counties';
 import {
   COUNSELING_REQUIREMENT_INTRO,
   COUNTY_OUTSIDE_DISTRICT,
+  HOME_ZIP_ERROR,
   SSN_SAVED,
 } from '../../../constants/copy';
 import type { DebtorInfo, PetitionAnswers } from '../../../types/api';
@@ -131,7 +132,7 @@ export function DebtorInfoStep({
       newErrors.zip_code = 'Please enter your ZIP code';
     } else if (!/^\d{5}(\d{4})?$/.test(formData.zip_code)) {
       // Digits only: Form 101 line 5 prints a ZIP+4 as nine digits (owner ruling Q1)
-      newErrors.zip_code = 'Please enter a valid ZIP code (XXXXX or XXXXXXXXX)';
+      newErrors.zip_code = HOME_ZIP_ERROR;
     }
 
     if (!formData.email?.trim()) {

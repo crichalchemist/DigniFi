@@ -42,6 +42,8 @@ DETAIL_VENUE = "Choose why you are filing in this district."
 DETAIL_VENUE_REASON = "Explain your other reason for filing here."
 DETAIL_OTHER_NAMES = "Add the other name you used, or change your answer to No."
 DETAIL_ITIN = "Type your 9-digit ITIN, or change your answer to No."
+# Nine digits whose first is not 9: a number, but not an ITIN (owner ruling Q7, 2026-11-21).
+DETAIL_ITIN_NINE = "An ITIN starts with 9. Check what you typed, or change your answer to No."
 DETAIL_OTHER_SSN = "Type the other 9-digit Social Security number, or change your answer to No."
 DETAIL_EIN = "Your EIN has 9 digits. Check what you typed."
 DETAIL_MAILING = "Add your mailing address, or change your answer to No."
@@ -133,8 +135,10 @@ def _debtor_info_details(answers: dict) -> list[Gap]:
         and not _has_a_row(answers, "other_business_names")
     ):
         gaps.append(_detail(DETAIL_OTHER_NAMES, step, "other_names"))
-    if answers.get("itin_answer") == "yes" and not is_itin(answers.get("itin")):
-        gaps.append(_detail(DETAIL_ITIN, step, "itin"))
+    itin = answers.get("itin")
+    if answers.get("itin_answer") == "yes" and not is_itin(itin):
+        sentence = DETAIL_ITIN_NINE if is_nine_digits(itin) else DETAIL_ITIN
+        gaps.append(_detail(sentence, step, "itin"))
     if answers.get("other_ssn_answer") == "yes" and not is_nine_digits(answers.get("other_ssn")):
         gaps.append(_detail(DETAIL_OTHER_SSN, step, "other_ssn"))
     if answers.get("mailing_answer") == "yes" and all(

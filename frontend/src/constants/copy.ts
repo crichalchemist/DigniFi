@@ -1650,6 +1650,10 @@ export const PETITION_DETAIL_OTHER_NAMES =
   'Add the other name you used, or change your answer to No.';
 // DRAFT: counsel C-44
 export const PETITION_DETAIL_ITIN = 'Type your 9-digit ITIN, or change your answer to No.';
+// Nine digits whose first is not 9 (owner ruling Q7)
+// DRAFT: counsel C-44
+export const PETITION_DETAIL_ITIN_NINE =
+  'An ITIN starts with 9. Check what you typed, or change your answer to No.';
 // DRAFT: counsel C-44
 export const PETITION_DETAIL_OTHER_SSN =
   'Type the other 9-digit Social Security number, or change your answer to No.';
@@ -1702,6 +1706,9 @@ export const VENUE_DIVISION_EASTERN = 'Your county is in the Eastern Division of
 export const VENUE_DIVISION_WESTERN = 'Your county is in the Western Division of this district.';
 export const LINE_12_FEEDS_107 =
   'Form 107 line 27 asks about this business again. Your answer here will show there.';
+
+// Step 1's home ZIP box, five digits or nine (owner ruling Q7)
+export const HOME_ZIP_ERROR = 'Enter a 5-digit or 9-digit ZIP code.';
 
 // Answers kept under a No: they print nothing, and nothing reappears unannounced (spec §5.3)
 export const HIDDEN_ROWS_ONE = '1 saved row is hidden. Show it or delete it.';

@@ -63,7 +63,10 @@ def test_a_stored_nine_digit_ssn_reads_as_saved_and_never_comes_back(session):
     assert response.data["debtor_info"]["ssn_saved"] is True
     assert "ssn" not in response.data["debtor_info"]
     assert SSN.encode() not in response.content
-    assert SSN[-4:].encode() not in response.content
+    # The last four are judged on step 1's own record alone: the rest of the session read holds
+    # microsecond timestamps and ids, where any four digits can turn up by chance
+    debtor_values = [str(value) for value in response.data["debtor_info"].values()]
+    assert not any(SSN[-4:] in value for value in debtor_values)
 
 
 @pytest.mark.parametrize("stored", ["", "90070123", "9007012345"])

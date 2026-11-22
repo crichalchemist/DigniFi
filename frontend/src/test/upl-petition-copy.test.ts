@@ -41,11 +41,12 @@ const GAP_NAMES = Object.keys(strings).filter(
   (name) => name.startsWith('PETITION_GATE_') || name.startsWith('PETITION_DETAIL_')
 );
 
+// Every step 1 string named PETITION_ (the gaps, the questions in DigniFi's words, the row
+// lists' Add, row and Remove labels), found by prefix so a new label is checked too
+const PREFIXED_NAMES = Object.keys(strings).filter((name) => name.startsWith('PETITION_'));
+
 const PETITION_NAMES = [
-  ...GAP_NAMES,
-  'PETITION_ASKED_AS_ITIN',
-  'PETITION_ASKED_AS_OTHER_SSN',
-  'PETITION_ASKED_AS_MAILING',
+  ...PREFIXED_NAMES,
   'WHY_OTHER_NAMES',
   'WHY_ITIN',
   'WHY_OTHER_SSN',
@@ -57,6 +58,9 @@ const PETITION_NAMES = [
   'HIDDEN_ROWS_ONE',
   'HIDDEN_ROWS_MANY',
   'HIDDEN_ANSWERS',
+  'SHOW_HIDDEN',
+  'DELETE_HIDDEN',
+  'HOME_ZIP_ERROR',
   'SSN_SAVED',
   'ITIN_SAVED',
   'OTHER_SSN_SAVED',
@@ -68,9 +72,17 @@ const PETITION_NAMES = [
 ];
 
 describe("step 1's Form 101 sentences are information, never advice", () => {
-  it('mirrors every gate and detail petition.py holds today (10 and 15)', () => {
+  it('mirrors every gate and detail petition.py holds today (10 and 16)', () => {
     expect(GAP_NAMES.filter((name) => name.startsWith('PETITION_GATE_'))).toHaveLength(10);
-    expect(GAP_NAMES.filter((name) => name.startsWith('PETITION_DETAIL_'))).toHaveLength(15);
+    expect(GAP_NAMES.filter((name) => name.startsWith('PETITION_DETAIL_'))).toHaveLength(16);
+  });
+
+  it("checks every PETITION_ string, the row lists' twelve labels among them", () => {
+    // 26 gap sentences, 3 questions in DigniFi's words and 12 Add, row and Remove labels, so a
+    // filter that silently matched fewer names can't pass the advice check below
+    expect(PREFIXED_NAMES).toHaveLength(41);
+    expect(PREFIXED_NAMES).toContain('PETITION_ADD_OTHER_NAME');
+    expect(PREFIXED_NAMES).toContain('PETITION_REMOVE_PENDING_CASE');
   });
 
   it.each(PETITION_NAMES)('%s exists in copy', (name) => {
@@ -101,6 +113,7 @@ describe("step 1's Form 101 sentences are information, never advice", () => {
     'PETITION_GATE_ITIN',
     'PETITION_GATE_OTHER_SSN',
     'PETITION_DETAIL_ITIN',
+    'PETITION_DETAIL_ITIN_NINE',
     'PETITION_DETAIL_OTHER_SSN',
     'WHY_ITIN',
     'WHY_OTHER_SSN',

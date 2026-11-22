@@ -76,10 +76,11 @@ def test_every_petition_sentence_the_browser_shows_is_the_servers(kind):
 
 
 def test_the_mirror_has_every_sentence_the_server_has_today():
-    # The counts as petition.py holds them at Task 8 (10 gates, 15 details with 7c's row
-    # template), so a reader that silently matched nothing can't pass the test above
+    # The counts as petition.py holds them at Task 8 (10 gates, 16 details with 7c's row
+    # template and owner ruling Q7's DETAIL_ITIN_NINE), so a reader that silently matched
+    # nothing can't pass the test above
     assert len(_server_sentences("GATE_")) == 10
-    assert len(_server_sentences("DETAIL_")) == 15
+    assert len(_server_sentences("DETAIL_")) == 16
 
 
 def test_the_row_nouns_the_browser_names_are_the_servers():
