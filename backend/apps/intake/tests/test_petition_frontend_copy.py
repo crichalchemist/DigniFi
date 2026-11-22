@@ -76,10 +76,10 @@ def test_every_petition_sentence_the_browser_shows_is_the_servers(kind):
     assert browser == server
 
 
-def test_only_the_two_too_long_templates_take_placeholders_and_each_only_its_own():
-    # The server fills these in and the browser compares the templates (F-16): {label} in both,
-    # {noun} and {n} for the row (owner ruling Q5), and {forms}, the forms whose box refuses the
-    # row's cell (owner ruling Q10).
+def test_only_the_too_long_templates_take_placeholders_and_each_only_its_own():
+    # The server fills these in and the browser compares the templates (F-16): {label} in both
+    # text templates (Form 101's and, 4b2-R3, Form 101A's), {noun} and {n} for the row (owner
+    # ruling Q5), and {forms}, the forms whose box refuses the row's cell (owner ruling Q10).
     found = {
         name: set(re.findall(r"\{(\w+)\}", text))
         for kind in ("GATE_", "DETAIL_")
@@ -88,16 +88,18 @@ def test_only_the_two_too_long_templates_take_placeholders_and_each_only_its_own
     }
     assert found == {
         "DETAIL_TOO_LONG": {"label"},
+        "DETAIL_TOO_LONG_101A": {"label"},
         "DETAIL_TOO_LONG_ROW": {"label", "noun", "n", "forms"},
     }
 
 
 def test_the_mirror_has_every_sentence_the_server_has_today():
-    # The counts as petition.py holds them at Task 8 (10 gates, 16 details with 7c's row
-    # template and owner ruling Q7's DETAIL_ITIN_NINE), so a reader that silently matched
-    # nothing can't pass the test above
+    # The counts as petition.py holds them after 4b2 (10 gates, 18 details: 16 as 4b-ii left
+    # them, with 7c's row template and owner ruling Q7's DETAIL_ITIN_NINE, plus the landlord's
+    # detail and Form 101A's too-long template), so a reader that silently matched nothing can't
+    # pass the test above
     assert len(_server_sentences("GATE_")) == 10
-    assert len(_server_sentences("DETAIL_")) == 16
+    assert len(_server_sentences("DETAIL_")) == 18
 
 
 def test_the_row_nouns_the_browser_names_are_the_servers():

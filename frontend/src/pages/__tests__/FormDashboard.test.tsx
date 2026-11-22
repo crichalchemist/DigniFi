@@ -5,7 +5,12 @@ import { delay, http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider } from '../../context/IntakeContext';
 import { FormDashboard } from '../FormDashboard';
-import { DASHBOARD_ERROR, DASHBOARD_GATES_ONE, FORM_103A_LINK } from '../../constants/copy';
+import {
+  DASHBOARD_ERROR,
+  DASHBOARD_GATES_ONE,
+  FORM_103A_LINK,
+  PETITION_DETAIL_LANDLORD,
+} from '../../constants/copy';
 import { FORM_103A_URL } from '../../constants/copy';
 import {
   MEANS_FILED_BEFORE_122A1,
@@ -38,6 +43,12 @@ function renderFormDashboard() {
       </IntakeProvider>
     </MemoryRouter>
   );
+}
+
+/** The path and query the router is at, for a test that follows a button */
+function WhereNow() {
+  const { pathname, search } = useLocation();
+  return <p data-testid="where-now">{pathname + search}</p>;
 }
 
 /** Forms are prepared only from an intake the server marked complete. */
@@ -379,6 +390,91 @@ describe('FormDashboard', () => {
   // ---------------------------------------------------------------------------
   // Generate All
   // ---------------------------------------------------------------------------
+
+  // Form 101A is in the packet of a renter with an eviction judgment only (4b2-R11: the default
+  // packet stays the 15 forms, so these tests give their own)
+  describe('Form 101A on the dashboard', () => {
+    const CARD_101A = 'Form 101A - Eviction Judgment Statement';
+
+    function withForm101A(gaps: unknown[] = []) {
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () =>
+          HttpResponse.json({ session: 1, form_types: ['form_101', 'form_101a', 'form_121'] })
+        ),
+        http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+          HttpResponse.json({ gaps })
+        )
+      );
+    }
+
+    const landlordGap = {
+      message: PETITION_DETAIL_LANDLORD,
+      step: 'contracts',
+      kind: 'detail',
+      forms: ['form_101a'],
+    };
+
+    it('the landlord detail shows on Form 101A’s card and on no other', async () => {
+      withForm101A([landlordGap]);
+      renderFormDashboard();
+
+      const card101a = await screen.findByRole('article', { name: CARD_101A });
+      expect(await within(card101a).findByText(PETITION_DETAIL_LANDLORD)).toBeInTheDocument();
+      expect(
+        within(card101a).getByRole('link', { name: 'Go to Contracts & Leases' })
+      ).toHaveAttribute('href', '/intake?step=contracts');
+      for (const name of ['Form 101 - Voluntary Petition', 'Form 121 - SSN Statement']) {
+        const other = screen.getByRole('article', { name });
+        expect(within(other).queryByText(PETITION_DETAIL_LANDLORD)).not.toBeInTheDocument();
+      }
+      // Once on the card, once in the notice
+      expect(screen.getAllByText(PETITION_DETAIL_LANDLORD)).toHaveLength(2);
+    });
+
+    // The refusal is the same sentence: one sentence twice on one card reads as two problems
+    it('a card refused in the detail’s own words shows the sentence once', async () => {
+      withForm101A([landlordGap]);
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate/', () =>
+          HttpResponse.json(
+            { form_type: 'form_101a', error: PETITION_DETAIL_LANDLORD, step: 'contracts' },
+            { status: 422 }
+          )
+        )
+      );
+      renderFormDashboard();
+
+      const card = await screen.findByRole('article', { name: CARD_101A });
+      await userEvent.click(within(card).getByRole('button', { name: 'Generate' }));
+      await userEvent.click(screen.getByRole('checkbox'));
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+      await waitFor(() =>
+        expect(within(card).getAllByText(PETITION_DETAIL_LANDLORD)).toHaveLength(1)
+      );
+      // A pending card's one way forward is its button, so the detail adds no second link
+      expect(within(card).getAllByRole('button', { name: /Contracts & Leases/ })).toHaveLength(1);
+      expect(within(card).queryByRole('link')).not.toBeInTheDocument();
+    });
+
+    it('a pending Form 101A card’s Answer Questions goes to Contracts & Leases', async () => {
+      withForm101A();
+      localStorage.setItem('current_session_id', '1');
+      render(
+        <MemoryRouter>
+          <IntakeProvider>
+            <FormDashboard />
+            <WhereNow />
+          </IntakeProvider>
+        </MemoryRouter>
+      );
+
+      const card = await screen.findByRole('article', { name: CARD_101A });
+      await userEvent.click(within(card).getByRole('button', { name: 'Answer Questions' }));
+
+      expect(screen.getByTestId('where-now')).toHaveTextContent('/intake?step=contracts');
+    });
+  });
 
   describe('the median table notice', () => {
     const aprilTable = {

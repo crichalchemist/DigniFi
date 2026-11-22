@@ -1675,6 +1675,14 @@ export const PETITION_DETAIL_TOO_LONG =
   'Your answer for {label} is too long for its box on Form 101.';
 export const PETITION_DETAIL_TOO_LONG_ROW =
   'Your answer for {label}, in {noun} {n}, is too long to fit on {forms}.';
+// Form 101A's landlord block (4b2, owner-approved 2026-11-22): the first mirrors
+// DETAIL_LANDLORD, which is also Form 101A's refusal; the second is a {label} template.
+// DRAFT: counsel C-46
+export const PETITION_DETAIL_LANDLORD =
+  "Form 101A asks for your landlord's name and address, on Contracts & Leases.";
+// DRAFT: counsel C-46
+export const PETITION_DETAIL_TOO_LONG_101A =
+  'Your answer for {label} is too long for its box on Form 101A.';
 
 // The questions step 1 asks in its own words, where the form prints no question (spec §6.1)
 // DRAFT: counsel C-44

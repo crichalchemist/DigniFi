@@ -491,10 +491,11 @@ def _overshoot(template, widget):
 
 
 # (form type, box, side) where _overshoot finds a letter past the rect: the only boxes the
-# cut-off test lets a letter cross, by that much. Å rises up to 0.228 pt above 41 boxes (Form 101A's Case number and Debtor 1 among them) and
-# µ hangs up to 0.048 pt below 10 of them (g and q 0.024 pt); Ç stays inside. Whether
-# filers' forms may print this hairline is the owner's R38 question. Form 101 (11/26) has no
-# row: each of its text boxes sizes its own text, so none reaches past its rect.
+# cut-off test lets a letter cross, by that much. Å rises up to 0.228 pt above 41 boxes (Form
+# 101A's Case number and Debtor 1 among them) and µ hangs up to 0.048 pt below 10 of them (g and
+# q 0.024 pt); Ç stays inside. Whether filers' forms may print this hairline is the owner's R38
+# question. Form 101 (11/26) has no row: each of its text boxes sizes its own text, so none
+# reaches past its rect.
 _R38_HAIRLINES = [
     ("form_101a", "Case number@1:T4", "top"),
     ("form_101a", "Debtor 1@1:T1", "top"),

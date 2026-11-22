@@ -430,10 +430,13 @@ export function FormDashboard() {
     meansDebtsAnswered.answered_on.slice(0, 7) !== meansDebtsAnswered.now.slice(0, 7);
   const meansLink = fixLink({ page: '/means-test' });
   // Form 122A-2's questions are on the page; Form 122A-1's only while that form is in the packet
-  const answerPathOf = (formType: FormType): string | undefined =>
-    formType === 'form_122a2' || (formType === 'form_122a1' && hasMeansPair)
+  // Form 101A's questions are Contracts & Leases' landlord block: it has no `/ask` page (4b2)
+  const answerPathOf = (formType: FormType): string | undefined => {
+    if (formType === 'form_101a') return '/intake?step=contracts';
+    return formType === 'form_122a2' || (formType === 'form_122a1' && hasMeansPair)
       ? '/means-test'
       : undefined;
+  };
   // The sentence that points to the page, with the page's name as the link
   const [answerBefore, answerAfter] = MEANS_OUTCOME_ANSWER_PAGE.split(MEANS_PAGE_PHRASE);
   // A card's notice is information about the form, never a refusal: a form filed before 3h

@@ -1706,6 +1706,9 @@ def test_a_renter_with_an_eviction_judgment_gets_form_101a_with_the_landlord():
     assert shown["Landlord City"] == [("Chicago", "")]
     assert shown["Landlord State"] == [("IL", "")]
     assert shown["Landlord ZIP Code_5"] == [("60601", "")]
+    # The two certification boxes are never ticked (nothing sworn, spec S:564).
+    for box in ("Check Box12", "Check Box13"):
+        assert shown[box] and all(state == "/Off" for _, state in shown[box]), box
     for box in ("undefined_38", "undefined_39", "Date", "Date_2", "Debtor 2", "Case number"):
         assert shown[box], box
         assert all(v == "" and s in ("", "/Off") for v, s in shown[box]), box

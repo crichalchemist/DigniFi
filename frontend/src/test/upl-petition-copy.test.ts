@@ -92,15 +92,15 @@ const NOTICE_NAMES = [
 ];
 
 describe("step 1's Form 101 sentences are information, never advice", () => {
-  it('mirrors every gate and detail petition.py holds today (10 and 16)', () => {
+  it('mirrors every gate and detail petition.py holds today (10 and 18)', () => {
     expect(GAP_NAMES.filter((name) => name.startsWith('PETITION_GATE_'))).toHaveLength(10);
-    expect(GAP_NAMES.filter((name) => name.startsWith('PETITION_DETAIL_'))).toHaveLength(16);
+    expect(GAP_NAMES.filter((name) => name.startsWith('PETITION_DETAIL_'))).toHaveLength(18);
   });
 
   it("checks every PETITION_ string, the row lists' twelve labels among them", () => {
-    // 26 gap sentences, 3 questions in DigniFi's words and 12 Add, row and Remove labels, so a
+    // 28 gap sentences, 3 questions in DigniFi's words and 12 Add, row and Remove labels, so a
     // filter that silently matched fewer names can't pass the advice check below
-    expect(PREFIXED_NAMES).toHaveLength(41);
+    expect(PREFIXED_NAMES).toHaveLength(43);
     expect(PREFIXED_NAMES).toContain('PETITION_ADD_OTHER_NAME');
     expect(PREFIXED_NAMES).toContain('PETITION_REMOVE_PENDING_CASE');
   });
@@ -144,6 +144,13 @@ describe("step 1's Form 101 sentences are information, never advice", () => {
     expect(copySource).toMatch(new RegExp(`// DRAFT: counsel C-44\\nexport const ${name}\\b`));
   });
 
+  it.each(['PETITION_DETAIL_LANDLORD', 'PETITION_DETAIL_TOO_LONG_101A'])(
+    '%s carries counsel mark C-46 on the line above',
+    (name) => {
+      expect(copySource).toMatch(new RegExp(`// DRAFT: counsel C-46\\nexport const ${name}\\b`));
+    }
+  );
+
   it('no copy sentence carries a clerk number inside its text (4b-R6)', () => {
     const withNumber = Object.entries(strings).filter(
       ([name, value]) =>
@@ -155,10 +162,11 @@ describe("step 1's Form 101 sentences are information, never advice", () => {
   });
 
   it('uses only the placeholders the server and the step fill in', () => {
-    // {n} and {count} anywhere, {label} in the two too-long templates, {noun} and {forms} in the
+    // {n} and {count} anywhere, {label} in the two text too-long templates, {noun} and {forms} in the
     // row one (Q5, Q10)
     const allowed: Record<string, string[]> = {
       PETITION_DETAIL_TOO_LONG: ['{label}'],
+      PETITION_DETAIL_TOO_LONG_101A: ['{label}'],
       PETITION_DETAIL_TOO_LONG_ROW: ['{label}', '{noun}', '{n}', '{forms}'],
     };
     for (const name of PETITION_NAMES) {

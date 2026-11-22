@@ -13,7 +13,9 @@ import {
   DASHBOARD_GAPS_ONE,
   DASHBOARD_GATES_MANY,
   DASHBOARD_GATES_ONE,
+  PETITION_DETAIL_LANDLORD,
   PETITION_DETAIL_TOO_LONG,
+  PETITION_DETAIL_TOO_LONG_101A,
   PETITION_DETAIL_TOO_LONG_ROW,
 } from '../../constants/copy';
 import { WIZARD_STEPS } from '../../constants/wizardSteps';
@@ -44,21 +46,33 @@ function patternOf(template: string): RegExp {
 
 const TOO_LONG_SENTENCES = [
   patternOf(PETITION_DETAIL_TOO_LONG),
+  patternOf(PETITION_DETAIL_TOO_LONG_101A),
   patternOf(PETITION_DETAIL_TOO_LONG_ROW),
 ];
 
 /**
  * A too-long answer never prints blank: Generate refuses the form whose box can't take it (Form
- * 101, Form 103B or both, which a row's {forms} names), and a text over its character cap that its
- * box still takes prints whole. So the blank count leaves it out
+ * 101, Form 101A, Form 103B or both of the pair, which a row's {forms} names), and a text over its
+ * character cap that its box still takes prints whole. So the blank count leaves it out
  */
 function isTooLong(gap: CompletionGap): boolean {
   return TOO_LONG_SENTENCES.some((pattern) => pattern.test(gap.message));
 }
 
+/**
+ * A missing landlord is no blank box: Form 101A is refused whole while it is missing, never
+ * printed with an empty block (4b2-R12). Matched by its exact sentence, as the too-long ones are
+ * by their patterns
+ */
+function isRefusedForm(gap: CompletionGap): boolean {
+  return gap.message === PETITION_DETAIL_LANDLORD;
+}
+
 export function GapsNotice({ gaps }: { gaps: CompletionGap[] }) {
   const gateCount = gaps.filter((gap) => gap.kind === 'gate').length;
-  const detailCount = gaps.filter((gap) => gap.kind === 'detail' && !isTooLong(gap)).length;
+  const detailCount = gaps.filter(
+    (gap) => gap.kind === 'detail' && !isTooLong(gap) && !isRefusedForm(gap)
+  ).length;
 
   // One entry per distinct step, in first-seen order; the sort is stable, so unknown steps keep it
   const steps = [...new Set(gaps.map((gap) => gap.step))].sort(

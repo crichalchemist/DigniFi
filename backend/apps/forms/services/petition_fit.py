@@ -18,8 +18,9 @@ from apps.forms.services.fill_resolver import _emit, _key, _scalar_value, resolv
 from apps.forms.services.pdf_filler import PDFFormFiller, UnprintableLetter, ValueTooLong
 
 # The forms whose boxes print a petition answer: Form 103B line 20 prints line 9's earlier cases
-# (PF2-T10-6). A form is measured only while it is in the filer's packet.
-MEASURED_FORMS = ("form_101", "form_103b")
+# (PF2-T10-6) and Form 101A the landlord's block (4b2). Each form is measured only while it is in
+# the filer's packet.
+MEASURED_FORMS = ("form_101", "form_101a", "form_103b")
 
 # The derivations that print a petition key's text, by rule: each street's Number box too, which
 # has no cap of its own (PF2-10d), and the venue reason's four lines.

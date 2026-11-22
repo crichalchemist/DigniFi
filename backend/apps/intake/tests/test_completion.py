@@ -856,6 +856,31 @@ def test_editing_a_completed_intake_asks_for_complete_again(filer, completed):
     assert client.post("/api/forms/generate/", generate, format="json").status_code == 200
 
 
+def test_complete_lets_a_missing_landlord_through_and_names_it(filer, completed):
+    # Form 101A is refused whole while its landlord is missing; that is a detail, never a gate.
+    client, _ = filer
+    answer_petition(completed, rents_residence="yes", eviction_judgment="yes")
+    assert client.post(_session_url(completed, "complete/")).status_code == 200
+
+    gaps = client.get(_session_url(completed, "gaps/")).data["gaps"]
+    sentence = "Form 101A asks for your landlord's name and address, on Contracts & Leases."
+    assert {
+        "message": sentence,
+        "step": "contracts",
+        "kind": "detail",
+        "forms": ["form_101a"],
+    } in gaps
+
+    refused = client.post(
+        "/api/forms/generate/",
+        {"session_id": completed.pk, "form_type": "form_101a"},
+        format="json",
+    )
+    assert refused.status_code == 422
+    assert refused.data["error"] == sentence
+    assert refused.data["step"] == "contracts"
+
+
 @pytest.mark.parametrize(
     "section,value",
     [

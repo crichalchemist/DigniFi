@@ -7,7 +7,9 @@ import {
   DASHBOARD_GAPS_ONE,
   DASHBOARD_GATES_MANY,
   DASHBOARD_GATES_ONE,
+  PETITION_DETAIL_LANDLORD,
   PETITION_DETAIL_TOO_LONG,
+  PETITION_DETAIL_TOO_LONG_101A,
   PETITION_DETAIL_TOO_LONG_ROW,
 } from '../../../constants/copy';
 import type { CompletionGap } from '../../../types/api';
@@ -130,6 +132,25 @@ describe('GapsNotice', () => {
     renderNotice([detail('debtor_info', tooLong), detail('assets', 'An asset value is blank.')]);
 
     expect(screen.getByText(DASHBOARD_GAPS_ONE)).toBeInTheDocument();
+  });
+
+  it('a too-long Form 101A answer is not counted as a blank one', () => {
+    const tooLong = PETITION_DETAIL_TOO_LONG_101A.replace('{label}', "the landlord's name");
+    renderNotice([{ ...detail('contracts', tooLong), forms: ['form_101a'] }]);
+
+    const notice = screen.getByRole('status');
+    expect(within(notice).getByText(tooLong)).toBeInTheDocument();
+    expect(notice).not.toHaveTextContent(/blank/i);
+  });
+
+  // Form 101A is refused whole while its landlord is missing; it never prints a blank box (R12)
+  it('a missing landlord is not counted as a blank answer', () => {
+    renderNotice([{ ...detail('contracts', PETITION_DETAIL_LANDLORD), forms: ['form_101a'] }]);
+
+    const notice = screen.getByRole('status');
+    expect(within(notice).getByText(PETITION_DETAIL_LANDLORD)).toBeInTheDocument();
+    expect(within(notice).getByRole('link', { name: /Contracts/ })).toBeInTheDocument();
+    expect(notice).not.toHaveTextContent(/blank/i);
   });
 
   it('with both kinds the missing sentence comes first', () => {
