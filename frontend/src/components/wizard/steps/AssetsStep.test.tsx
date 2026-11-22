@@ -15,6 +15,7 @@ import {
   LEASE_NOTE,
   LIVES_HERE_QUESTION,
   NOTHING_TO_LIST_NOTE,
+  PETITION_GATE_HAZARD,
   VALUE_UNKNOWN_NOTE,
 } from '../../../constants/copy';
 import {
@@ -24,15 +25,21 @@ import {
   AB_WHO_QUESTION,
 } from '../../../constants/formText';
 import { hydrateAmounts } from '../../../utils/parseAmount';
-import type { AssetInfo, AssetLineAnswer, WizardRow } from '../../../types/api';
+import type { AssetInfo, AssetLineAnswer, PetitionAnswers, WizardRow } from '../../../types/api';
 
 type Row = WizardRow<AssetInfo>;
 type Answers = Record<string, AssetLineAnswer>;
 
 /** What the step last handed its parent: the step holds no copies, so this is the filer's work */
-const latest: { rows: Row[]; answers: Answers; valid: boolean | null } = {
+const latest: {
+  rows: Row[];
+  answers: Answers;
+  hazard: PetitionAnswers;
+  valid: boolean | null;
+} = {
   rows: [],
   answers: {},
+  hazard: {},
   valid: null,
 };
 
@@ -40,23 +47,30 @@ function Walk({
   part,
   rows: startRows = [],
   answers: startAnswers = {},
+  hazard: startHazard = {},
 }: {
   part: number;
   rows?: Row[];
   answers?: Answers;
+  /** Form 101 line 14's answers, which Part 7 asks after its lines (4b) */
+  hazard?: PetitionAnswers;
 }) {
   const [rows, setRows] = useState(startRows);
   const [answers, setAnswers] = useState(startAnswers);
+  const [hazard, setHazard] = useState(startHazard);
   useEffect(() => {
     latest.rows = rows;
     latest.answers = answers;
-  }, [rows, answers]);
+    latest.hazard = hazard;
+  }, [rows, answers, hazard]);
   return (
     <AssetsStep
       rows={rows}
       onRowsChange={setRows}
       answers={answers}
       onAnswersChange={setAnswers}
+      hazard={hazard}
+      onHazardChange={setHazard}
       part={part}
       onValidationChange={(valid) => {
         latest.valid = valid;
@@ -1227,12 +1241,33 @@ describe('what a Part needs before Continue (the server: asset_step_gaps)', () =
       '46': 'no',
       '53': 'no',
     };
-    expect(firstIncompletePart([], everyPart)).toBe(1);
-    expect(firstIncompletePart([], {})).toBe(1);
+    expect(firstIncompletePart([], everyPart, false)).toBe(1);
+    expect(firstIncompletePart([], {}, false)).toBe(1);
     const noLine14 = { ...everyPart };
     delete noLine14['14'];
-    expect(firstIncompletePart([], noLine14)).toBe(3);
-    expect(firstIncompletePart([makeRow({ ab_line: '53' })], everyPart)).toBe(7);
+    expect(firstIncompletePart([], noLine14, false)).toBe(3);
+    expect(firstIncompletePart([makeRow({ ab_line: '53' })], everyPart, false)).toBe(7);
+  });
+
+  // PF2-T9-1: the hazard is asked on Part 7 alone, so a session whose Parts are all complete and
+  // whose hazard is unanswered opens there, not six presses away at Part 1
+  it('opens at Part 7 when every Part is complete and the hazard is unanswered', () => {
+    const everyPart: Answers = {
+      ...allNo(1),
+      ...allNo(2),
+      ...allNo(3),
+      ...allNo(4),
+      '37': 'no',
+      '46': 'no',
+      '53': 'no',
+    };
+    expect(firstIncompletePart([], everyPart, true)).toBe(7);
+    // A Part with something left still comes first
+    const noLine14 = { ...everyPart };
+    delete noLine14['14'];
+    expect(firstIncompletePart([], noLine14, true)).toBe(3);
+    // And an old row with no line still holds the step at Part 1
+    expect(firstIncompletePart([makeRow({ ab_line: null })], everyPart, true)).toBe(1);
   });
 
   // Old rows hold every Part back and are listed only above Part 1, so opening anywhere else would
@@ -1246,7 +1281,79 @@ describe('what a Part needs before Continue (the server: asset_step_gaps)', () =
       '46': 'no',
       '53': 'no',
     };
-    expect(firstIncompletePart([], everyPart)).toBe(3);
-    expect(firstIncompletePart([makeRow({ ab_line: null })], everyPart)).toBe(1);
+    expect(firstIncompletePart([], everyPart, false)).toBe(3);
+    expect(firstIncompletePart([makeRow({ ab_line: null })], everyPart, false)).toBe(1);
+  });
+});
+
+describe("Form 101 line 14's hazard, after Part 7's lines (4b)", () => {
+  const part7Done: Answers = { '53': 'no' };
+
+  it('the step is invalid until the hazard is answered and valid after a No', () => {
+    latest.valid = null;
+    render(<Walk part={7} answers={part7Done} />);
+    expect(latest.valid).toBe(false);
+    fireEvent.click(
+      document.querySelector('input[name="hazard_answer"][value="no"]') as HTMLInputElement
+    );
+    expect(latest.hazard).toEqual({ hazard_answer: 'no' });
+    expect(latest.valid).toBe(true);
+  });
+
+  it("Part 1's Continue is not held by the hazard", () => {
+    latest.valid = null;
+    render(<Walk part={1} answers={allNo(1)} />);
+    expect(document.querySelector('input[name="hazard_answer"]')).toBeNull();
+    expect(latest.valid).toBe(true);
+  });
+
+  it('asks the hazard on Part 7 only, after its lines', () => {
+    for (const part of AB_PARTS) {
+      const { unmount } = render(<Walk part={part} />);
+      const asked = document.querySelector('input[name="hazard_answer"]');
+      expect(Boolean(asked), `Part ${part}`).toBe(part === AB_PARTS.length);
+      unmount();
+    }
+    render(<Walk part={7} />);
+    const lastLine = radio('53', 'no');
+    const hazard = document.querySelector('input[name="hazard_answer"]') as HTMLInputElement;
+    // The hazard comes after the last line in the page's order
+    expect(
+      lastLine.compareDocumentPosition(hazard) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it("shows the step's own gap first, then the hazard's, in its one status region", () => {
+    // PF2-T9-6: one region per step. Line 53 answered Yes with no item yet: the line's gap shows,
+    // and the filer who then leaves the hazard block still sees the step's own gap first
+    const { unmount } = render(<Walk part={7} answers={{ '53': 'yes' }} />);
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+    const lineGap = firstGapOnPart(7, [], { '53': 'yes' })!;
+    expect(lineGap).not.toBeNull();
+    expect(screen.getByRole('status')).toHaveTextContent(lineGap);
+    const hazardNo = document.querySelector(
+      'input[name="hazard_answer"][value="no"]'
+    ) as HTMLInputElement;
+    fireEvent.focusOut(hazardNo, { relatedTarget: null });
+    expect(screen.getByRole('status')).toHaveTextContent(lineGap);
+    expect(screen.getByRole('status')).not.toHaveTextContent(PETITION_GATE_HAZARD);
+    // Once the line is answered, the same region names the hazard
+    say('53', 'no');
+    expect(screen.getByRole('status')).toHaveTextContent(PETITION_GATE_HAZARD);
+    unmount();
+
+    // Part 7's lines complete counts as touched (PF2-T8-10): the hazard's gate shows
+    render(<Walk part={7} answers={part7Done} />);
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+    expect(screen.getByRole('status')).toHaveTextContent(PETITION_GATE_HAZARD);
+    fireEvent.click(
+      document.querySelector('input[name="hazard_answer"][value="yes"]') as HTMLInputElement
+    );
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
+  it('says nothing about the hazard on Part 7 before the filer has begun it', () => {
+    render(<Walk part={7} />);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
 });

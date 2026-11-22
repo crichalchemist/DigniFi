@@ -37,8 +37,9 @@ import { useFocusManagement } from '../../../hooks/useFocusManagement';
 import { Button, FormSelect } from '../../common';
 import { AssetLine } from './assets/AssetLine';
 import { firstGapOnPart, NO_TEXT_BOX, partIsComplete, shownLines } from './assets/assetGaps';
+import { anyAnswerIn, HAZARD_KEYS, HazardQuestion, hazardGap } from './petition';
 import type { AssetLine as Line } from '../../../constants/assetLines';
-import type { AssetInfo, AssetLineAnswer, WizardRow } from '../../../types/api';
+import type { AssetInfo, AssetLineAnswer, PetitionAnswers, WizardRow } from '../../../types/api';
 
 type Row = WizardRow<AssetInfo>;
 
@@ -47,6 +48,9 @@ interface AssetsStepProps {
   onRowsChange: (rows: Row[]) => void;
   answers: Record<string, AssetLineAnswer>;
   onAnswersChange: (answers: Record<string, AssetLineAnswer>) => void;
+  /** Form 101's answers, of which Part 7 asks line 14's hazard after its lines (4b) */
+  hazard: PetitionAnswers;
+  onHazardChange: (next: PetitionAnswers) => void;
   /** The Part showing, 1 to 7 */
   part: number;
   onValidationChange: (isValid: boolean) => void;
@@ -85,6 +89,8 @@ export function AssetsStep({
   onRowsChange,
   answers,
   onAnswersChange,
+  hazard,
+  onHazardChange,
   part,
   onValidationChange,
 }: AssetsStepProps) {
@@ -95,7 +101,19 @@ export function AssetsStep({
     (change: 1 | -1) => setPartialBoxes((count) => count + change),
     []
   );
-  const isValid = oldRows.length === 0 && partialBoxes === 0 && partIsComplete(part, rows, answers);
+  // The hazard is asked on the last Part alone, after its lines, so only that Part's Continue waits
+  // for it (PF2-T9-1)
+  const asksHazard = part === AB_PARTS.length;
+  const isValid =
+    oldRows.length === 0 &&
+    partialBoxes === 0 &&
+    partIsComplete(part, rows, answers) &&
+    (!asksHazard || hazardGap(hazard) === null);
+  // Touched once an answer in the block is set, focus has left it, or the Part's lines are done
+  // (PF2-T8-10): until then the region says nothing about it
+  const [hazardLeft, setHazardLeft] = useState(false);
+  const hazardTouched =
+    hazardLeft || anyAnswerIn(hazard, HAZARD_KEYS) || partIsComplete(part, rows, answers);
   // Continue and Go Back keep this step mounted, so the wizard's own focus move doesn't happen
   const partHeadingRef = useFocusManagement(part);
 
@@ -112,6 +130,9 @@ export function AssetsStep({
   const partIsStarted = ASSET_LINES.some(
     (line) => line.part === part && (answers[line.key] || rowsOn(line.key).length > 0)
   );
+  // One status region for the step (PF2-T9-6): the Part's own gap first, then the hazard's gate
+  const shownGap =
+    gap !== null && partIsStarted ? gap : asksHazard && hazardTouched ? hazardGap(hazard) : null;
 
   const answerYes = (line: Line) => {
     onAnswersChange({ ...answers, [line.key]: 'yes' });
@@ -228,13 +249,23 @@ export function AssetsStep({
         </div>
       ))}
 
+      {/* Form 101 line 14, after the last Part's lines (forms step 4b spec §6.5) */}
+      {asksHazard && (
+        <HazardQuestion
+          answers={hazard}
+          onChange={onHazardChange}
+          touched={hazardTouched}
+          onLeave={() => setHazardLeft(true)}
+        />
+      )}
+
       {/* After the lines, not at the line: the last answer is pressed down here, beside Continue.
           A status, not an alert: the sentence can quote a row's name while it's typed. It stays
           mounted because a screen reader may not read a status region that arrives with its text. */}
       <div role="status">
-        {gap !== null && partIsStarted && (
+        {shownGap !== null && (
           <div className="info-box">
-            <p className="info-message">{gap}</p>
+            <p className="info-message">{shownGap}</p>
           </div>
         )}
       </div>

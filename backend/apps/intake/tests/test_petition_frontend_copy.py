@@ -141,3 +141,43 @@ def test_the_revision_the_wizard_names_is_the_one_the_template_prints():
     assert mark, "page 1 has no title line with an edition mark"
     form_text = FRONTEND / "constants" / "formText.ts"
     assert _string_record(form_text, "FORM_REVISIONS") == {"form_101": mark.group(1)}
+
+
+PDFS = settings.BASE_DIR.parent / "data" / "forms" / "pdfs"
+
+
+def _page_words(template: str, page: int) -> str:
+    """One page's text layer with its line breaks and runs of spaces read as one space."""
+    return " ".join(pypdf.PdfReader(PDFS / template).pages[page - 1].extract_text().split())
+
+
+def _form_text_strings(name: str) -> list[str]:
+    """A formText.ts constant: one string, or each string of an array or record, unescaped."""
+    source = (FRONTEND / "constants" / "formText.ts").read_text()
+    match = re.search(rf"^export const {name}\b[^=]*=\s*(.*?);$", source, re.M | re.S)
+    assert match, f"formText.ts has no {name}"
+    found = re.findall(r"'((?:[^'\\]|\\.)*)'", match.group(1))
+    assert found, f"{name} holds no string"
+    return [text.replace("\\'", "'") for text in found]
+
+
+@pytest.mark.parametrize(
+    "name, template, page",
+    [
+        ("FORM_101_LINE_11_RENT", "form_b101.pdf", 3),
+        ("FORM_101_LINE_11_EVICTION", "form_b101.pdf", 3),
+        ("FORM_101_LINE_11_NOTICE", "form_b101.pdf", 3),
+        ("FORM_101_LINE_14", "form_b101.pdf", 4),
+        ("FORM_101_LINE_14_EXAMPLE", "form_b101.pdf", 4),
+        ("FORM_101_LINE_14_PROMPTS", "form_b101.pdf", 4),
+        ("FORM_101A_SERVICE_SENTENCE", "form_b101a_0.pdf", 1),
+        ("FORM_101A_SERVICE_CONDITIONS", "form_b101a_0.pdf", 1),
+        ("FORM_101B_STAY_SENTENCE", "form_b101a_0.pdf", 1),
+    ],
+)
+def test_the_eviction_and_hazard_words_are_the_forms_own(name, template, page):
+    # Owner answer Q2: the Contracts & Leases notice quotes the forms and never a DigniFi summary
+    # shown as theirs, so each sentence is found word for word on its template's page
+    words = _page_words(template, page)
+    for text in _form_text_strings(name):
+        assert text in words, f"{name}: {text!r} is not on {template} page {page}"

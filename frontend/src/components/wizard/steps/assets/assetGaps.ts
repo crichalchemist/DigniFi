@@ -134,8 +134,12 @@ export function partIsComplete(part: number, rows: Row[], answers: Answers): boo
 /**
  * The first Part with something left, or Part 1 when nothing is: where the step opens. An old row
  * comes first, as in asset_step_gaps: it holds every Part back, and only Part 1 lists it (§9).
+ * With every Part complete and Form 101 line 14's hazard still open, the last Part, the one that
+ * asks it (PF2-T9-1).
  */
-export function firstIncompletePart(rows: Row[], answers: Answers): number {
+export function firstIncompletePart(rows: Row[], answers: Answers, hazardOpen: boolean): number {
   if (rows.some((row) => row.ab_line === null || row.ab_line === undefined)) return 1;
-  return AB_PARTS.find((part) => !partIsComplete(part, rows, answers)) ?? 1;
+  const incomplete = AB_PARTS.find((part) => !partIsComplete(part, rows, answers));
+  if (incomplete !== undefined) return incomplete;
+  return hazardOpen ? AB_PARTS[AB_PARTS.length - 1] : 1;
 }

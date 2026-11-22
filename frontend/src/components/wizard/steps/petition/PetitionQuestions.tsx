@@ -74,7 +74,14 @@ import {
 import type { BusinessKind, PetitionAnswers, VenueChoice } from '../../../../types/api';
 import { einNumber, mmDdYyyy, nineDigitNumber } from './masks';
 import { PartyAddressFields } from './PartyAddressFields';
-import { firstPetitionGap, isBlankPetitionRow, isItin, isNineDigits } from './petitionGaps';
+import {
+  firstPetitionGap,
+  HAZARD_KEYS,
+  isBlankPetitionRow,
+  isItin,
+  isNineDigits,
+  RENT_KEYS,
+} from './petitionGaps';
 
 type Secret = 'itin' | 'other_ssn';
 type Division = 'Eastern' | 'Western' | null;
@@ -165,6 +172,8 @@ const BUSINESS_KEYS = [
   'business_kind',
 ] as const;
 
+const LATER_STEP_KEYS: ReadonlySet<string> = new Set([...HAZARD_KEYS, ...RENT_KEYS]);
+
 // The last new row's key: unique while the page is open, apart from a loaded row's `loaded-<i>`
 let nextKey = 0;
 
@@ -175,7 +184,7 @@ function rowsOf(answers: PetitionAnswers, key: RowList): Row[] {
 }
 
 /** The line under a No that holds what was typed: Show brings it back, Delete removes it */
-function HiddenLine({
+export function HiddenLine({
   sentence,
   onShow,
   onDelete,
@@ -221,12 +230,15 @@ export function PetitionQuestions({
     other_ssn: false,
   });
 
+  // The record also holds the later steps' answers (the hazard, the rent), which are no answer in
+  // this block
   const touched =
     blurred ||
     Object.entries(answers).some(
       ([key, value]) =>
         !key.endsWith('_saved') &&
         key !== 'answered_on' &&
+        !LATER_STEP_KEYS.has(key) &&
         value !== null &&
         value !== undefined &&
         value !== '' &&

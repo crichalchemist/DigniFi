@@ -62,11 +62,19 @@ const MAX_GRADE = TARGET_GRADE + BUFFER; // Grade 9
 
 type TextEntry = { label: string; text: string };
 
+// A value that is one whole link: the page shows its link text, which is scored, never the address
+// itself, whose words are the court's and only split into syllables (4b, PF2-T9-3)
+const WHOLE_URL = /^https:\/\/\S+$/;
+const UNSCORED_URLS = Object.entries(copy)
+  .filter(([, value]) => typeof value === 'string' && WHOLE_URL.test(value))
+  .map(([key]) => key);
+
 function collectCopyStrings(): TextEntry[] {
   const entries: TextEntry[] = [];
 
   for (const [key, value] of Object.entries(copy)) {
     if (typeof value === 'string') {
+      if (UNSCORED_URLS.includes(key)) continue;
       entries.push({ label: `copy.${key}`, text: value });
     } else if (typeof value === 'object' && value !== null) {
       // Handle STEP_LABELS-style objects
@@ -105,6 +113,15 @@ describe('Reading Level Validation', () => {
 
   it('has strings to validate', () => {
     expect(scorableTexts.length).toBeGreaterThan(0);
+  });
+
+  it('leaves unscored only the three court pages linked by name', () => {
+    // A new address is a deliberate edit here, so no sentence can slip past the score as a link
+    expect(UNSCORED_URLS.sort()).toEqual([
+      'COURT_FORM_101A_URL',
+      'COURT_FORM_101B_URL',
+      'FORM_103A_URL',
+    ]);
   });
 
   describe.each(scorableTexts)('$label', ({ text }) => {

@@ -76,9 +76,12 @@ import { WIZARD_STEPS } from '../constants/wizardSteps';
 import { AB_PARTS, ASSET_LINES } from '../constants/assetLines';
 import { firstIncompletePart } from '../components/wizard/steps/assets/assetGaps';
 import {
+  HAZARD_KEYS,
+  hazardGap,
   isBlankPetitionRow,
   isItin,
   isNineDigits,
+  RENT_KEYS,
 } from '../components/wizard/steps/petition/petitionGaps';
 import { divisionOf } from '../constants/counties';
 
@@ -173,6 +176,18 @@ function step1PetitionBody(
   return body;
 }
 
+/**
+ * A later step's `petition_answers`: its own keys only (HAZARD_KEYS on Assets, RENT_KEYS on
+ * Contracts & Leases), null when unanswered, built the same way from loaded and edited answers, so
+ * showing the step again sends nothing. A hazard text kept under a No still goes (PF2-T9-8).
+ */
+function stepPetitionBody(
+  answers: PetitionAnswers,
+  keys: readonly (keyof PetitionAnswers)[]
+): Record<string, unknown> {
+  return Object.fromEntries(keys.map((key) => [key, answers[key] ?? null]));
+}
+
 /** A loaded list's rows with the browser's own keys, the same keys on every read */
 function hydratePetition(answers: PetitionAnswers | undefined): PetitionAnswers {
   const hydrated: PetitionAnswers = { ...(answers ?? {}) };
@@ -244,7 +259,11 @@ function addNowAndAssistance(body: Partial<IncomeInfo>, data: Partial<IncomeInfo
  */
 type StepBody =
   | Partial<IntakeSession>
-  | { contracts: ContractRow[]; claim_answers: ClaimAnswers }
+  | {
+      contracts: ContractRow[];
+      claim_answers: ClaimAnswers;
+      petition_answers: Record<string, unknown>;
+    }
   | { codebtors: CodebtorRow[]; claim_answers: ClaimAnswers };
 
 /** A row as the server takes it, without the browser's own keys (every key starting with `_`) */
@@ -470,7 +489,14 @@ export function IntakeWizard() {
         const loadedAnswers = fresh.asset_lines ?? {};
         setAssetsData(loadedAssets);
         setAssetAnswers(loadedAnswers);
-        setAssetPart(firstIncompletePart(loadedAssets, loadedAnswers));
+        // The read's own answers: the state set above isn't visible in this closure
+        setAssetPart(
+          firstIncompletePart(
+            loadedAssets,
+            loadedAnswers,
+            hazardGap(fresh.petition_answers ?? {}) !== null
+          )
+        );
         // A loaded debt counts as pressed on the secured question, unless it is a scanned draft
         // (R15, B43). A blank debt type reads as none.
         if (fresh.debts)
@@ -640,6 +666,8 @@ export function IntakeWizard() {
           asset_lines: Object.fromEntries(
             ASSET_LINES.map((line) => [line.key, assetAnswers[line.key] ?? null])
           ),
+          // Form 101 line 14, which Part 7 asks: the hazard's keys alone (4b)
+          petition_answers: stepPetitionBody(petitionAnswers, HAZARD_KEYS),
         } as Partial<IntakeSession>;
 
       case 'debts': {
@@ -659,9 +687,11 @@ export function IntakeWizard() {
         // Only a new row with nothing on it stays in the browser. A stored row always goes, since
         // the list save deletes a stored row it leaves out, so one whose name was cleared goes
         // nameless under its id (R17).
+        // Form 101 line 11's keys alone go beside G's answer, in the same PATCH (PF2-T9-5)
         return {
           contracts: keptRows(contractsData, isBlankContract),
           claim_answers: { contracts_answer: claimAnswers.contracts_answer ?? null },
+          petition_answers: stepPetitionBody(petitionAnswers, RENT_KEYS),
         };
 
       case 'codebtors': {
@@ -721,7 +751,9 @@ export function IntakeWizard() {
   const showStep = (stepNumber: number) => {
     setCurrentStepNumber(stepNumber);
     if (WIZARD_STEPS[stepNumber - 1]?.key === 'assets') {
-      setAssetPart(firstIncompletePart(assetsData, assetAnswers));
+      setAssetPart(
+        firstIncompletePart(assetsData, assetAnswers, hazardGap(petitionAnswers) !== null)
+      );
     }
   };
 
@@ -845,7 +877,9 @@ export function IntakeWizard() {
     // way and starting one more identical save. A save a later save of the
     // list has overtaken sends no PATCH: the later one carries the same answers.
     if ('contracts' in body) {
-      const { contracts: rows, claim_answers } = body;
+      // Form 101 line 11's answers ride in the claim answers' PATCH, one request (PF2-T9-5), and
+      // the copy returned keeps the body's three keys in its order, so autosave sees no change
+      const { contracts: rows, claim_answers, petition_answers } = body;
       const save = ++listSavesRef.current.contracts;
       const saved = await api.intake.saveContracts(
         session.id,
@@ -854,13 +888,16 @@ export function IntakeWizard() {
       if (save !== listSavesRef.current.contracts) return;
       const ids = savedIds(rows, saved as { id: number }[]);
       try {
-        await api.intake.updateSession(session.id, { claim_answers });
+        await api.intake.updateSession(session.id, {
+          claim_answers,
+          petition_answers,
+        } as Partial<IntakeSession>);
       } finally {
         if (save === listSavesRef.current.contracts)
           setContractsData((current) => withSavedIds(current, ids));
       }
       if (save !== listSavesRef.current.contracts) return;
-      return { contracts: withSavedIds(rows, ids), claim_answers };
+      return { contracts: withSavedIds(rows, ids), claim_answers, petition_answers };
     }
     if ('codebtors' in body) {
       const { codebtors: rows, claim_answers } = body;
@@ -1108,6 +1145,8 @@ export function IntakeWizard() {
             onRowsChange={setAssetsData}
             answers={assetAnswers}
             onAnswersChange={setAssetAnswers}
+            hazard={petitionAnswers}
+            onHazardChange={setPetitionAnswers}
             part={assetPart}
             onValidationChange={setCanProceed}
           />
@@ -1141,6 +1180,8 @@ export function IntakeWizard() {
             onAnswerChange={(answer) =>
               setClaimAnswers((answers) => ({ ...answers, contracts_answer: answer }))
             }
+            rent={petitionAnswers}
+            onRentChange={setPetitionAnswers}
             debts={debtsData}
             assets={assetsData}
             onValidationChange={setCanProceed}

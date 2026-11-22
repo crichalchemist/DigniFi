@@ -1739,3 +1739,24 @@ export const PETITION_REMOVE_OTHER_NAME = 'Remove other name {n}';
 export const PETITION_REMOVE_BUSINESS_NAME = 'Remove business name {n}';
 export const PETITION_REMOVE_PRIOR_CASE = 'Remove earlier case {n}';
 export const PETITION_REMOVE_PENDING_CASE = 'Remove pending case {n}';
+
+// Contracts & Leases, under Form 101 line 11's two Yes answers: the lead before each sentence
+// quoted from Form 101A (formText.ts), and DigniFi's own sentences and links (PF2-T9-4)
+// DRAFT: counsel C-40
+export const FORM_101A_SAYS = 'Form 101A says:';
+// DRAFT: counsel C-40
+export const FORM_101A_NOT_YET = "DigniFi doesn't prepare Form 101A yet.";
+// DRAFT: counsel C-40
+export const FORM_101A_LINK = 'Get Form 101A and its instructions from the U.S. Courts website';
+// The court's Form 101A page, read 2026-11-21 (the page without "-individuals" is a 404)
+// DRAFT: counsel C-40
+export const COURT_FORM_101A_URL =
+  'https://www.uscourts.gov/forms-rules/forms/initial-statement-about-eviction-judgment-against-you-individuals';
+// DRAFT: counsel C-40
+export const FORM_101B_NOT_PREPARED = "DigniFi doesn't prepare Form 101B.";
+// DRAFT: counsel C-40
+export const FORM_101B_LINK = 'Get Form 101B from the U.S. Courts website';
+// The court's Form 101B page, read 2026-11-21
+// DRAFT: counsel C-40
+export const COURT_FORM_101B_URL =
+  'https://www.uscourts.gov/forms-rules/forms/statement-about-payment-eviction-judgment-against-you-individuals';

@@ -1,9 +1,10 @@
 /**
- * UPL check on step 1's Form 101 sentences (forms step 4b)
+ * UPL check on Form 101's sentences in the wizard (forms step 4b)
  *
  * DigniFi gives legal information, never advice. The gap sentences, the "why we ask" lines, the
- * credit counseling and venue information, the hidden-answer lines and the public-record notice
- * must never tell a filer what to do or what will happen. The form's own words live in
+ * credit counseling and venue information, the hidden-answer lines, the public-record notice and
+ * the Form 101A and 101B notice's own sentences must never tell a filer what to do or what will
+ * happen. The form's own words live in
  * formText.ts and are not checked here. The ADVICE list is copied whole from
  * upl-frame-copy.test.ts, with no carve-out.
  */
@@ -69,6 +70,23 @@ const PETITION_NAMES = [
   'PUBLIC_RECORD_NOTICE_WITH_CLERK',
   'CLERK_PHONE_EASTERN',
   'CLERK_PHONE_WESTERN',
+  // Contracts & Leases' Form 101A and 101B notice: the lead and DigniFi's own sentences (4b)
+  'FORM_101A_SAYS',
+  'FORM_101A_NOT_YET',
+  'FORM_101A_LINK',
+  'FORM_101B_NOT_PREPARED',
+  'FORM_101B_LINK',
+];
+
+// The notice's sentences and its two pages, each under the counsel mark (PF2-T9-3, PF2-T9-4)
+const NOTICE_NAMES = [
+  'FORM_101A_SAYS',
+  'FORM_101A_NOT_YET',
+  'FORM_101A_LINK',
+  'COURT_FORM_101A_URL',
+  'FORM_101B_NOT_PREPARED',
+  'FORM_101B_LINK',
+  'COURT_FORM_101B_URL',
 ];
 
 describe("step 1's Form 101 sentences are information, never advice", () => {
@@ -103,6 +121,7 @@ describe("step 1's Form 101 sentences are information, never advice", () => {
     'VENUE_DIVISION_EASTERN',
     'VENUE_DIVISION_WESTERN',
     'PETITION_DETAIL_VENUE_REASON',
+    ...NOTICE_NAMES,
   ])('%s carries counsel mark C-40 on the line above', (name) => {
     expect(copySource).toMatch(new RegExp(`// DRAFT: counsel C-40\\nexport const ${name}\\b`));
   });

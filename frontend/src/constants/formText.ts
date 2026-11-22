@@ -885,3 +885,39 @@ export const FORM_101_BUSINESS_KINDS: Record<BusinessKind, string> = {
   commodity_broker: 'Commodity Broker (as defined in 11 U.S.C. § 101(6))',
   none: 'None of the above',
 };
+
+// Line 11 (page 3), asked on Contracts & Leases: the question as printed, its line break joined
+export const FORM_101_LINE_11_RENT = 'Do you rent your residence?';
+// Line 11's Yes, the question under it as printed
+export const FORM_101_LINE_11_EVICTION =
+  'Has your landlord obtained an eviction judgment against you?';
+// Line 11, the sentence beside that question's Yes, cut: "Yes."
+export const FORM_101_LINE_11_NOTICE =
+  'Fill out Initial Statement About an Eviction Judgment Against You (Form 101A) and file it as part of this bankruptcy petition.';
+// Line 14 (page 4), asked on Assets: the question as printed, its line breaks joined, no cut
+export const FORM_101_LINE_14 =
+  'Do you own or have any property that poses or is alleged to pose a threat of imminent and identifiable hazard to public health or safety? Or do you own any property that needs immediate attention?';
+// Line 14, the example printed under the question, its line breaks joined
+export const FORM_101_LINE_14_EXAMPLE =
+  'For example, do you own perishable goods, or livestock that must be fed, or a building that needs urgent repairs?';
+// Line 14's Yes, the three prompts beside its boxes, the first cut: "Yes."
+export const FORM_101_LINE_14_PROMPTS = {
+  what: 'What is the hazard?',
+  why: 'If immediate attention is needed, why is it needed?',
+  where: 'Where is the property?',
+};
+
+// Form 101A (form_b101a_0.pdf, the 12/15 revision, page 1), quoted on Contracts & Leases under
+// Form 101 line 11's two Yes answers (owner answer Q2). The opening sentence, as printed
+export const FORM_101A_SERVICE_SENTENCE =
+  'File this form with the court and serve a copy on your landlord when you first file bankruptcy only if:';
+// Form 101A page 1, the opening sentence's two conditions, each without its bullet, line breaks
+// joined
+export const FORM_101A_SERVICE_CONDITIONS = [
+  'you rent your residence; and',
+  'your landlord has obtained a judgment for possession in an eviction, unlawful detainer action, or similar proceeding (called eviction judgment) against you to possess your residence.',
+];
+// Form 101A page 1, "Stay of Eviction: (b) Stay after the initial 30 days.", both sentences after
+// that heading, line breaks joined
+export const FORM_101B_STAY_SENTENCE =
+  'If you wish to stay in your residence after that 30-day period and continue to receive the protection of the automatic stay under 11 U.S.C. § 362(a)(3), you must pay the entire delinquent amount to your landlord as stated in the eviction judgment before the 30-day period ends. You must also fill out Statement About Payment of an Eviction Judgment Against You (Official Form 101B), file it with the bankruptcy court, and serve your landlord a copy of it before the 30-day period ends.';

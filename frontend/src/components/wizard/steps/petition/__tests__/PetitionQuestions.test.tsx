@@ -275,6 +275,16 @@ describe('PetitionQuestions', () => {
     expect(screen.getAllByText('Not answered yet')).toHaveLength(GATES.length);
   });
 
+  it("a later step's answer in the record doesn't count as touching step 1", () => {
+    // The record also holds the hazard (Assets) and the rent (Contracts & Leases): a filer who
+    // comes back to step 1 sees nothing said about its own questions until they touch them
+    render(
+      <Harness initial={{ hazard_answer: 'no', hazard_what: 'Barn roof', rents_residence: 'no' }} />
+    );
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    expect(screen.queryByText('Not answered yet')).not.toBeInTheDocument();
+  });
+
   it("line 2's instructions come with the question, before any answer", () => {
     // A maiden, married or trade name counts: the filer reads so before choosing No
     render(<Harness />);

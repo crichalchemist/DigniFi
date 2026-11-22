@@ -33,6 +33,7 @@ import {
   OLD_ROWS_NOTE,
   OTHER_SSN_SAVED,
   PETITION_ADD_OTHER_NAME,
+  PETITION_GATE_EVICTION,
   REPLACE_SAVED,
   REVIEW_GAPS_UNAVAILABLE,
   REVIEW_NO_DEBTS,
@@ -49,6 +50,10 @@ vi.mock('../../context/AuthContext', () => ({
 // Shared fixtures
 // ---------------------------------------------------------------------------
 
+// Form 101's gates on Assets (line 14) and Contracts & Leases (line 11), answered No, so a session
+// past those steps can continue from them as it could before 4b asked them (PF2-T9-6)
+const LATER_PETITION_GATES = { hazard_answer: 'no' as const, rents_residence: 'no' as const };
+
 const sessionAtStep9 = {
   id: 1,
   user: 1,
@@ -64,6 +69,7 @@ const sessionAtStep9 = {
   expense_info: { rent_or_mortgage: 1000 },
   assets: [],
   debts: [],
+  petition_answers: LATER_PETITION_GATES,
 };
 
 /** Session sitting on step 1 with no pre-filled data (autosave tests). */
@@ -1018,6 +1024,7 @@ const sessionAtStep6 = {
   ...sessionAtStep1,
   current_step: 6,
   debtor_info: { first_name: 'Jane', last_name: 'Doe' },
+  petition_answers: LATER_PETITION_GATES,
 };
 
 /** A draft debt the document processor created from an uploaded bill. */
@@ -1319,6 +1326,7 @@ const CLAIM_ANSWERS_DONE = {
 const sessionAtStep6WithDebts = {
   ...sessionAtStep1,
   current_step: 6,
+  petition_answers: LATER_PETITION_GATES,
   debts: [
     {
       id: 7,
@@ -1355,6 +1363,7 @@ const sessionAtStep6WithDebts = {
 const sessionAtStep5WithAssets = {
   ...sessionAtStep1,
   current_step: 5,
+  petition_answers: LATER_PETITION_GATES,
   assets: [
     {
       id: 3,
@@ -2023,7 +2032,7 @@ describe('IntakeWizard the rows of the Assets step', { timeout: 30_000 }, () => 
 });
 
 describe('IntakeWizard the walk through Schedule A/B', { timeout: 30_000 }, () => {
-  const onAssets = { ...sessionAtStep1, current_step: 5 };
+  const onAssets = { ...sessionAtStep1, current_step: 5, petition_answers: LATER_PETITION_GATES };
   // Every line that shows, answered No
   const everyLineNo = Object.fromEntries(
     ASSET_LINES.filter((line) => line.gate === null).map((line) => [line.key, 'no'])
@@ -2124,6 +2133,57 @@ describe('IntakeWizard the walk through Schedule A/B', { timeout: 30_000 }, () =
     }
 
     expect(bodies).toEqual([]);
+  });
+
+  it('the Assets body carries only the hazard keys of the petition record', async () => {
+    // Every Part complete and the hazard open: the step opens at Part 7, which asks it (PF2-T9-1)
+    const { bodies } = await open({
+      ...onAssets,
+      asset_lines: everyLineNo,
+      petition_answers: { name_suffix: 'Jr.', other_names_answer: 'no', rents_residence: 'no' },
+    });
+    expect(screen.getByText('Part 7 of 7')).toBeInTheDocument();
+    expect(continueButton()).toBeDisabled();
+
+    fireEvent.click(document.querySelector('input[name="hazard_answer"][value="no"]')!);
+
+    await waitFor(() => expect(bodies).toHaveLength(1), { timeout: 4000 });
+    // Step 1's keys and the rent stay out: each step's body names only its own (spec §5.6)
+    expect(bodies[0].petition_answers).toEqual({
+      hazard_answer: 'no',
+      hazard_what: null,
+      hazard_why: null,
+      hazard_street: null,
+      hazard_city: null,
+      hazard_state: null,
+      hazard_zip: null,
+    });
+    await waitFor(() => expect(continueButton()).toBeEnabled());
+  });
+
+  it('sends nothing when the step shows again, and keeps sending a hazard text kept under a No', async () => {
+    const { bodies } = await open({
+      ...onAssets,
+      asset_lines: everyLineNo,
+      petition_answers: { hazard_answer: 'no', hazard_what: 'Barn roof' },
+    });
+
+    vi.useFakeTimers();
+    try {
+      await waitSeconds(4);
+    } finally {
+      vi.useRealTimers();
+    }
+    // PF2-7: the widened body is built the same way from loaded and edited answers
+    expect(bodies).toEqual([]);
+
+    say('1', 'yes');
+    await waitFor(() => expect(bodies).toHaveLength(1), { timeout: 4000 });
+    // PF2-T9-8: the text stays stored under the No, so it goes with every save
+    expect(bodies[0].petition_answers).toMatchObject({
+      hazard_answer: 'no',
+      hazard_what: 'Barn roof',
+    });
   });
 
   it('autosaves mid-Part while Continue is disabled', async () => {
@@ -2438,6 +2498,7 @@ describe('IntakeWizard a new debt after Complete', { timeout: 30_000 }, () => {
         codebtors_answer: 'no',
         community_lived: 'no',
       },
+      petition_answers: LATER_PETITION_GATES,
     });
     server.use(
       http.post(
@@ -3896,6 +3957,7 @@ function serveListSaves(
       community_lived: 'no',
       ...claimAnswers,
     },
+    petition_answers: LATER_PETITION_GATES,
   };
   const otherList = list === 'contracts' ? 'codebtors' : 'contracts';
   let held = loaded;
@@ -4187,7 +4249,8 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     step: number,
     contracts: Record<string, unknown>[] = [],
     codebtors: Record<string, unknown>[] = [],
-    claimAnswers: Record<string, unknown> = {}
+    claimAnswers: Record<string, unknown> = {},
+    petitionAnswers: Record<string, unknown> = LATER_PETITION_GATES
   ) {
     const session = {
       ...sessionAtStep1,
@@ -4201,6 +4264,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
         community_lived: 'no',
         ...claimAnswers,
       },
+      petition_answers: petitionAnswers,
     };
     // The server gives each new row the next id, as the list save does
     let nextId = 10;
@@ -4573,6 +4637,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       ...sessionAtStep1,
       current_step: 6,
       claim_answers: { contracts_answer: 'no', codebtors_answer: 'no', community_lived: 'no' },
+      petition_answers: LATER_PETITION_GATES,
     });
     renderWizard();
     await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
@@ -4783,8 +4848,12 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     expect(contractSaves.length).toBeGreaterThanOrEqual(2);
     expect((contractSaves[1] as Record<string, unknown>[])[0].id).toBe(4);
     expect(sessionPatches.length).toBeGreaterThanOrEqual(2);
+    // Form 101 line 11's keys ride in the same PATCH, so they are sent again with G's answer
     for (const patch of sessionPatches) {
-      expect(patch).toEqual({ claim_answers: { contracts_answer: 'yes' } });
+      expect(patch).toEqual({
+        claim_answers: { contracts_answer: 'yes' },
+        petition_answers: { rents_residence: 'no', eviction_judgment: null },
+      });
     }
   });
 
@@ -5126,7 +5195,100 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
     await waitFor(() => expect(stepUpdates).toEqual([8]));
 
-    expect(sessionPatches).toEqual([{ claim_answers: { contracts_answer: 'yes' } }]);
+    // G's answer and Form 101 line 11's keys, in one PATCH (PF2-T9-5), and no other step's
+    expect(sessionPatches).toEqual([
+      {
+        claim_answers: { contracts_answer: 'yes' },
+        petition_answers: { rents_residence: 'no', eviction_judgment: null },
+      },
+    ]);
+  });
+
+  it('the Contracts body carries only the rent keys', async () => {
+    serveFiler(
+      7,
+      [storedLease],
+      [],
+      {},
+      { name_suffix: 'Jr.', other_names_answer: 'no', hazard_answer: 'no' }
+    );
+    renderWizard();
+    await expectStep('Contracts & Leases');
+    const next = screen.getByRole('button', { name: /continue/i });
+    // Line 11 unanswered holds Continue; once touched, the step's one region says why
+    await waitFor(() =>
+      expect(document.querySelector('[name="counterparty_name_0"]')).toHaveValue(
+        String(storedLease.counterparty_name)
+      )
+    );
+    expect(next).toBeDisabled();
+
+    const pick = (name: string, value: string) =>
+      userEvent.click(document.querySelector(`input[name="${name}"][value="${value}"]`)!);
+    await pick('rents_residence', 'yes');
+    const step = document.querySelector('.contracts-step') as HTMLElement;
+    expect(within(step).getByRole('status')).toHaveTextContent(PETITION_GATE_EVICTION);
+    await pick('eviction_judgment', 'no');
+    await waitFor(() => expect(next).toBeEnabled());
+    await userEvent.click(next);
+    await waitFor(() => expect(stepUpdates).toEqual([8]));
+
+    // Step 1's keys and the hazard stay out: each step's body names only its own (spec §5.6)
+    expect(sessionPatches.length).toBeGreaterThanOrEqual(1);
+    for (const patch of sessionPatches) {
+      expect(Object.keys(patch.petition_answers as object)).toEqual([
+        'rents_residence',
+        'eviction_judgment',
+      ]);
+    }
+    expect(sessionPatches.at(-1)).toEqual({
+      claim_answers: { contracts_answer: 'yes' },
+      petition_answers: { rents_residence: 'yes', eviction_judgment: 'no' },
+    });
+  });
+
+  it('saves Contracts & Leases once per edit, one PUT and one PATCH, and nothing on a visit', async () => {
+    serveFiler(
+      7,
+      [],
+      [],
+      { contracts_answer: 'yes' },
+      { rents_residence: 'yes', eviction_judgment: 'yes' }
+    );
+    renderWizard();
+    await expectStep('Contracts & Leases');
+    expect(document.querySelector('.eviction-notice')).not.toBeNull();
+
+    vi.useFakeTimers();
+    try {
+      await waitSeconds(4);
+      // PF2-7: the widened body is built the same way from loaded and edited answers
+      expect(contractSaves).toEqual([]);
+      expect(sessionPatches).toEqual([]);
+
+      // A new row, whose id the save writes back into it, and the rent moved to No
+      fireEvent.click(screen.getByRole('button', { name: /add contract/i }));
+      fireEvent.change(document.querySelector('[name="counterparty_name_0"]')!, {
+        target: { value: 'Lakeview Storage' },
+      });
+      fireEvent.click(document.querySelector('input[name="rents_residence"][value="no"]')!);
+      await waitSeconds(3);
+      // PF2-T9-5: the copy the save returns matches the body once the id is in the row, so no
+      // second save follows
+      await waitSeconds(5);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(contractSaves).toHaveLength(1);
+    // A stored eviction Yes under a rent No stays stored and is sent as it is (spec §6.7)
+    expect(sessionPatches).toEqual([
+      {
+        claim_answers: { contracts_answer: 'yes' },
+        petition_answers: { rents_residence: 'no', eviction_judgment: 'yes' },
+      },
+    ]);
+    expect(document.querySelector('.eviction-notice')).toBeNull();
   });
 
   it("sends every line 2 answer of Schedule H with step 8's list", async () => {
