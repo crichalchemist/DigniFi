@@ -1415,13 +1415,14 @@ export interface CompletionError {
 
 /**
  * One thing the server finds missing from an intake: the step (a `WIZARD_STEPS` key) that fixes
- * it, and whether Complete refuses it (`gate`) or the forms only print it blank (`detail`)
+ * it, and whether Complete refuses it (`gate`) or lets it through (`detail`): a missing answer
+ * prints its box blank, and an answer too long for its box makes Generate refuse that form
  */
 export interface CompletionGap {
   message: string;
   step: string;
   kind: 'gate' | 'detail';
-  /** The forms whose box prints blank while a detail is open; [] for a gate (4b-R12) */
+  /** The forms a detail concerns, whose box it leaves blank or refuses; [] for a gate (4b-R12) */
   forms: string[];
 }
 
