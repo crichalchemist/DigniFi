@@ -445,14 +445,18 @@ describe('FormDashboard', () => {
       renderFormDashboard();
 
       const card = await screen.findByRole('article', { name: CARD_101A });
+      // The detail is on the card before any refusal, so a pass after the 422 means it was skipped
+      expect(within(card).getAllByText(PETITION_DETAIL_LANDLORD)).toHaveLength(1);
       await userEvent.click(within(card).getByRole('button', { name: 'Generate' }));
       await userEvent.click(screen.getByRole('checkbox'));
       await userEvent.click(screen.getByRole('button', { name: /continue/i }));
 
-      await waitFor(() =>
-        expect(within(card).getAllByText(PETITION_DETAIL_LANDLORD)).toHaveLength(1)
-      );
-      // A pending card's one way forward is its button, so the detail adds no second link
+      // A pending card's one way forward is its button, which the refusal brings: it can't pass
+      // before the 422 lands
+      expect(
+        await within(card).findByRole('button', { name: /Contracts & Leases/ })
+      ).toBeInTheDocument();
+      expect(within(card).getAllByText(PETITION_DETAIL_LANDLORD)).toHaveLength(1);
       expect(within(card).getAllByRole('button', { name: /Contracts & Leases/ })).toHaveLength(1);
       expect(within(card).queryByRole('link')).not.toBeInTheDocument();
     });

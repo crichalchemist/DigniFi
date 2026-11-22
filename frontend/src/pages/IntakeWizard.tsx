@@ -81,6 +81,7 @@ import {
   isBlankPetitionRow,
   isItin,
   isNineDigits,
+  LANDLORD_KEYS,
   RENT_KEYS,
 } from '../components/wizard/steps/petition/petitionGaps';
 import { divisionOf } from '../constants/counties';
@@ -691,7 +692,7 @@ export function IntakeWizard() {
         return {
           contracts: keptRows(contractsData, isBlankContract),
           claim_answers: { contracts_answer: claimAnswers.contracts_answer ?? null },
-          petition_answers: stepPetitionBody(petitionAnswers, RENT_KEYS),
+          petition_answers: stepPetitionBody(petitionAnswers, [...RENT_KEYS, ...LANDLORD_KEYS]),
         };
 
       case 'codebtors': {
@@ -1197,6 +1198,7 @@ export function IntakeWizard() {
             }
             rent={petitionAnswers}
             onRentChange={setPetitionAnswers}
+            division={divisionOf(county)}
             debts={debtsData}
             assets={assetsData}
             onValidationChange={setCanProceed}

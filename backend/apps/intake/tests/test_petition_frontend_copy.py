@@ -14,7 +14,7 @@ import pypdf
 import pytest
 from django.conf import settings
 
-from apps.forms.services.answer_records import PETITION_STEP_OF_KEY
+from apps.forms.services.answer_records import LANDLORD_KEYS, PETITION_STEP_OF_KEY
 from apps.intake import petition
 from apps.intake.models import PetitionAnswers
 
@@ -22,6 +22,7 @@ FRONTEND = settings.BASE_DIR.parent / "frontend" / "src"
 LIMITS = settings.BASE_DIR.parent / "data" / "forms" / "schemas" / "form_101.limits.json"
 LIMITS_101A = settings.BASE_DIR.parent / "data" / "forms" / "schemas" / "form_101a.limits.json"
 TEMPLATE = settings.BASE_DIR.parent / "data" / "forms" / "pdfs" / "form_b101.pdf"
+TEMPLATE_101A = settings.BASE_DIR.parent / "data" / "forms" / "pdfs" / "form_b101a_fillable.pdf"
 PETITION_DIR = FRONTEND / "components" / "wizard" / "steps" / "petition"
 
 
@@ -169,8 +170,18 @@ def test_the_revision_the_wizard_names_is_the_one_the_template_prints():
         r"^Voluntary Petition for Individuals Filing for Bankruptcy (\d{2}/\d{2}) *$", page, re.M
     )
     assert mark, "page 1 has no title line with an edition mark"
+    page_101a = pypdf.PdfReader(TEMPLATE_101A).pages[0].extract_text()
+    mark_101a = re.search(
+        r"^Initial Statement About an Eviction Judgment Against You (\d{2}/\d{2}) *$",
+        page_101a,
+        re.M,
+    )
+    assert mark_101a, "Form 101A's page 1 has no title line with an edition mark"
     form_text = FRONTEND / "constants" / "formText.ts"
-    assert _string_record(form_text, "FORM_REVISIONS") == {"form_101": mark.group(1)}
+    assert _string_record(form_text, "FORM_REVISIONS") == {
+        "form_101": mark.group(1),
+        "form_101a": mark_101a.group(1),
+    }
 
 
 PDFS = settings.BASE_DIR.parent / "data" / "forms" / "pdfs"
@@ -221,6 +232,9 @@ QUOTES = [
     ("FORM_101A_STAY_SENTENCE_A", "form_b101a_0.pdf", 1),
     ("FORM_101A_STAY_HEADING_B", "form_b101a_0.pdf", 1),
     ("FORM_101B_STAY_SENTENCE", "form_b101a_0.pdf", 1),
+    ("FORM_101A_LANDLORD_NAME", "form_b101a_0.pdf", 1),
+    ("FORM_101A_LANDLORD_ADDRESS", "form_b101a_0.pdf", 1),
+    ("FORM_101A_GATE_SENTENCE", "form_b101a_0.pdf", 1),
 ]
 
 # What may sit on either side of a whole quotation on the page: the page's edge; before it, the end
@@ -233,6 +247,18 @@ WHOLE_AFTER = re.compile(r"^(?:$|[A-Z(\uf000-\uf8ff_])")
 
 # Headings printed without a closing mark, each a quotation pinned above in its own right
 HEADINGS = ("FORM_101A_CERTIFICATION_HEADING",)
+
+# The form's own labels that end the text before a quotation, as the page prints them (4b2-R10):
+# the gate sentence follows the address block's last label
+LABELS_BEFORE = ("City State ZIP Code",)
+
+
+def test_the_landlord_keys_the_browser_sends_are_the_servers():
+    # One wrong key is a 400 for the whole Contracts & Leases save
+    source = (PETITION_DIR / "petitionGaps.ts").read_text()
+    match = re.search(r"^export const LANDLORD_KEYS = \[(.*?)\] as const;", source, re.M | re.S)
+    assert match, "petitionGaps.ts has no LANDLORD_KEYS"
+    assert tuple(re.findall(r"'(\w+)'", match.group(1))) == LANDLORD_KEYS
 
 
 def test_every_eviction_and_hazard_quote_is_pinned():
@@ -256,6 +282,7 @@ def test_the_eviction_and_hazard_words_are_the_forms_own(name, template, page):
         after_heading = any(
             before.endswith(heading) for h in HEADINGS for heading in _form_text_strings(h)
         )
-        assert WHOLE_BEFORE.search(before) or after_heading, cut_start
+        after_label = any(before.endswith(label) for label in LABELS_BEFORE)
+        assert WHOLE_BEFORE.search(before) or after_heading or after_label, cut_start
         cut_end = f"{name}: …{text[-40:]!r} stops mid-sentence, before {after[:40]!r}"
         assert WHOLE_AFTER.match(after), cut_end

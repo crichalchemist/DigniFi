@@ -124,7 +124,9 @@ def too_long(session, keys: Collection[str]) -> dict[Measured, frozenset[str]]:
 
     found: dict[Measured, set[str]] = {}
     for form_type in MEASURED_FORMS:
-        # Form 103B is in the packet only under a fee waiver; a box no form prints is no gap.
+        # Form 103B is in the packet only under a fee waiver, and Form 101A only under a rent Yes
+        # and an eviction Yes: each is measured only while it is in the packet, since a box no
+        # form prints is no gap.
         if not FORM_REGISTRY[form_type].applies(session):
             continue
         schema = load_schema(form_type)

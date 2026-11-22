@@ -111,6 +111,7 @@ function StepWithRows({
         setRent(next);
         onRentChange(next);
       }}
+      division={null}
       debts={heldDebts}
       assets={heldAssets}
       onValidationChange={onValidationChange}
@@ -418,6 +419,25 @@ describe("Form 101 line 11's rent and eviction, after the contracts (4b)", () =>
     // Answering G clears its gap, and the rent gate is named at once
     await user.click(document.querySelector('[name="contracts_answer"][value="no"]')!);
     expect(screen.getByRole('status')).toHaveTextContent(copy.PETITION_GATE_RENTS);
+  });
+
+  it('the landlord block never holds Continue', async () => {
+    // Form 101A's landlord is a detail, never a gate (§5.7): an empty block, and a block holding a
+    // too-long name, leave Continue as the rent answers leave it
+    const user = userEvent.setup();
+    const valid = vi.fn();
+    render(
+      <StepWithRows
+        answer="no"
+        rent={{ rents_residence: 'yes', eviction_judgment: 'yes' }}
+        onValidationChange={valid}
+      />
+    );
+    expect(field('landlord_name')).toBeInTheDocument();
+    expect(valid).toHaveBeenLastCalledWith(true);
+    await user.type(field('landlord_name'), 'Demo Property Holdings LLC');
+    expect(valid).toHaveBeenLastCalledWith(true);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
 
   it('asks the rent after the contracts and their Add button', () => {

@@ -73,17 +73,23 @@ const PETITION_NAMES = [
   // Contracts & Leases' Form 101A and 101B notice: the leads and DigniFi's own sentences (4b)
   'FORM_101_LINE_11_LEAD',
   'FORM_101A_SAYS',
-  'FORM_101A_NOT_YET',
   'FORM_101A_LINK',
   'FORM_101B_NOT_PREPARED',
   'FORM_101B_LINK',
+  // Form 101A's landlord block and its certification notes (4b2)
+  'FORM_101A_BOXES_BLANK',
+  'FORM_101A_DEPOSIT',
+  'FORM_101A_DEPOSIT_WITH_CLERK',
+  'LANDLORD_PICK_LABEL',
+  'LANDLORD_PICK_PLACEHOLDER',
+  'LANDLORD_PICK_HINT',
+  'GUIDE_FORM_101A_BOXES_BLANK',
 ];
 
 // The notice's sentences and its two pages, each under the counsel mark (PF2-T9-3, PF2-T9-4)
 const NOTICE_NAMES = [
   'FORM_101_LINE_11_LEAD',
   'FORM_101A_SAYS',
-  'FORM_101A_NOT_YET',
   'FORM_101A_LINK',
   'COURT_FORM_101A_URL',
   'FORM_101B_NOT_PREPARED',
@@ -144,12 +150,19 @@ describe("step 1's Form 101 sentences are information, never advice", () => {
     expect(copySource).toMatch(new RegExp(`// DRAFT: counsel C-44\\nexport const ${name}\\b`));
   });
 
-  it.each(['PETITION_DETAIL_LANDLORD', 'PETITION_DETAIL_TOO_LONG_101A'])(
-    '%s carries counsel mark C-46 on the line above',
-    (name) => {
-      expect(copySource).toMatch(new RegExp(`// DRAFT: counsel C-46\\nexport const ${name}\\b`));
-    }
-  );
+  it.each([
+    'PETITION_DETAIL_LANDLORD',
+    'PETITION_DETAIL_TOO_LONG_101A',
+    'FORM_101A_BOXES_BLANK',
+    'FORM_101A_DEPOSIT',
+    'FORM_101A_DEPOSIT_WITH_CLERK',
+    'LANDLORD_PICK_LABEL',
+    'LANDLORD_PICK_PLACEHOLDER',
+    'LANDLORD_PICK_HINT',
+    'GUIDE_FORM_101A_BOXES_BLANK',
+  ])('%s carries counsel mark C-46 on the line above', (name) => {
+    expect(copySource).toMatch(new RegExp(`// DRAFT: counsel C-46\\nexport const ${name}\\b`));
+  });
 
   it('no copy sentence carries a clerk number inside its text (4b-R6)', () => {
     const withNumber = Object.entries(strings).filter(
