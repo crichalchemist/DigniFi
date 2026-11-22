@@ -20,7 +20,7 @@ import pytest
 from django.core.management import call_command
 
 from apps.districts.models import District
-from apps.forms.registry import build_field_values, build_parts
+from apps.forms.registry import build_field_values, build_parts, packet
 from apps.forms.schema import load_schema
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.services.sheets import sheet_spec
@@ -29,6 +29,7 @@ from apps.forms.tests.oracle import case_param
 from apps.forms.tests.pdf_readback import read_drawn, read_sheets
 from apps.forms.tests.test_form_122a1_schema import LINE_10_SOURCE
 from apps.intake.models import IntakeSession
+from apps.intake.tests.builders import answer_petition
 
 TIER = "3"
 BELOW_MEDIAN = "/12b less or equal to 13"
@@ -1667,3 +1668,44 @@ def test_andres_e_f_continues_on_a_copy_of_page_4():
     assert page_5["fill_27.1.6"] == "6"
     page_6 = {w.full_name: w.value for w in drawn if w.page == 6 and w.copy is None}
     assert (page_6["fill_27.1.8"], page_6["fill_27.1.7"]) == ("7", "7")
+
+
+FORM_101A_LANDLORD = {
+    "landlord_name": "Demo Property Holdings LLC",
+    "landlord_street": "100 Demo St Apt 2",
+    "landlord_city": "Chicago",
+    "landlord_state": "IL",
+    "landlord_zip": "60601",
+}
+
+
+@pytest.mark.django_db
+def test_a_renter_with_an_eviction_judgment_gets_form_101a_with_the_landlord():
+    # No persona has an eviction judgment (B39), so the pair is answered inside the test. Five
+    # distinct landlord values are read back box by box, so a swapped pair fails.
+    if not District.objects.filter(code="ilnd").exists():
+        call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", "--reset", persona="james", verbosity=0)
+    session = IntakeSession.objects.filter(user__username="demo_james").latest("id")
+    answer_petition(session, rents_residence="yes", eviction_judgment="yes", **FORM_101A_LANDLORD)
+
+    forms = packet(session)
+    assert len(forms) == 16
+    assert forms[1] == "form_101a"
+
+    values = build_field_values("form_101a", session)
+    drawn = {(w.page, w.tag) for w in template_widgets("form_b101a_fillable.pdf") if w.drawn}
+    shown = {}
+    for w in read_drawn("form_101a", PDFFormFiller().fill("form_101a", values)):
+        if (w.page, w.tag) in drawn:
+            shown.setdefault(w.full_name, []).append((w.value, w.state))
+    assert shown["Debtor 1"] == [("James D Washington", "")]
+    assert shown["Bankruptcy District Information"] == [("Northern District of Illinois", "")]
+    assert shown["Name of landlord"] == [("Demo Property Holdings LLC", "")]
+    assert shown["Landlord Street address"] == [("100 Demo St Apt 2", "")]
+    assert shown["Landlord City"] == [("Chicago", "")]
+    assert shown["Landlord State"] == [("IL", "")]
+    assert shown["Landlord ZIP Code_5"] == [("60601", "")]
+    for box in ("undefined_38", "undefined_39", "Date", "Date_2", "Debtor 2", "Case number"):
+        assert shown[box], box
+        assert all(v == "" and s in ("", "/Off") for v, s in shown[box]), box

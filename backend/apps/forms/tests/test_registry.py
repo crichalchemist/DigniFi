@@ -269,7 +269,13 @@ def test_form_101a_refuses_until_the_landlord_block_is_whole(session, key):
 def test_form_101a_builds_once_the_landlord_block_is_whole(session):
     _debtor(session)
     _evicted(session, **LANDLORD)
-    assert build_parts("form_101a", session)
+    (form_part,) = [p for p in build_parts("form_101a", session)["parts"] if p["kind"] == "form"]
+    values = form_part["values"]
+    assert values["Name of landlord"] == LANDLORD["landlord_name"]
+    assert values["Landlord Street address"] == LANDLORD["landlord_street"]
+    assert values["Landlord City"] == LANDLORD["landlord_city"]
+    assert values["Landlord State"] == LANDLORD["landlord_state"]
+    assert values["Landlord ZIP Code_5"] == LANDLORD["landlord_zip"]
 
 
 def test_form_101a_never_refuses_off_the_pair(session):

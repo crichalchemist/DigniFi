@@ -8,10 +8,22 @@ landlord text stops at the width of the box that prints it on this form.
 import hashlib
 import importlib.util
 import json
+from datetime import date
+from decimal import Decimal
 
+import pytest
 from django.conf import settings
+from django.contrib.auth import get_user_model
 
+from apps.districts.models import District
+from apps.forms.registry import build_field_values
+from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.services.widgets import template_widgets
+from apps.forms.tests.pdf_readback import read_drawn
+from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household, answer_petition, finish_intake
+
+User = get_user_model()
 
 ROOT = settings.BASE_DIR.parent
 TOOL = ROOT / "data/forms/field_index/tools/build_form_101a.py"
@@ -19,6 +31,13 @@ INDEX_DIR = ROOT / "data/forms/field_index"
 SCHEMAS = ROOT / "data/forms/schemas"
 PDF_DIR = ROOT / "data/forms/pdfs"
 TEMPLATE = "form_b101a_fillable.pdf"
+LANDLORD = {
+    "landlord_name": "Demo Property Holdings LLC",
+    "landlord_street": "100 Demo St Apt 2",
+    "landlord_city": "Chicago",
+    "landlord_state": "IL",
+    "landlord_zip": "60601",
+}
 
 
 def _tool():
@@ -91,3 +110,68 @@ def test_the_state_cap_is_the_boxs_max_len():
     (box,) = [w for w in template_widgets(TEMPLATE) if w.full_name == "Landlord State"]
     cap = json.loads((SCHEMAS / "form_101a.limits.json").read_text())["limits"]["landlord_state"]
     assert box.max_len == 2 == cap
+
+
+@pytest.fixture
+def session(db):
+    user = User.objects.create_user(username="fit101a", password="pass")
+    district = District.objects.create(
+        code="ilnd",
+        name="Northern District of Illinois",
+        state="IL",
+        court_name="U.S. Bankruptcy Court",
+        filing_fee_chapter_7=Decimal("338.00"),
+    )
+    session = IntakeSession.objects.create(user=user, district=district)
+    DebtorInfo.objects.create(
+        session=session,
+        first_name="Demo",
+        middle_name="Q",
+        last_name="Filer",
+        ssn="900-12-3456",  # IRS-reserved range: synthetic
+        date_of_birth=date(1990, 1, 15),
+        phone="312-555-0100",
+        email="demo@example.com",
+        street_address="123 Main St",
+        city="Chicago",
+        state="IL",
+        zip_code="60601",
+    )
+    IncomeInfo.objects.create(session=session)
+    return session
+
+
+def _printed_form_101a(session):
+    """Every drawn widget of Form 101A by full name, each its own (value, state)."""
+    values = build_field_values("form_101a", session)
+    drawn = {(w.page, w.tag) for w in template_widgets(TEMPLATE) if w.drawn}
+    shown = {}
+    for widget in read_drawn("form_101a", PDFFormFiller().fill("form_101a", values)):
+        if (widget.page, widget.tag) in drawn:
+            shown.setdefault(widget.full_name, []).append((widget.value, widget.state))
+    return shown
+
+
+@pytest.mark.django_db
+def test_form_101a_prints_the_caption_and_the_landlord_and_nothing_sworn(session):
+    answer_household(session)
+    finish_intake(session)
+    answer_petition(session, rents_residence="yes", eviction_judgment="yes", **LANDLORD)
+
+    shown = _printed_form_101a(session)
+
+    # Each box holds its own answer: five distinct values, so a swapped pair fails.
+    assert shown["Debtor 1"] == [("Demo Q Filer", "")]
+    assert shown["Bankruptcy District Information"] == [("Northern District of Illinois", "")]
+    assert shown["Name of landlord"] == [("Demo Property Holdings LLC", "")]
+    assert shown["Landlord Street address"] == [("100 Demo St Apt 2", "")]
+    assert shown["Landlord City"] == [("Chicago", "")]
+    assert shown["Landlord State"] == [("IL", "")]
+    assert shown["Landlord ZIP Code_5"] == [("60601", "")]
+    # The certification boxes, the signing dates, Debtor 2 and the case number stay blank:
+    # never a No the filer didn't give, and nothing sworn.
+    for box in ("Check Box12", "Check Box13"):
+        assert shown[box] and all(state == "/Off" for _, state in shown[box]), box
+    for box in ("undefined_38", "undefined_39", "Date", "Date_2", "Debtor 2", "Case number"):
+        assert shown[box], box
+        assert all(value == "" and state in ("", "/Off") for value, state in shown[box]), box

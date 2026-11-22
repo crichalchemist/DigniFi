@@ -22,6 +22,7 @@ from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.services.widgets import template_widgets
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import IntakeSession
+from apps.intake.tests.builders import answer_petition
 
 # Each form's Debtor 1 signature line and signing date, left blank for wet ink. Form 101's
 # six are its 11/26 Part 7 date and its notice page's signature line and date.
@@ -32,6 +33,8 @@ SIGNING_LINES = {
     "form_121": ["Debtor1.signature", "Executed on"],
     "form_122a1": ["Debtor1.sig", "Debtor1.Date signed"],
     "form_122a2": ["Debtor1.sig", "Debtor1.Date signed"],
+    # Form 101A's two signature lines and two dates: the certification a filer signs in ink.
+    "form_101a": ["undefined_38", "undefined_39", "Date", "Date_2"],
 }
 
 # Boxes on the same form that must still print, so a blank signing line can't come from
@@ -42,6 +45,15 @@ STILL_PRINTS = {
     "form_121": {"Debtor1.First name": "Priya"},
     "form_122a1": {"Debtor1.Name": "Priya Sharma"},
     "form_122a2": {"Debtor1.Name": "Priya Sharma"},
+    "form_101a": {"Debtor 1": "Priya Sharma", "Name of landlord": "Demo Property Holdings LLC"},
+}
+
+LANDLORD = {
+    "landlord_name": "Demo Property Holdings LLC",
+    "landlord_street": "100 Demo St Apt 2",
+    "landlord_city": "Chicago",
+    "landlord_state": "IL",
+    "landlord_zip": "60601",
 }
 
 
@@ -57,7 +69,11 @@ def _printed():
     call_command("seed_demo_data", persona="priya", verbosity=0)
     session = IntakeSession.objects.get(user__username="demo_priya")
     printed = {}
-    for form_type in SIGNING_LINES:
+    # Form 101A needs the eviction pair, which changes other forms (Form 101's notice), so every
+    # other form is built first and 101A last.
+    for form_type in sorted(SIGNING_LINES, key=lambda form_type: form_type == "form_101a"):
+        if form_type == "form_101a":
+            answer_petition(session, rents_residence="yes", eviction_judgment="yes", **LANDLORD)
         values = build_field_values(form_type, session)
         template = load_schema(form_type).template_filename
         drawn = {(w.page, w.tag) for w in template_widgets(template) if w.drawn}

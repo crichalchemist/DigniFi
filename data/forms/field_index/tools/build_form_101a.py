@@ -1,5 +1,6 @@
 """
-Writes Form 101A (12/15)'s schema and the caps on the landlord's text (forms step 4b2, R1).
+Writes Form 101A (12/15)'s schema, its seven addendum rows in `step2_verification.json` and the
+caps on the landlord's text (forms step 4b2, R1).
 Form 101A is the court's older fillable template, `form_b101a_fillable.pdf`, whose index is
 `form_b101a_fillable.index.json`. Run it with the backend's Python, the one with
 the backend's requirements installed, since the caps are measured with the filler's own text_fit.
@@ -13,8 +14,8 @@ run it through the backend settings (`py.sh ../data/forms/field_index/tools/buil
 because the backend imports `form_101a.limits.json` at start-up: a missing or overlapping
 `form_101a.limits.json` is restored from git, never rebuilt by hand (PF-4b2-8).
 
-Never hand-edit `form_101a.json` or `form_101a.limits.json`: change this tool and run it again.
-`test_the_schema_and_its_caps_are_what_the_tool_writes` fails on any difference.
+Never hand-edit `form_101a.json`, `form_101a.limits.json` or its rows: change this tool and run it
+again. `test_the_schema_its_rows_and_its_caps_are_what_the_tool_writes` fails on any difference.
 
 The table is keyed by the index label: the tool looks the box's full name and page up in the
 committed index by that label, exiting on zero or two matches. Seven boxes are bound. The
@@ -138,6 +139,11 @@ def addendum_rows(index):
     rows = []
     for label in BINDINGS:
         row = _by_label(index, label)
+        printed_from = (
+            "the session's district, not the filer's answer"
+            if _producer(label) == "derived:district_name"
+            else "the filer's own answer"
+        )
         rows.append(
             {
                 "schema": FORM_TYPE,
@@ -149,7 +155,7 @@ def addendum_rows(index):
                 "correct_target": row["full_name"],
                 "evidence": (
                     f"Field index: {row['full_name']} p{row['page']} {row['tag']}, "
-                    f"{label!r} ({row['basis']}). Printed from the filer's own answer; "
+                    f"{label!r} ({row['basis']}). Printed from {printed_from}; "
                     "Form 101A's certification boxes stay unbound. "
                     "Read by test_form_101a_schema.py and tier 1."
                 ),
