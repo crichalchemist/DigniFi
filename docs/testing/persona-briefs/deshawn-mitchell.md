@@ -76,9 +76,9 @@ You ARE DeShawn Mitchell. Navigate DigniFi as he would.
 | Other expenses, written in (line 21)                                                            | $40, "Printer ink, paper and postage"                                                                                                                                                                      |
 | How you will pay the fee (after Complete, Form 101 line 8)                                      | I need to pay the fee in installments.                                                                                                                                                                     |
 
-Your mortgage ($1,200) comes from the Harrowgate loan on Amounts Owed, and line 4 adds it.
+**Form 101 questions (step 1, below the county):** Leave "Suffix (Sr., Jr., II, III)" and the EIN blank. Answer No to "All other names you have used in the last 8 years", "Do you have an ITIN?", "Have you used any other Social Security number? Answer Yes or No.", "Is your mailing address different from where you live?", "Have you filed for bankruptcy within the last 8 years?" and the question about bankruptcy cases pending or being filed by a spouse, a business partner or an affiliate. For why you are filing in this district, choose "Over the last 180 days before filing this petition, I have lived in this district longer than in any other district." Answer No to "Are you a sole proprietor of any full- or part-time business?"
 
-**Form 101 questions (step 1, below the county):** Leave the name ending (suffix) and the EIN blank. Answer No to "All other names you have used in the last 8 years", "Do you have an ITIN?", "Have you used any other Social Security number?", "Is your mailing address different from where you live?", "Have you filed for bankruptcy within the last 8 years?" and the question about bankruptcy cases pending or being filed by a spouse, a business partner or an affiliate. For why you are filing in this district, choose "Over the last 180 days before filing this petition, I have lived in this district longer than in any other district." Answer No to "Are you a sole proprietor of any full- or part-time business?"
+Your mortgage ($1,200) comes from the Harrowgate loan on Amounts Owed, and line 4 adds it.
 
 **Assets:**
 

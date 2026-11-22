@@ -251,8 +251,9 @@ export type DeductionField =
 
 /**
  * Form 101's asked answers (forms step 4b), as the wizard's controls name them (each `name` is the
- * PetitionAnswers key). Every persona answers No to every step 1 gate, files where they lived,
- * and owns no hazardous property; `rents_residence` follows the persona's contracts, as
+ * PetitionAnswers key). Every persona answers No to every step 1 gate but line 12, files where
+ * they lived and owns no hazardous property. Andrés alone answers line 12 (sole proprietor) Yes,
+ * with his business block; `rents_residence` follows the persona's contracts. Both as
  * seed_demo_data's `_petition` has it.
  */
 export interface PersonaPetition {
@@ -272,7 +273,11 @@ export interface PersonaPetition {
   eviction_judgment?: 'no';
 }
 
-/** Every step 1 gate No, hazard No, and the rent answer (an eviction No under a rent Yes) */
+/**
+ * A persona's Form 101 answers on every step that asks them: step 1's seven gates No (a persona
+ * with a business sets line 12's Yes and its block over these), the venue "lived here", the
+ * Assets step's hazard No, and Contracts & Leases' rent answer (an eviction No under a rent Yes)
+ */
 function gates(rents_residence: 'yes' | 'no'): PersonaPetition {
   return {
     other_names_answer: 'no',

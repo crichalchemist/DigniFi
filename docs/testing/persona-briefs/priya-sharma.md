@@ -78,9 +78,9 @@ You ARE Priya Sharma. Navigate DigniFi as she would.
 | Other expenses, written in (line 21)                                                                | $200, "Children's after-school activities"                                                                                                                                                                 |
 | How you will pay the fee (after Complete, Form 101 line 8)                                          | I will pay the entire fee when I file my petition.                                                                                                                                                         |
 
-Your car payment ($450) comes from the Kestrel Auto Finance loan on Amounts Owed. The Expenses step doesn't ask it.
+**Form 101 questions (step 1, below the county):** Leave "Suffix (Sr., Jr., II, III)" and the EIN blank. Answer No to "All other names you have used in the last 8 years", "Do you have an ITIN?", "Have you used any other Social Security number? Answer Yes or No.", "Is your mailing address different from where you live?", "Have you filed for bankruptcy within the last 8 years?" and the question about bankruptcy cases pending or being filed by a spouse, a business partner or an affiliate. For why you are filing in this district, choose "Over the last 180 days before filing this petition, I have lived in this district longer than in any other district." Answer No to "Are you a sole proprietor of any full- or part-time business?"
 
-**Form 101 questions (step 1, below the county):** Leave the name ending (suffix) and the EIN blank. Answer No to "All other names you have used in the last 8 years", "Do you have an ITIN?", "Have you used any other Social Security number?", "Is your mailing address different from where you live?", "Have you filed for bankruptcy within the last 8 years?" and the question about bankruptcy cases pending or being filed by a spouse, a business partner or an affiliate. For why you are filing in this district, choose "Over the last 180 days before filing this petition, I have lived in this district longer than in any other district." Answer No to "Are you a sole proprietor of any full- or part-time business?"
+Your car payment ($450) comes from the Kestrel Auto Finance loan on Amounts Owed. The Expenses step doesn't ask it.
 
 **Assets:**
 

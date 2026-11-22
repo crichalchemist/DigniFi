@@ -1,8 +1,10 @@
 /**
  * GapsNotice - What the server finds missing from the intake, above Generate All
  *
- * A `gate` is an answer the forms can't be prepared without, so it is named as missing; a `detail`
- * is one the forms print blank. Each affected step gets its messages and one way to it.
+ * A `gate` is an answer the forms can't be prepared without, so it is named as missing. A `detail`
+ * is one Complete lets through: a missing answer, which the forms print blank and the count names
+ * as blank, or a too-long answer, listed with its words but never counted as blank (isTooLong).
+ * Each affected step gets its messages and one way to it.
  */
 
 import { Link } from 'react-router-dom';
@@ -46,8 +48,9 @@ const TOO_LONG_SENTENCES = [
 ];
 
 /**
- * A too-long answer stops the form whose box refuses it (Form 101, Form 103B or both, which a
- * row's {forms} names) rather than printing blank, so the blank count leaves it out
+ * A too-long answer never prints blank: Generate refuses the form whose box can't take it (Form
+ * 101, Form 103B or both, which a row's {forms} names), and a text over its character cap that its
+ * box still takes prints whole. So the blank count leaves it out
  */
 function isTooLong(gap: CompletionGap): boolean {
   return TOO_LONG_SENTENCES.some((pattern) => pattern.test(gap.message));
