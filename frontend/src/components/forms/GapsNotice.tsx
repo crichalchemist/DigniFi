@@ -3,7 +3,9 @@
  *
  * A `gate` is an answer the forms can't be prepared without, so it is named as missing. A `detail`
  * is one Complete lets through: a missing answer, which the forms print blank and the count names
- * as blank, or a too-long answer, listed with its words but never counted as blank (isTooLong).
+ * as blank, a too-long answer, listed with its words but never counted as blank (isTooLong), or
+ * a missing answer whose form is refused whole (Form 101A's landlord), also never counted as blank
+ * (isRefusedForm).
  * Each affected step gets its messages and one way to it.
  */
 
@@ -52,8 +54,8 @@ const TOO_LONG_SENTENCES = [
 
 /**
  * A too-long answer never prints blank: Generate refuses the form whose box can't take it (Form
- * 101, Form 101A or Form 103B, which a row's {forms} names; Form 101A, like 103B, is measured only
- * while it is in the packet), and a text over its character cap that its box still takes prints
+ * 101, Form 101A or Form 103B; a row's {forms} names Form 101 or Form 103B, and Form 101A's own
+ * sentence names it; Form 101A, like 103B, is measured only while it is in the packet), and a text over its character cap that its box still takes prints
  * whole. So the blank count leaves it out
  */
 function isTooLong(gap: CompletionGap): boolean {

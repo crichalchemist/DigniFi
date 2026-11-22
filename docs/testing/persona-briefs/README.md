@@ -44,8 +44,8 @@ cd frontend && npx playwright install chromium
 cd frontend && npm run e2e
 ```
 
-This runs 8 journey specs programmatically: one for each persona's data path,
-plus the SOFA and scanned-bill journeys (the scanned-bill journey skips locally
+This runs 9 journey specs programmatically: one for each persona's data path,
+plus the SOFA, scanned-bill and eviction-statement journeys (the scanned-bill journey skips locally
 unless OPENAI_BASE_URL points at its fake OpenAI server; see the spec's header).
 No AI involved — pure deterministic E2E testing.
 

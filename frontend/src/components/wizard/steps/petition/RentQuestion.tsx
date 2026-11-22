@@ -79,7 +79,7 @@ const NO_LANDLORD = Object.fromEntries(LANDLORD_KEYS.map((key) => [key, null])) 
   (typeof LANDLORD_KEYS)[number]
 >;
 
-/** Form 101 line 11's Yes instruction, Form 101A's opening words, DigniFi's sentence and the link */
+/** Form 101 line 11's Yes instruction, Form 101A's opening words and the link to the form */
 // DRAFT: counsel C-40
 function NoticeHead() {
   // `.info-box` is a flex row, so the pieces sit in one child and read top to bottom

@@ -603,7 +603,8 @@ export class WizardPage {
 
   // ── Step 7: Contracts & Leases ──────────────────────────────────
 
-  /** Form 101 line 11: the rent answer, and under a Yes the eviction answer. */
+  /** Form 101 line 11: the rent answer, under a Yes the eviction answer, and under the pair the
+   * landlord (a lease picked to copy from, then the boxes typed). */
   private async answerRentQuestion(petition: PersonaPetition) {
     await this.page
       .locator(`input[name="rents_residence"][value="${petition.rents_residence}"]`)
