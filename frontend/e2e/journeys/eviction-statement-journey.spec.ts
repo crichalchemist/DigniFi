@@ -3,7 +3,7 @@
  *
  * A synthetic renter (James's data) answers Yes to Form 101 line 11's rent and eviction
  * questions, copies the landlord from the lease he listed on the same step, and gets Form 101A in
- * his packet beside Form 101's fifteen forms.
+ * his packet beside James's fifteen forms (Form 101 among them).
  */
 
 import { test, expect } from '@playwright/test';
