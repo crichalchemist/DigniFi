@@ -112,10 +112,12 @@ describe('RentQuestion', () => {
 
   it('the Form 101A notice shows only under rent Yes and eviction Yes', async () => {
     const user = userEvent.setup();
-    // Rent No keeps a stored eviction Yes, which shows nothing: no radios, no notice (§6.7)
+    // Rent No keeps a stored eviction Yes: no radios and no notice (§6.7), only the line naming the
+    // hidden answer (T9-eviction-hidden)
     const { unmount } = render(
       <Harness initial={{ rents_residence: 'no', eviction_judgment: 'yes' }} />
     );
+    expect(screen.getByText(HIDDEN_ANSWERS)).toBeInTheDocument();
     expect(notice()).toBeNull();
     expect(document.querySelector('input[name="eviction_judgment"]')).toBeNull();
     expect(screen.queryByText(FORM_101_LINE_11_NOTICE)).not.toBeInTheDocument();
