@@ -2327,6 +2327,24 @@ describe('IntakeWizard the walk through Schedule A/B', { timeout: 30_000 }, () =
     expect(await screen.findByText('Part 2 of 7')).toBeInTheDocument();
   });
 
+  // T9-showstep: every way back onto the step, not only the first read, opens where the hazard is
+  // asked while every line is answered and the hazard isn't (PF2-T9-1)
+  it('opens at Part 7 when the filer comes back from the next step with only the hazard left', async () => {
+    serveSessionSaves({
+      ...onAssets,
+      current_step: 6,
+      asset_lines: everyLineNo,
+      petition_answers: { rents_residence: 'no' },
+    });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+
+    expect(await screen.findByText('Part 7 of 7')).toBeInTheDocument();
+    expect(document.querySelector('input[name="hazard_answer"]')).not.toBeNull();
+  });
+
   // No line is ever suggested, not even from the old type: which line a row goes on is the filer's
   // answer, and the list says why Continue waits
   it('blocks Continue while an old row has no line, and suggests no line', async () => {

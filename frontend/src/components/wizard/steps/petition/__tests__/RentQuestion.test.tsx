@@ -9,12 +9,16 @@ import {
   COURT_FORM_101B_URL,
   FORM_101A_LINK,
   FORM_101A_NOT_YET,
+  DELETE_HIDDEN,
+  FORM_101_LINE_11_LEAD,
   FORM_101A_SAYS,
   FORM_101B_LINK,
   FORM_101B_NOT_PREPARED,
+  HIDDEN_ANSWERS,
   NOT_ANSWERED_YET,
   PETITION_GATE_EVICTION,
   PETITION_GATE_RENTS,
+  SHOW_HIDDEN,
 } from '../../../../../constants/copy';
 import {
   FORM_101_LINE_11_EVICTION,
@@ -22,6 +26,9 @@ import {
   FORM_101_LINE_11_RENT,
   FORM_101A_SERVICE_CONDITIONS,
   FORM_101A_SERVICE_SENTENCE,
+  FORM_101A_STAY_HEADING_A,
+  FORM_101A_STAY_HEADING_B,
+  FORM_101A_STAY_SENTENCE_A,
   FORM_101B_STAY_SENTENCE,
 } from '../../../../../constants/formText';
 import type { PetitionAnswers } from '../../../../../types/api';
@@ -122,11 +129,14 @@ describe('RentQuestion', () => {
     const block = notice() as HTMLElement;
     expect(block).not.toBeNull();
 
-    // In §6.7's order (PF2-T9-4): Form 101's line; the lead and Form 101A's opening sentence with
-    // its two conditions; DigniFi's 101A sentence; the 101A link; the lead and the stay passage;
-    // DigniFi's 101B sentence; the 101B link
+    // In §6.7's order (PF2-T9-4): line 11's lead (owner ruling Q8) and Form 101's line; the lead
+    // and Form 101A's opening sentence with its two conditions; DigniFi's 101A sentence; the 101A
+    // link; the lead and the stay passage, paragraph (a) with its heading, then (b) with its heading
+    // (owner ruling Q9, so "that 30-day period" has its start); DigniFi's 101B sentence; the 101B
+    // link
     const pieces = Array.from(block.querySelectorAll('p, li')).map((el) => el.textContent);
     expect(pieces).toEqual([
+      FORM_101_LINE_11_LEAD,
       FORM_101_LINE_11_NOTICE,
       FORM_101A_SAYS,
       FORM_101A_SERVICE_SENTENCE,
@@ -134,12 +144,23 @@ describe('RentQuestion', () => {
       FORM_101A_NOT_YET,
       FORM_101A_LINK,
       FORM_101A_SAYS,
+      FORM_101A_STAY_HEADING_A,
+      FORM_101A_STAY_SENTENCE_A,
+      FORM_101A_STAY_HEADING_B,
       FORM_101B_STAY_SENTENCE,
       FORM_101B_NOT_PREPARED,
       FORM_101B_LINK,
     ]);
-    // The forms' own words are marked as quotations
-    expect(block.querySelectorAll('blockquote')).toHaveLength(3);
+    // The forms' own words are marked as quotations, and each lead sits outside its quotation
+    const quotes = Array.from(block.querySelectorAll('blockquote'));
+    expect(quotes).toHaveLength(3);
+    expect(quotes[0].textContent).toBe(FORM_101_LINE_11_NOTICE);
+    expect(quotes[2].textContent).toBe(
+      FORM_101A_STAY_HEADING_A +
+        FORM_101A_STAY_SENTENCE_A +
+        FORM_101A_STAY_HEADING_B +
+        FORM_101B_STAY_SENTENCE
+    );
     // `.info-box` lays its children out as one flex row, so the notice's pieces sit in one child
     // and read top to bottom, not as side-by-side columns
     expect(block.children).toHaveLength(1);
@@ -160,6 +181,37 @@ describe('RentQuestion', () => {
     await user.click(radio('rents_residence', 'no'));
     expect(notice()).toBeNull();
     expect(document.querySelector('input[name="eviction_judgment"]')).toBeNull();
+    expect(screen.getByText(HIDDEN_ANSWERS)).toBeInTheDocument();
+  });
+
+  it('keeps an eviction answer under a rent No, hidden, with Show and Delete (T9-eviction-hidden)', async () => {
+    const user = userEvent.setup();
+    const changes: PetitionAnswers[] = [];
+    const stored: PetitionAnswers = { rents_residence: 'no', eviction_judgment: 'yes' };
+    // Nothing reappears unannounced (spec line 177): the stored answer is named, not shown
+    const { unmount } = render(<Harness initial={stored} />);
+    expect(screen.getByText(HIDDEN_ANSWERS)).toBeInTheDocument();
+    expect(document.querySelector('input[name="eviction_judgment"]')).toBeNull();
+    await user.click(screen.getByRole('button', { name: SHOW_HIDDEN }));
+    expect(radio('eviction_judgment', 'yes')).toBeChecked();
+    // Shown under the rent No, the answer is there to read or change; the notice stays off (§6.7)
+    expect(notice()).toBeNull();
+    unmount();
+
+    render(<Harness initial={stored} onChange={(next) => changes.push(next)} />);
+    await user.click(screen.getByRole('button', { name: DELETE_HIDDEN }));
+    expect(screen.queryByText(HIDDEN_ANSWERS)).not.toBeInTheDocument();
+    expect(changes.at(-1)).toEqual({ rents_residence: 'no', eviction_judgment: null });
+  });
+
+  it('a rent No with no eviction answer stored shows no hidden-answers line', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={{ rents_residence: 'no' }} />);
+    expect(screen.queryByText(HIDDEN_ANSWERS)).not.toBeInTheDocument();
+    // A rent answered No straight away leaves nothing to hide either
+    await user.click(radio('rents_residence', 'yes'));
+    await user.click(radio('rents_residence', 'no'));
+    expect(screen.queryByText(HIDDEN_ANSWERS)).not.toBeInTheDocument();
   });
 
   it('has no accessibility violations with the notice open', async () => {

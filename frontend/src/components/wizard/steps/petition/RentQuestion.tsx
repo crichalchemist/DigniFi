@@ -3,10 +3,12 @@
  * the form's words: whether the filer rents their residence and, under its Yes, whether the
  * landlord has an eviction judgment. Under both Yes answers, the notice: the forms' own sentences,
  * quoted (formText.ts, owner answer Q2), DigniFi's own sentences and the court's two pages, in
- * PF2-T9-4's order. Information, never advice: nothing here says whether to stay or to pay. A
- * stored eviction Yes under a rent No shows nothing (spec §6.7). The step's one status region
+ * PF2-T9-4's order. Information, never advice: nothing here says whether to stay or to pay. An
+ * eviction answer stored under a rent No stays stored and never shows the notice (spec §6.7); it is
+ * hidden with a line that offers Show and Delete (T9-eviction-hidden). The step's one status region
  * names the gate (rentGap, PF2-T9-6).
  */
+import { useState } from 'react';
 import type { FocusEvent } from 'react';
 import { YesNoThenDetails } from '../../YesNoThenDetails';
 import {
@@ -14,9 +16,11 @@ import {
   COURT_FORM_101B_URL,
   FORM_101A_LINK,
   FORM_101A_NOT_YET,
+  FORM_101_LINE_11_LEAD,
   FORM_101A_SAYS,
   FORM_101B_LINK,
   FORM_101B_NOT_PREPARED,
+  HIDDEN_ANSWERS,
 } from '../../../../constants/copy';
 import {
   FORM_101_LINE_11_EVICTION,
@@ -24,9 +28,13 @@ import {
   FORM_101_LINE_11_RENT,
   FORM_101A_SERVICE_CONDITIONS,
   FORM_101A_SERVICE_SENTENCE,
+  FORM_101A_STAY_HEADING_A,
+  FORM_101A_STAY_HEADING_B,
+  FORM_101A_STAY_SENTENCE_A,
   FORM_101B_STAY_SENTENCE,
 } from '../../../../constants/formText';
 import type { PetitionAnswers, YesNo } from '../../../../types/api';
+import { HiddenLine } from './PetitionQuestions';
 
 interface RentQuestionProps {
   answers: PetitionAnswers;
@@ -46,6 +54,7 @@ function EvictionNotice() {
   return (
     <div className="info-box eviction-notice">
       <div>
+        <p className="info-message">{FORM_101_LINE_11_LEAD}</p>
         <blockquote>
           <p className="info-message">{FORM_101_LINE_11_NOTICE}</p>
         </blockquote>
@@ -66,6 +75,9 @@ function EvictionNotice() {
         </p>
         <p className="info-message">{FORM_101A_SAYS}</p>
         <blockquote>
+          <p className="info-message">{FORM_101A_STAY_HEADING_A}</p>
+          <p className="info-message">{FORM_101A_STAY_SENTENCE_A}</p>
+          <p className="info-message">{FORM_101A_STAY_HEADING_B}</p>
           <p className="info-message">{FORM_101B_STAY_SENTENCE}</p>
         </blockquote>
         <p className="info-message">{FORM_101B_NOT_PREPARED}</p>
@@ -80,6 +92,7 @@ function EvictionNotice() {
 }
 
 export function RentQuestion({ answers, onChange, touched, onLeave }: RentQuestionProps) {
+  const [shown, setShown] = useState(false);
   const set = (changes: Partial<PetitionAnswers>) => onChange({ ...answers, ...changes });
   const rent = yesNo(answers.rents_residence);
   const eviction = yesNo(answers.eviction_judgment);
@@ -97,16 +110,25 @@ export function RentQuestion({ answers, onChange, touched, onLeave }: RentQuesti
         onChange={(next) => set({ rents_residence: next })}
         unanswered={touched && rent === null}
       >
-        {rent === 'yes' && (
+        {rent === 'yes' || (rent === 'no' && shown) ? (
           <YesNoThenDetails
             question={FORM_101_LINE_11_EVICTION}
             name="eviction_judgment"
             value={eviction}
             onChange={(next) => set({ eviction_judgment: next })}
-            unanswered={touched && eviction === null}
+            unanswered={rent === 'yes' && touched && eviction === null}
           >
-            {eviction === 'yes' && <EvictionNotice />}
+            {rent === 'yes' && eviction === 'yes' && <EvictionNotice />}
           </YesNoThenDetails>
+        ) : (
+          rent === 'no' &&
+          eviction !== null && (
+            <HiddenLine
+              sentence={HIDDEN_ANSWERS}
+              onShow={() => setShown(true)}
+              onDelete={() => set({ eviction_judgment: null })}
+            />
+          )
         )}
       </YesNoThenDetails>
     </div>

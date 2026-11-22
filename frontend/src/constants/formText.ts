@@ -917,7 +917,15 @@ export const FORM_101A_SERVICE_CONDITIONS = [
   'you rent your residence; and',
   'your landlord has obtained a judgment for possession in an eviction, unlawful detainer action, or similar proceeding (called eviction judgment) against you to possess your residence.',
 ];
-// Form 101A page 1, "Stay of Eviction: (b) Stay after the initial 30 days.", both sentences after
-// that heading, line breaks joined
+// Form 101A (12/15) page 1, "Stay of Eviction:", paragraph (a)'s heading as printed (owner ruling
+// Q9: (b)'s "that 30-day period" starts here)
+export const FORM_101A_STAY_HEADING_A = '(a) First 30 days after bankruptcy.';
+// Form 101A (12/15) page 1, paragraph (a)'s one sentence after its heading, line breaks joined
+export const FORM_101A_STAY_SENTENCE_A =
+  'If you checked both boxes above, signed the form to certify that both apply, and served your landlord with a copy of this statement, the automatic stay under 11 U.S.C. § 362(a)(3) will apply to the continuation of the eviction against you for 30 days after you file your Voluntary Petition for Individuals Filing for Bankruptcy (Official Form 101).';
+// Form 101A (12/15) page 1, "Stay of Eviction:", paragraph (b)'s heading as printed
+export const FORM_101A_STAY_HEADING_B = '(b) Stay after the initial 30 days.';
+// Form 101A (12/15) page 1, "Stay of Eviction: (b) Stay after the initial 30 days.", both sentences
+// after that heading, line breaks joined
 export const FORM_101B_STAY_SENTENCE =
   'If you wish to stay in your residence after that 30-day period and continue to receive the protection of the automatic stay under 11 U.S.C. § 362(a)(3), you must pay the entire delinquent amount to your landlord as stated in the eviction judgment before the 30-day period ends. You must also fill out Statement About Payment of an Eviction Judgment Against You (Official Form 101B), file it with the bankruptcy court, and serve your landlord a copy of it before the 30-day period ends.';

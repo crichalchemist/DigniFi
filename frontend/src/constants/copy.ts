@@ -1740,8 +1740,11 @@ export const PETITION_REMOVE_BUSINESS_NAME = 'Remove business name {n}';
 export const PETITION_REMOVE_PRIOR_CASE = 'Remove earlier case {n}';
 export const PETITION_REMOVE_PENDING_CASE = 'Remove pending case {n}';
 
-// Contracts & Leases, under Form 101 line 11's two Yes answers: the lead before each sentence
-// quoted from Form 101A (formText.ts), and DigniFi's own sentences and links (PF2-T9-4)
+// Contracts & Leases, under Form 101 line 11's two Yes answers: the lead before line 11's own
+// sentence (owner ruling Q8), the lead before each sentence quoted from Form 101A (formText.ts),
+// and DigniFi's own sentences and links (PF2-T9-4)
+// DRAFT: counsel C-40
+export const FORM_101_LINE_11_LEAD = 'Form 101 line 11 says:';
 // DRAFT: counsel C-40
 export const FORM_101A_SAYS = 'Form 101A says:';
 // DRAFT: counsel C-40

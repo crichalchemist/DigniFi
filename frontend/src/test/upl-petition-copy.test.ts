@@ -70,7 +70,8 @@ const PETITION_NAMES = [
   'PUBLIC_RECORD_NOTICE_WITH_CLERK',
   'CLERK_PHONE_EASTERN',
   'CLERK_PHONE_WESTERN',
-  // Contracts & Leases' Form 101A and 101B notice: the lead and DigniFi's own sentences (4b)
+  // Contracts & Leases' Form 101A and 101B notice: the leads and DigniFi's own sentences (4b)
+  'FORM_101_LINE_11_LEAD',
   'FORM_101A_SAYS',
   'FORM_101A_NOT_YET',
   'FORM_101A_LINK',
@@ -80,6 +81,7 @@ const PETITION_NAMES = [
 
 // The notice's sentences and its two pages, each under the counsel mark (PF2-T9-3, PF2-T9-4)
 const NOTICE_NAMES = [
+  'FORM_101_LINE_11_LEAD',
   'FORM_101A_SAYS',
   'FORM_101A_NOT_YET',
   'FORM_101A_LINK',
