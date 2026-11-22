@@ -23,7 +23,11 @@ import {
   VENUE_DIVISION_EASTERN,
   VENUE_DIVISION_WESTERN,
 } from '../../../../../constants/copy';
-import { FORM_101_LINE_12_NAME, FORM_101_VENUE_CHOICES } from '../../../../../constants/formText';
+import {
+  FORM_101_LINE_12_NAME,
+  FORM_101_LINE_2_INSTRUCTIONS,
+  FORM_101_VENUE_CHOICES,
+} from '../../../../../constants/formText';
 import {
   PETITION_ROW_CELL_MAX_LENGTH,
   PETITION_TEXT_LIMITS,
@@ -250,6 +254,34 @@ describe('PetitionQuestions', () => {
     expect(screen.getAllByText('Not answered yet').length).toBe(GATES.length - 1);
   });
 
+  it('leaving the block unanswered says what is missing, and moving within it does not', async () => {
+    // PF2-T8-10: touched is an answer set or focus gone from the block, so a filer who tabs
+    // through answering nothing sees why Continue waits
+    render(
+      <>
+        <Harness />
+        <button type="button">Outside</button>
+      </>
+    );
+    const status = screen.getByRole('status');
+    await userEvent.click(screen.getByRole('textbox', { name: /Suffix/ }));
+    await userEvent.click(screen.getByRole('textbox', { name: /Employer Identification/ }));
+    expect(status).toBeEmptyDOMElement();
+    expect(screen.queryByText('Not answered yet')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Outside' }));
+    expect(status).toHaveTextContent(PETITION_GATE_OTHER_NAMES);
+    expect(screen.getAllByText('Not answered yet')).toHaveLength(GATES.length);
+  });
+
+  it("line 2's instructions come with the question, before any answer", () => {
+    // A maiden, married or trade name counts: the filer reads so before choosing No
+    render(<Harness />);
+    const question = radio('other_names_answer', 'no').closest('fieldset') as HTMLElement;
+    expect(question).toHaveTextContent(FORM_101_LINE_2_INSTRUCTIONS);
+    expect(question).toHaveTextContent(/married or maiden names/);
+  });
+
   it('an ITIN is masked, sent through onSecretChange and shown as saved afterwards', async () => {
     const onSecretChange = vi.fn();
     const { unmount } = render(
@@ -270,6 +302,43 @@ describe('PetitionQuestions', () => {
     expect(document.body.textContent).not.toMatch(/\d{4}/);
     await userEvent.click(screen.getByRole('button', { name: REPLACE_SAVED }));
     expect(screen.getByRole('textbox', { name: /ITIN/ })).toHaveValue('');
+  });
+
+  it('another Social Security number is masked and sent through onSecretChange as digits', async () => {
+    const onSecretChange = vi.fn();
+    render(<Harness initial={{ other_ssn_answer: 'yes' }} onSecretChange={onSecretChange} />);
+    const box = document.querySelector('input[name="other_ssn"]') as HTMLInputElement;
+    await userEvent.type(box, '900 12 3456');
+    expect(box).toHaveValue('900-12-3456');
+    expect(onSecretChange).toHaveBeenLastCalledWith('other_ssn', '900123456');
+  });
+
+  it('a replaced number shows as saved again once the save takes it', async () => {
+    // The wizard clears the typed digits when the save carrying them succeeds (PF2-T8-6)
+    const props = {
+      answers: { itin_answer: 'yes', itin_saved: true } as PetitionAnswers,
+      onChange: vi.fn(),
+      onSecretChange: vi.fn(),
+      division: null,
+    };
+    const { rerender } = render(<PetitionQuestions {...props} pendingSecrets={{}} />);
+    await userEvent.click(screen.getByRole('button', { name: REPLACE_SAVED }));
+    await userEvent.type(screen.getByRole('textbox', { name: /ITIN/ }), '9');
+    rerender(<PetitionQuestions {...props} pendingSecrets={{ itin: '900701234' }} />);
+    expect(screen.getByRole('textbox', { name: /ITIN/ })).toHaveValue('900-70-1234');
+    rerender(<PetitionQuestions {...props} pendingSecrets={{}} />);
+    expect(screen.getByText(ITIN_SAVED)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /ITIN/ })).not.toBeInTheDocument();
+  });
+
+  it('a box emptied after Replace stays open while the filer types', async () => {
+    render(<Harness initial={{ itin_answer: 'yes', itin_saved: true }} />);
+    await userEvent.click(screen.getByRole('button', { name: REPLACE_SAVED }));
+    const box = screen.getByRole('textbox', { name: /ITIN/ });
+    await userEvent.type(box, '90');
+    await userEvent.clear(box);
+    expect(screen.getByRole('textbox', { name: /ITIN/ })).toHaveValue('');
+    expect(screen.queryByText(ITIN_SAVED)).not.toBeInTheDocument();
   });
 
   it('nine digits that are no ITIN stay in the box with the server sentence beside them', async () => {

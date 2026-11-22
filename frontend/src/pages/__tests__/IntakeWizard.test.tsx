@@ -31,6 +31,9 @@ import {
   NOT_SAVED_TRY_AGAIN,
   NO_DEBTS_BUTTON,
   OLD_ROWS_NOTE,
+  OTHER_SSN_SAVED,
+  PETITION_ADD_OTHER_NAME,
+  REPLACE_SAVED,
   REVIEW_GAPS_UNAVAILABLE,
   REVIEW_NO_DEBTS,
   REVIEW_NOTHING_MISSING,
@@ -3284,35 +3287,38 @@ describe('IntakeWizard county', { timeout: 15_000 }, () => {
     expect(petition).not.toHaveProperty('other_ssn');
   });
 
+  /** A step 1 the server already holds whole: an SSN and an ITIN saved, every gate answered */
+  const savedStep1 = {
+    ...sessionAtStep1,
+    debtor_info: {
+      ...completedSession.debtor_info,
+      phone: '312-555-0100',
+      ssn_saved: true,
+    },
+    household: { county: 'Boone', members: null },
+    petition_answers: {
+      other_names_answer: 'yes',
+      other_names: [{ first: 'Demo', middle: '', last: 'Maiden' }],
+      itin_answer: 'yes',
+      itin_saved: true,
+      other_ssn_answer: 'no',
+      other_ssn_saved: false,
+      mailing_answer: 'no',
+      prior_bankruptcy_answer: 'no',
+      pending_case_answer: 'no',
+      sole_proprietor_answer: 'no',
+      venue_choice: 'lived_here',
+      answered_on: '2026-10-16',
+    },
+  };
+
   it('showing step 1 again sends nothing', async () => {
     // A loaded step 1 is complete now that a saved SSN counts (owner ruling Q3), so autosave is
     // live on mount: a body built differently from loaded data would save, and reopen a completed
     // intake, on every visit
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json({
-          ...sessionAtStep1,
-          debtor_info: {
-            ...completedSession.debtor_info,
-            phone: '312-555-0100',
-            ssn_saved: true,
-          },
-          household: { county: 'Boone', members: null },
-          petition_answers: {
-            other_names_answer: 'yes',
-            other_names: [{ first: 'Demo', middle: '', last: 'Maiden' }],
-            itin_answer: 'yes',
-            itin_saved: true,
-            other_ssn_answer: 'no',
-            other_ssn_saved: false,
-            mailing_answer: 'no',
-            prior_bankruptcy_answer: 'no',
-            pending_case_answer: 'no',
-            sole_proprietor_answer: 'no',
-            venue_choice: 'lived_here',
-            answered_on: '2026-10-16',
-          },
-        })
+        HttpResponse.json(savedStep1)
       )
     );
     renderWizard();
@@ -3375,6 +3381,84 @@ describe('IntakeWizard county', { timeout: 15_000 }, () => {
     expect(patchBodies.length).toBe(sentWithItin + 1);
     expect(patchBodies.at(-1)!.petition_answers).not.toHaveProperty('itin');
     expect(JSON.stringify(patchBodies.slice(sentWithItin))).not.toContain('900701234');
+  });
+
+  it('a typed other Social Security number is sent once and never echoed', async () => {
+    // Form 121 line 2 prints it only once the server holds it
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await fillDebtorInfoFields();
+    fireEvent.click(
+      document.querySelector('input[name="other_ssn_answer"][value="yes"]') as HTMLElement
+    );
+    fireEvent.change(document.querySelector('input[name="other_ssn"]') as HTMLElement, {
+      target: { value: '900-12-3457' },
+    });
+    const withOther = () =>
+      patchBodies.filter(
+        (body) => 'other_ssn' in (body.petition_answers as Record<string, unknown>)
+      );
+    await waitFor(() => expect(withOther()).toHaveLength(1), { timeout: 5000 });
+    expect((withOther()[0].petition_answers as Record<string, unknown>).other_ssn).toBe(
+      '900123457'
+    );
+    expect(await screen.findByText(OTHER_SSN_SAVED)).toBeInTheDocument();
+    const sentWithOther = patchBodies.length;
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    expect(patchBodies.length).toBe(sentWithOther);
+    fireEvent.change(screen.getByRole('textbox', { name: /first name/i }), {
+      target: { value: 'Janet' },
+    });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByText('DocumentUploadPage');
+    expect(patchBodies.length).toBe(sentWithOther + 1);
+    expect(patchBodies.at(-1)!.petition_answers).not.toHaveProperty('other_ssn');
+  });
+
+  it('a replaced ITIN shows as saved again once its save succeeds', async () => {
+    // Replace opens the box; the save that carries the new number closes it again
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(savedStep1)
+      )
+    );
+    renderWizard();
+    await userEvent.click(await screen.findByRole('button', { name: REPLACE_SAVED }));
+    fireEvent.change(screen.getByRole('textbox', { name: /ITIN/ }), {
+      target: { value: '900-70-5678' },
+    });
+    await waitFor(
+      () =>
+        expect(
+          patchBodies.some(
+            (body) => (body.petition_answers as Record<string, unknown>).itin === '900705678'
+          )
+        ).toBe(true),
+      { timeout: 5000 }
+    );
+    expect(await screen.findByText(ITIN_SAVED)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /ITIN/ })).not.toBeInTheDocument();
+  });
+
+  it('a typed name row goes without its browser key, and a blank row stays home', async () => {
+    // PF2-T8-7: every `_`-prefixed key stays out of the request, and an all-blank new row out
+    // of the body
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await fillDebtorInfoFields();
+    fireEvent.click(
+      document.querySelector('input[name="other_names_answer"][value="yes"]') as HTMLElement
+    );
+    await userEvent.click(screen.getByRole('button', { name: PETITION_ADD_OTHER_NAME }));
+    await userEvent.click(screen.getByRole('button', { name: PETITION_ADD_OTHER_NAME }));
+    fireEvent.change(document.querySelector('input[name="other_names_0_first"]') as HTMLElement, {
+      target: { value: 'Demo' },
+    });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByText('DocumentUploadPage');
+    const petition = patchBodies.at(-1)!.petition_answers as Record<string, unknown>;
+    expect(petition.other_names_answer).toBe('yes');
+    expect(petition.other_names).toEqual([{ first: 'Demo' }]);
   });
 
   it('no spouse SSN leaves the browser', async () => {

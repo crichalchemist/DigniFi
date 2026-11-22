@@ -213,7 +213,9 @@ export function PetitionQuestions({
   const [blurred, setBlurred] = useState(false);
   // Hidden answers the filer asked to see again under a No, by block
   const [shown, setShown] = useState<Record<string, boolean>>({});
-  // A saved secret the filer chose to replace: its box shows
+  // A secret box the filer emptied, by Replace or by clearing it: it stays open while empty. Once
+  // digits are typed the box stays open because of them, so when a save takes them the saved line
+  // shows again
   const [replacing, setReplacing] = useState<Record<Secret, boolean>>({
     itin: false,
     other_ssn: false,
@@ -264,7 +266,7 @@ export function PetitionQuestions({
     const rows = rowsOf(answers, spec.key);
     const setRows = (next: Row[]) => set({ [spec.key]: next.length === 0 ? null : next });
     return (
-      <div className="petition-rows">
+      <div key={spec.key} className="petition-rows">
         {rows.map((row, index) => {
           const n = String(index + 1);
           const legend = spec.row.replace('{n}', n);
@@ -388,7 +390,11 @@ export function PetitionQuestions({
         placeholder="XXX-XX-XXXX"
         helpText={notAnItin ? PETITION_DETAIL_ITIN : undefined}
         value={nineDigitNumber(pending)}
-        onChange={(e) => onSecretChange(key, nineDigitNumber(e.target.value).replace(/\D/g, ''))}
+        onChange={(e) => {
+          const digits = nineDigitNumber(e.target.value).replace(/\D/g, '');
+          setReplacing((current) => ({ ...current, [key]: digits === '' }));
+          onSecretChange(key, digits);
+        }}
       />
     );
   };
@@ -418,13 +424,10 @@ export function PetitionQuestions({
       {yesNo(
         'other_names_answer',
         FORM_101_LINE_2,
-        WHY_OTHER_NAMES,
-        <>
-          {answers.other_names_answer === 'yes' && (
-            <p className="form-help-text">{FORM_101_LINE_2_INSTRUCTIONS}</p>
-          )}
-          {rowsUnder('other_names_answer', 'other_names', [OTHER_NAMES, OTHER_BUSINESS_NAMES])}
-        </>
+        // The form's instructions come with the question, before the answer: a maiden or trade
+        // name counts, and a filer told so only after a Yes could answer No without knowing it
+        `${FORM_101_LINE_2_INSTRUCTIONS} ${WHY_OTHER_NAMES}`,
+        rowsUnder('other_names_answer', 'other_names', [OTHER_NAMES, OTHER_BUSINESS_NAMES])
       )}
 
       {/* 1c, Form 101 line 3 and Form 121 line 3 */}
