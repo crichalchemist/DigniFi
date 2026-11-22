@@ -89,10 +89,12 @@ _GATE_SENTENCE = {
 
 # Every key a detail can name, to the forms that print its box blank while it is open (4b-R12).
 # Form 101 prints the ITIN's last four but has no box for the other Social Security number, so
-# `itin` names both forms and `other_ssn` names Form 121 alone (PF2-T7-7).
+# `itin` names both forms and `other_ssn` names Form 121 alone (PF2-T7-7). Form 103B line 20
+# prints Form 101 line 9's earlier cases (PF2-T10-3).
 FORMS_OF_KEY: dict[str, tuple[str, ...]] = {key: ("form_101",) for key in PetitionAnswers.KEYS}
 FORMS_OF_KEY["itin"] = ("form_101", "form_121")
 FORMS_OF_KEY["other_ssn"] = ("form_121",)
+FORMS_OF_KEY["prior_cases"] = ("form_101", "form_103b")
 _MAILING_KEYS = (
     "mailing_street",
     "mailing_po_box",
@@ -206,7 +208,8 @@ def _too_long(answers: dict, step: str, keys: list[str], too_wide: dict) -> list
 
 def _cells_too_long(answers: dict, too_wide: dict) -> list[Gap]:
     """A detail for each row cell too wide where it prints, naming its row (PF2-10a, owner ruling
-    Q5): by line, then row by row, then the row's cells in the line's order."""
+    Q5): by line, then row by row, then the row's cells in the line's order. The detail names
+    only the forms whose box refuses the cell: Form 103B's line 20 boxes are not Form 101's."""
     gaps = []
     for list_key in ROW_LIST_GATES:
         if not text_shows(answers, list_key):
@@ -218,7 +221,9 @@ def _cells_too_long(answers: dict, too_wide: dict) -> list[Gap]:
                     sentence = DETAIL_TOO_LONG_ROW.format(
                         label=label, noun=ROW_NOUNS[list_key], n=n
                     )
-                    gaps.append(_detail(sentence, "debtor_info", list_key))
+                    refusing = too_wide[(list_key, attr, n)]
+                    forms = tuple(f for f in FORMS_OF_KEY[list_key] if f in refusing)
+                    gaps.append(Gap(sentence, "debtor_info", Gap.DETAIL, forms=forms))
     return gaps
 
 

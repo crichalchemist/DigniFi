@@ -107,6 +107,60 @@
       "repeat_capacity": null,
       "row": null,
       "legal_review": false
+    },
+    {
+      "pdf_field": "Debtor1b.SSNum",
+      "type": "text",
+      "source": "derived",
+      "page": 1,
+      "label": "Debtor 1 other Social Security number used",
+      "required": false,
+      "conditional_on": "petition_other_ssn_yes",
+      "value": null,
+      "rule": "other_ssn_whole",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Debtor1a.ITINNum",
+      "type": "text",
+      "source": "derived",
+      "page": 1,
+      "label": "Debtor 1 ITIN, the eight digits after the printed 9",
+      "required": false,
+      "conditional_on": "petition_itin_yes",
+      "value": null,
+      "rule": "itin_whole",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Check Box3",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Debtor 1 does not have an ITIN",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "itin_answer_no",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
     }
   ]
 }

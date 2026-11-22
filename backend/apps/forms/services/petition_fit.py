@@ -14,8 +14,9 @@ from apps.forms.services.derivations import DERIVATIONS
 from apps.forms.services.fill_resolver import _emit, _key, _scalar_value, resolve_binding
 from apps.forms.services.pdf_filler import PDFFormFiller, UnprintableLetter, ValueTooLong
 
-# The forms whose boxes print a petition answer; Task 10 adds Form 103B's line 20.
-MEASURED_FORMS = ("form_101",)
+# The forms whose boxes print a petition answer: Form 103B line 20 prints line 9's earlier cases
+# (PF2-T10-6). A form is measured only while it is in the filer's packet.
+MEASURED_FORMS = ("form_101", "form_103b")
 
 # The derivations that print a petition key's text, by rule: each street's Number box too, which
 # has no cap of its own (PF2-10d), and the venue reason's four lines.
@@ -108,13 +109,20 @@ def too_long(session, keys: Collection[str]) -> dict[Measured, frozenset[str]]:
     Each text key of `keys` that check() refuses as too long in a box it prints in, as
     (key, None, None), and each row cell of a list in `keys` refused in its slot box or on its
     sheet, as (list, attr, row) with the row counted from 1, so the filer is told which row to
-    shorten, over every form in MEASURED_FORMS, each to the form types that refuse it
-    (two forms can print one cell, and only a refusing form's box is too small). Whether the box
-    shows at all is the caller's to judge (petition.text_shows); a box is measured on what it
-    would print.
+    shorten, over every form in MEASURED_FORMS that is in the session's packet, each to the form
+    types that refuse it (two forms can print one cell, and only a refusing form's box is too
+    small). Whether the box shows at all is the caller's to judge (petition.text_shows); a box is
+    measured on what it would print.
     """
+    # Here, not at the top: the registry imports most of the forms app, this module's own
+    # imports among them.
+    from apps.forms.registry import FORM_REGISTRY
+
     found: dict[Measured, set[str]] = {}
     for form_type in MEASURED_FORMS:
+        # Form 103B is in the packet only under a fee waiver; a box no form prints is no gap.
+        if not FORM_REGISTRY[form_type].applies(session):
+            continue
         schema = load_schema(form_type)
         capacities: dict[str, int] = {}
         refused: set[Measured] = set()

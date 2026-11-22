@@ -8,7 +8,7 @@ import json
 
 import pytest
 
-from apps.intake.models import PetitionAnswers
+from apps.intake.models import FilingFee, PetitionAnswers
 from apps.intake.petition import (
     CELL_LABELS,
     DETAIL_BUSINESS,
@@ -27,6 +27,7 @@ from apps.intake.petition import (
     DETAIL_TOO_LONG_ROW,
     DETAIL_VENUE,
     DETAIL_VENUE_REASON,
+    FORMS_OF_KEY,
     GATE_EVICTION,
     GATE_HAZARD,
     GATE_ITIN,
@@ -415,3 +416,66 @@ def test_a_too_wide_row_cell_names_the_forms_of_its_list(filer):
         _row_too_long(CELL_LABELS["pending_cases"]["debtor"], "case", 1),
         ("form_101",),
     )
+
+
+def test_an_earlier_cases_details_name_form_101_and_form_103b(filer):
+    # Form 103B line 20 prints the same rows as Form 101 line 9 (PF2-T10-3), so a row with no
+    # district or a date the forms can't read is blank on both cards.
+    _, session = filer
+    answers = {
+        **NO,
+        "venue_choice": "lived_here",
+        "prior_bankruptcy_answer": "yes",
+        "prior_cases": [{"district": "", "filed_on": "2019-01-15"}],
+    }
+    PetitionAnswers.objects.create(session=session, answers=json.dumps(answers))
+    session.refresh_from_db()
+    by_text = {str(g): g.forms for g in petition_step_gaps(session)}
+    assert by_text == {
+        DETAIL_PRIOR_CASE: ("form_101", "form_103b"),
+        DETAIL_PRIOR_DATE: ("form_101", "form_103b"),
+    }
+    assert FORMS_OF_KEY["prior_cases"] == ("form_101", "form_103b")
+
+
+# 17 W's fit Form 101 line 9's case number box at 6 pt and not Form 103B line 20's, which is
+# 94.9 pt wide to Form 101's 105.1; 18 fit neither (measured by check() itself).
+_FITS_101_NOT_103B = "W" * 17
+_FITS_NEITHER = "W" * 18
+
+
+def _prior_case_number(session, case_number, payment_choice):
+    answers = {
+        **NO,
+        "venue_choice": "lived_here",
+        "prior_bankruptcy_answer": "yes",
+        "prior_cases": [{"district": "Demo", "filed_on": "01/15/2019", "case_number": case_number}],
+    }
+    PetitionAnswers.objects.create(session=session, answers=json.dumps(answers))
+    if payment_choice is not None:
+        FilingFee.objects.create(session=session, payment_choice=payment_choice)
+    session.refresh_from_db()
+    return [(g.step, g.kind, g.forms) for g in petition_step_gaps(session)]
+
+
+def test_a_waiver_filers_case_number_is_measured_in_form_103b_s_narrower_box(filer):
+    # PF2-T10-6: line 20 prints for a waiver filer, so a case number Form 101 takes but 103B
+    # refuses at Generate is named on Review, on 103B's card alone.
+    _, session = filer
+    assert _prior_case_number(session, _FITS_101_NOT_103B, "waiver") == [
+        ("debtor_info", "detail", ("form_103b",))
+    ]
+
+
+def test_a_case_number_too_wide_for_both_forms_names_both(filer):
+    _, session = filer
+    assert _prior_case_number(session, _FITS_NEITHER, "waiver") == [
+        ("debtor_info", "detail", ("form_101", "form_103b"))
+    ]
+
+
+@pytest.mark.parametrize("payment_choice", [None, "pay_in_full", "installments"])
+def test_form_103b_s_box_is_not_measured_for_a_filer_whose_packet_lacks_it(filer, payment_choice):
+    # Only a waiver puts 103B in the packet: no one else is told an answer is too long for it.
+    _, session = filer
+    assert _prior_case_number(session, _FITS_101_NOT_103B, payment_choice) == []

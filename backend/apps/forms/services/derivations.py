@@ -1054,10 +1054,28 @@ _register_digits(
     "ssn_last4_digit", lambda s: _safe_debtor_attr(s, "ssn"), 5, 4, {"step": "debtor_info"}
 )
 _register_digits("itin_last4_digit", _valid_itin, 5, 4, _step_of("itin"))
-_register("itin_whole", lambda s: nine_digit_slice(_valid_itin(s), 0, 9), _step_of("itin"))
+
+
+def _dashed(found: str, *sizes: int) -> str:
+    """The digits in groups of `sizes`, joined by dashes; "" for no digits."""
+    groups, start = [], 0
+    for size in sizes:
+        groups.append(found[start : start + size])
+        start += size
+    return "-".join(groups) if found else ""
+
+
+# Form 121's number boxes are combs, one cell a character (PF2-T10-1). The ITIN's box follows a
+# printed 9 and has ten cells, so it takes the eight digits after that 9 as NN-NN-NNNN; the other
+# Social Security number's box has eleven, NNN-NN-NNNN, as ssn_formatted prints line 2's first.
+_register(
+    "itin_whole",
+    lambda s: _dashed(nine_digit_slice(_valid_itin(s), 1, 9), 2, 2, 4),
+    _step_of("itin"),
+)
 _register(
     "other_ssn_whole",
-    lambda s: nine_digit_slice(_petition(s, "other_ssn"), 0, 9),
+    lambda s: _dashed(nine_digit_slice(_petition(s, "other_ssn"), 0, 9), 3, 2, 4),
     _step_of("other_ssn"),
 )
 _register("ein_prefix", lambda s: nine_digit_slice(_petition(s, "ein"), 0, 2), _step_of("ein"))

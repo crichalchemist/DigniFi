@@ -143,11 +143,52 @@ def _own_car(make, model, year, miles, value):
     }
 
 
+def _petition_boxes(rents, business=None):
+    """
+    Form 101's boxes for the answers every persona is seeded with on steps 1, 5 and 7 (4b-ii,
+    worked out from seed_demo_data._petition): line 9 and line 10 No, filing here for the
+    180 days (line 6), line 13 No unless a business is named, line 24's hazard No, and line 11's
+    rent answer with No to an eviction judgment under a Yes. Radio states are the index's own
+    names for each group.
+    """
+    boxes = {
+        "bankruptcy within the": "/No",
+        "filed by a spouse who is": "/No_2",
+        "Go to line 12": "/Yes_3" if rents else "/No_3",
+        "No Go to line 12": "/On" if rents else "",
+        "Yes Fill out Initial Statement About an Eviction Judgment Against You Form 101A and "
+        "file it as": "",
+        "property that poses or is": "/No_6",
+        "Over the last 180 days before filing this petition": "/On",
+        "I have another reason Explain": "",
+        "See 28 USC  1408 1": "",
+        "No Go to Part 4": "" if business else "/On",
+        "Yes Name and location of business": "/On" if business else "",
+        "None of the above": "",
+        "Name of business if any": "",
+    }
+    return {**boxes, **(business or {})}
+
+
+# Andrés drives for a living, a business he runs alone from home (seed: sole proprietor Yes,
+# line 13's "None of the above"); the court's form splits the street into Number and Street.
+ANDRES_BUSINESS = {
+    "Name of business if any": "Rideshare and delivery driving",
+    "Number_5": "1418",
+    "Street_5": "Marquette Ave Apt 2",
+    "2": "Aurora",
+    "State_6": "IL",
+    "ZIP Code_5": "60505",
+    "None of the above": "/On",
+}
+
+
 # persona → form_type → full name → printed value
 EXPECTED = {
     "maria": {
         "form_101": {
             **_common("Maria", "Torres", "2145", "W Division St Apt 3", "60622"),
+            **_petition_boxes(rents=True),
             WAIVER: "/On",
             PAY_IN_FULL: "",
             INSTALLMENTS: "",
@@ -165,6 +206,16 @@ EXPECTED = {
             "undefined_6": "2800.00",
             "check 3": "/yes",
             "3 type": "SNAP (food stamps)",
+            # Line 20 is Form 101 line 9's question: her step 1 No, and no earlier case.
+            "check_20": "/no",
+            "undefined_37": "",
+        },
+        # Her Form 121 line 3: she answered No to having an ITIN, so the box says so and the
+        # number's comb prints nothing; she used no other Social Security number.
+        "form_121": {
+            "Check Box3": "/On",
+            "Debtor1a.ITINNum": "",
+            "Debtor1b.SSNum": "",
         },
         # Schedule A/B totals, hand-worked: 5 = 6,500 (Civic); 15 = 600+200+250; 36 = 40 cash + 340 checking + 0 insurance; 62 = 63 = 6,500+1,050+380
         "schedule_a_b": {
@@ -347,6 +398,7 @@ EXPECTED = {
     "james": {
         "form_101": {
             **_common("James", "Washington", "850", "N State St Apt 1204", "60610"),
+            **_petition_boxes(rents=True),
             PAY_IN_FULL: "/On",
             INSTALLMENTS: "",
             WAIVER: "",
@@ -517,6 +569,7 @@ EXPECTED = {
     "priya": {
         "form_101": {
             **_common("Priya", "Sharma", "456", "W Fullerton Pkwy", "60614"),
+            **_petition_boxes(rents=True),
             PAY_IN_FULL: "/On",
             INSTALLMENTS: "",
             WAIVER: "",
@@ -885,6 +938,8 @@ EXPECTED = {
     "deshawn": {
         "form_101": {
             **_common("DeShawn", "Mitchell", "7823", "S Sangamon St", "60620"),
+            # He owns his home: line 11's rent No, and so no eviction box.
+            **_petition_boxes(rents=False),
             INSTALLMENTS: "/On",
             PAY_IN_FULL: "",
             WAIVER: "",
@@ -1069,6 +1124,7 @@ EXPECTED = {
     "sarah": {
         "form_101": {
             **_common("Sarah", "Chen", "1520", "N Damen Ave Apt 2F", "60622"),
+            **_petition_boxes(rents=True),
             WAIVER: "/On",
             PAY_IN_FULL: "",
             INSTALLMENTS: "",
@@ -1088,6 +1144,8 @@ EXPECTED = {
             "undefined_6": "1750.00",
             "check 3": "/no",
             "3 type": "",
+            # Line 20: her step 1 No to an earlier bankruptcy.
+            "check_20": "/no",
         },
         # She walked every line and answered No to each: nothing owned, every total 0.00.
         "schedule_a_b": {
@@ -1198,7 +1256,13 @@ EXPECTED = {
     },
     # His driving is a business on line 5 and 8a since 3e2 (§11).
     "andres": {
-        "form_101": {"County": "Kane", INSTALLMENTS: "/On", PAY_IN_FULL: "", WAIVER: ""},
+        "form_101": {
+            "County": "Kane",
+            INSTALLMENTS: "/On",
+            PAY_IN_FULL: "",
+            WAIVER: "",
+            **_petition_boxes(rents=True, business=ANDRES_BUSINESS),
+        },
         # Schedule A/B totals, hand-worked: 5 = 0 (leased Corolla) + 4,300 (his half of the Fit); 15 = 1,200+400+300; 36 = 60+412+85; 45 = 310+150 = 460; 62 = 63 = 4,300+1,900+557+460
         "schedule_a_b": {
             "undefined_26": "4300.00",

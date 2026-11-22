@@ -45,8 +45,10 @@ def rule(name, s):
 def test_digit_rules_read_digits_through_dashes(value):
     s = session({"itin": value, "other_ssn": value})
     assert [rule(f"itin_last4_digit_{n}", s) for n in (1, 2, 3, 4)] == ["1", "2", "3", "4"]
-    assert rule("itin_whole", s) == "900701234"
-    assert rule("other_ssn_whole", s) == "900701234"
+    # Form 121's comb boxes (PF2-T10-1): the ITIN box follows a printed 9, so it takes the eight
+    # digits after it as NN-NN-NNNN; the other SSN prints NNN-NN-NNNN, as ssn_formatted does.
+    assert rule("itin_whole", s) == "00-70-1234"
+    assert rule("other_ssn_whole", s) == "900-70-1234"
     ein = session({"ein": "12-3456789"})
     assert (rule("ein_prefix", ein), rule("ein_suffix", ein)) == ("12", "3456789")
 
@@ -404,4 +406,4 @@ def test_an_itin_not_starting_with_9_prints_blank_but_the_other_number_still_pri
     s = session({"itin": "812345678", "other_ssn": "812345678"})
     names = [f"itin_last4_digit_{n}" for n in (1, 2, 3, 4)] + ["itin_whole"]
     assert [rule(name, s) for name in names] == [""] * len(names)
-    assert rule("other_ssn_whole", s) == "812345678"
+    assert rule("other_ssn_whole", s) == "812-34-5678"
