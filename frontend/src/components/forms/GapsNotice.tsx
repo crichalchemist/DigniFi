@@ -11,6 +11,8 @@ import {
   DASHBOARD_GAPS_ONE,
   DASHBOARD_GATES_MANY,
   DASHBOARD_GATES_ONE,
+  PETITION_DETAIL_TOO_LONG,
+  PETITION_DETAIL_TOO_LONG_ROW,
 } from '../../constants/copy';
 import { WIZARD_STEPS } from '../../constants/wizardSteps';
 import type { CompletionGap } from '../../types/api';
@@ -32,9 +34,25 @@ export function GapLink({ step }: { step: string }) {
   );
 }
 
+/** A sentence template as a pattern: each {placeholder} matches any text */
+function patternOf(template: string): RegExp {
+  const escaped = template.replace(/[.*+?^$()|[\]\\]/g, '\\$&');
+  return new RegExp(`^${escaped.replace(/\{[a-z]+\}/g, '.+')}$`);
+}
+
+const TOO_LONG_SENTENCES = [
+  patternOf(PETITION_DETAIL_TOO_LONG),
+  patternOf(PETITION_DETAIL_TOO_LONG_ROW),
+];
+
+/** A too-long answer stops Form 101 rather than printing blank, so the blank count leaves it out */
+function isTooLong(gap: CompletionGap): boolean {
+  return TOO_LONG_SENTENCES.some((pattern) => pattern.test(gap.message));
+}
+
 export function GapsNotice({ gaps }: { gaps: CompletionGap[] }) {
   const gateCount = gaps.filter((gap) => gap.kind === 'gate').length;
-  const detailCount = gaps.filter((gap) => gap.kind === 'detail').length;
+  const detailCount = gaps.filter((gap) => gap.kind === 'detail' && !isTooLong(gap)).length;
 
   // One entry per distinct step, in first-seen order; the sort is stable, so unknown steps keep it
   const steps = [...new Set(gaps.map((gap) => gap.step))].sort(
