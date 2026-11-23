@@ -20,6 +20,7 @@ import { FormDashboard } from '../pages/FormDashboard';
 import { ExemptionsPage } from '../pages/ExemptionsPage';
 import { MeansTestPage } from '../pages/MeansTestPage';
 import { priyaPage } from './fixtures/meansPage';
+import { ExpenseInfoStep } from '../components/wizard/steps/ExpenseInfoStep';
 import { FormCard } from '../components/forms/FormCard';
 import { FormStatusBadge } from '../components/forms/FormStatusBadge';
 import { UPLDisclaimer } from '../components/compliance/UPLDisclaimer';
@@ -548,6 +549,28 @@ describe('Accessibility: Pages', () => {
     });
     // The rebuttal figure shows with line 39c and a presumption
     expect(container.textContent).toContain('Your line 39d is now');
+
+    const results = await axe(container, axeOptions);
+    expect(results).toHaveNoViolations();
+  });
+
+  it('the Expenses step with a total saved before the split has no axe violations', async () => {
+    const { container } = render(
+      <ExpenseInfoStep
+        initialData={{
+          utilities: 180,
+          utilities_specify: 'Utilities (combined)',
+          insurance_not_deducted: 120,
+          insurance_specify: 'Insurance (combined)',
+        }}
+        onDataChange={() => {}}
+        onValidationChange={() => {}}
+        scheduleIAnswers={{}}
+        onScheduleIAnswersChange={() => {}}
+      />
+    );
+    expect(container.textContent).toContain('Before this page asked about each utility');
+    expect(container.textContent).toContain('Before this page asked about each kind of insurance');
 
     const results = await axe(container, axeOptions);
     expect(results).toHaveNoViolations();

@@ -108,7 +108,10 @@ export const LINE_3_QUESTION =
 // No cut: the heading over lines 4a-4d
 export const LINE_4_GROUP_HEADING = 'If not included in line 4:';
 
-// No cut: the heading over lines 15c-15d
+// No cut: the heading over lines 6a-6d
+export const LINE_6_GROUP_HEADING = 'Utilities:';
+
+// No cut: the heading over lines 15a-15d
 export const LINE_15_GROUP_HEADING =
   'Insurance. Do not include insurance deducted from your pay or included in lines 4 or 20.';
 
@@ -135,8 +138,14 @@ export const EXPENSE_LINE_WORDS: Record<ExpenseField, string> = {
   home_maintenance: 'Home maintenance, repair, and upkeep expenses',
   // Line 4d, no cut
   hoa_dues: "Homeowner's association or condominium dues",
-  // Line 6's heading without its colon; the amount prints on 6d, "Utilities (combined)"
-  utilities: 'Utilities',
+  // Line 6a, no cut
+  electricity_heat_gas: 'Electricity, heat, natural gas',
+  // Line 6b, no cut
+  water_sewer_garbage: 'Water, sewer, garbage collection',
+  // Line 6c, no cut
+  phone_internet_cable: 'Telephone, cell phone, Internet, satellite, and cable services',
+  // Line 6d, cut: ". Specify:" (the "Utilities:" legend names the group, as line 21's pattern)
+  utilities: 'Other',
   // Line 7, no cut
   food_and_groceries: 'Food and housekeeping supplies',
   // Line 8, no cut
@@ -154,9 +163,13 @@ export const EXPENSE_LINE_WORDS: Record<ExpenseField, string> = {
   entertainment: 'Entertainment, clubs, recreation, newspapers, magazines, and books',
   // Line 14, no cut
   charitable_contributions: 'Charitable contributions and religious donations',
+  // Line 15a, no cut
+  life_insurance: 'Life insurance',
+  // Line 15b, no cut
+  health_insurance: 'Health insurance',
   // Line 15c, no cut
   vehicle_insurance: 'Vehicle insurance',
-  // Line 15d, cut: ". Specify:" (the amount prints "Insurance (combined)")
+  // Line 15d, cut: ". Specify:", which EXPENSE_SPECIFY_WORDS carries
   insurance_not_deducted: 'Other insurance',
   // Line 16, cut: the "Specify:" that follows, which EXPENSE_SPECIFY_WORDS carries
   taxes_not_deducted:
@@ -178,8 +191,11 @@ export const EXPENSE_LINE_WORDS: Record<ExpenseField, string> = {
   other_expenses: 'Other',
 };
 
-// The field index's labels for the boxes `Other 16`, `Other 19` and `Other 21`
+// The field index's labels for the boxes `Other 6d`, `Other 15d`, `Other 16`, `Other 19` and
+// `Other 21`
 export const EXPENSE_SPECIFY_WORDS: Record<ExpenseSpecifyField, string> = {
+  utilities_specify: 'Utilities: Other. Specify:',
+  insurance_specify: 'Other insurance. Specify:',
   taxes_specify: 'Taxes. Specify:',
   support_others_specify:
     'Other payments you make to support others who do not live with you. Specify:',

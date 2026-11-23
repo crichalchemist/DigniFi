@@ -1498,6 +1498,14 @@ export const LINE_4_HELP =
 export const EXPENSES_LINKED_NOTE =
   'Car and mortgage payments come from Amounts Owed and Contracts & Leases, so they are not in this total.';
 
+// DRAFT: counsel C-47
+export const EXPENSES_LEGACY_UTILITIES =
+  'Before this page asked about each utility, you gave one total. It is in the Other box. You can leave it there, or move it to the lines above.';
+
+// DRAFT: counsel C-47
+export const EXPENSES_LEGACY_INSURANCE =
+  'Before this page asked about each kind of insurance, you gave one total. It is in the Other insurance box. You can leave it there, or move it to the lines above.';
+
 export const LINE_4_PAY_BOTH = 'Yes, I pay both';
 
 export const LINE_4_CLEAR = 'No, clear the ${typed}';

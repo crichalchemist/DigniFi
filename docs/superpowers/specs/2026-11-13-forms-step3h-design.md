@@ -564,11 +564,11 @@ Each label is its own `copy.ts` string, scored alone: "What happened:" is under 
 | --- | --- |
 | 16 | Schedule I line 5a (each person); Schedule J line 16 |
 | 17 | Schedule I lines 5b, 5d and 5g (each person) |
-| 18 | Schedule I line 5e (each person); Schedule J line 15 |
+| 18 | Schedule I line 5e (each person); Schedule J line 15a |
 | 19 | Schedule I line 5f (each person); Schedule J line 18 |
 | 21 | Schedule J line 8 |
 | 22 | Schedule J line 11; line 7g |
-| 25 | Schedule I line 5e (each person); Schedule J line 15 |
+| 25 | Schedule I line 5e (each person); Schedule J lines 15b and 15d |
 | 30 | Schedule J lines 7 and 9; the 5% cap |
 | 31 | Schedule J line 14 |
 

@@ -29,6 +29,7 @@ import {
   CODEBTOR_GAP_NO_NAME,
   CONTRACT_GAP_NO_NAME,
   DELETE_HIDDEN,
+  EXPENSES_LEGACY_UTILITIES,
   HIDDEN_ANSWERS,
   ITIN_SAVED,
   LEGACY_REMOVE,
@@ -4066,6 +4067,9 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
     home_insurance: '0.00',
     home_maintenance: '0.00',
     hoa_dues: '0.00',
+    electricity_heat_gas: '0.00',
+    water_sewer_garbage: '0.00',
+    phone_internet_cable: '0.00',
     utilities: '180.00',
     food_and_groceries: '450.00',
     childcare: '400.00',
@@ -4075,6 +4079,8 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
     vehicle_maintenance: '40.00',
     entertainment: '0.00',
     charitable_contributions: '0.00',
+    life_insurance: '0.00',
+    health_insurance: '0.00',
     vehicle_insurance: '85.00',
     insurance_not_deducted: '120.00',
     taxes_not_deducted: '0.00',
@@ -4085,6 +4091,8 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
     other_property_upkeep: '0.00',
     other_property_hoa_dues: '0.00',
     other_expenses: '50.00',
+    utilities_specify: '',
+    insurance_specify: '',
     taxes_specify: '',
     support_others_specify: '',
     other_expenses_specify: '',
@@ -4141,7 +4149,7 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
     const body = patchBodies[patchBodies.length - 1];
     expect(Object.keys(body)).toEqual(['expense_info', 'schedule_i_answers']);
     const expenseInfo = body.expense_info as Record<string, unknown>;
-    // The 24 amounts, the three Specify texts and line 3, in that order, and nothing else (DRF
+    // The 29 amounts, the five Specify texts and line 3, in that order, and nothing else (DRF
     // drops any other name silently). The boxes the filer left alone keep their saved amounts.
     expect(Object.keys(expenseInfo)).toEqual([
       ...EXPENSE_FIELDS,
@@ -4157,6 +4165,9 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
       home_insurance: 0,
       home_maintenance: 0,
       hoa_dues: 0,
+      electricity_heat_gas: 0,
+      water_sewer_garbage: 0,
+      phone_internet_cable: 0,
       utilities: 180,
       food_and_groceries: 450,
       childcare: 400,
@@ -4166,6 +4177,8 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
       vehicle_maintenance: 40,
       entertainment: 0,
       charitable_contributions: 0,
+      life_insurance: 0,
+      health_insurance: 0,
       vehicle_insurance: 85,
       insurance_not_deducted: 120,
       taxes_not_deducted: 0,
@@ -4176,6 +4189,8 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
       other_property_upkeep: 0,
       other_property_hoa_dues: 0,
       other_expenses: 50,
+      utilities_specify: '',
+      insurance_specify: '',
       taxes_specify: '',
       support_others_specify: '',
       other_expenses_specify: '',
@@ -4194,6 +4209,8 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
     const body = patchBodies[patchBodies.length - 1];
     expect(body.expense_info).toEqual({
       ...Object.fromEntries(EXPENSE_FIELDS.map((field) => [field, 0])),
+      utilities_specify: '',
+      insurance_specify: '',
       taxes_specify: '',
       support_others_specify: '',
       other_expenses_specify: '',
@@ -4219,6 +4236,36 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
     }
 
     expect(patchBodies).toEqual([]);
+  });
+
+  it('a total saved before the split rides the body unchanged', async () => {
+    const patchBodies = serveExpensesSession({
+      ...savedExpenses,
+      utilities: '180.00',
+      utilities_specify: 'Utilities (combined)',
+    });
+
+    renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+    expect(screen.getByText(EXPENSES_LEGACY_UTILITIES)).toBeInTheDocument();
+
+    vi.useFakeTimers();
+    try {
+      for (let second = 0; second < 3; second += 1) {
+        await act(() => vi.advanceTimersByTimeAsync(1000));
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+    // Showing the step again sends nothing
+    expect(patchBodies).toEqual([]);
+
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByRole('heading', { name: /assets/i, level: 2 });
+    const expenseInfo = patchBodies[patchBodies.length - 1].expense_info as Record<string, unknown>;
+    expect(expenseInfo.utilities).toBe(180);
+    expect(expenseInfo.utilities_specify).toBe('Utilities (combined)');
+    expect(expenseInfo.electricity_heat_gas).toBe(0);
   });
 });
 

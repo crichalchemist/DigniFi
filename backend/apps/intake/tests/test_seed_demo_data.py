@@ -251,9 +251,58 @@ def test_the_seed_gives_each_persona_their_stored_answers(
         fee.expense_change_explanation,
     ) == ("", "", "")
 
-    # the sworn monthly total adds the 24 typed lines and the payments linked on Amounts Owed
+    # the sworn monthly total adds the 29 typed lines and the payments linked on Amounts Owed
     # and Contracts & Leases
     assert total_monthly_expenses(session) == Decimal(EXPENSE_TOTAL[persona])
+
+
+# The owner's split of each persona's utilities and insurance across the form's lines (PF-4c2-E):
+# 6a, 6b, 6c, 6d and its Specify text, 15a, 15b, 15d and its Specify text.
+SPLIT_FIELDS = (
+    "electricity_heat_gas",
+    "water_sewer_garbage",
+    "phone_internet_cable",
+    "utilities",
+    "utilities_specify",
+    "life_insurance",
+    "health_insurance",
+    "insurance_not_deducted",
+    "insurance_specify",
+)
+SPLIT = {
+    "maria": ("95", "25", "60", "0", "", "120", "0", "0", ""),
+    "james": ("60", "15", "45", "0", "", "0", "200", "0", ""),
+    "priya": ("120", "40", "90", "0", "", "170", "0", "180", "Disability insurance"),
+    "deshawn": ("95", "30", "55", "20", "Septic tank pumping", "0", "150", "0", ""),
+    "sarah": ("45", "0", "35", "0", "", "0", "0", "0", ""),
+    "andres": ("110", "0", "100", "0", "", "0", "0", "0", ""),
+}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(SPLIT))
+def test_each_persona_splits_utilities_and_insurance_across_the_forms_lines(persona):
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona=persona, stdout=StringIO())
+    expenses = IntakeSession.objects.get(user__username=f"demo_{persona}").expense_info
+
+    stored = tuple(getattr(expenses, f) for f in SPLIT_FIELDS)
+
+    assert stored == tuple(
+        v if f.endswith("_specify") else Decimal(v)
+        for f, v in zip(SPLIT_FIELDS, SPLIT[persona], strict=True)
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(SPLIT))
+def test_no_persona_carries_the_words_saved_before_the_split(persona):
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona=persona, stdout=StringIO())
+    expenses = IntakeSession.objects.get(user__username=f"demo_{persona}").expense_info
+
+    assert expenses.utilities_specify != "Utilities (combined)"
+    assert expenses.insurance_specify != "Insurance (combined)"
 
 
 @pytest.mark.django_db

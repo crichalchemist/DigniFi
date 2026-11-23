@@ -305,12 +305,15 @@ export interface ExpenseInfo {
   session: number;
   data_source: 'manual' | 'bank_import';
 
-  // The 24 Schedule J amounts, named in EXPENSE_FIELDS
+  // The 29 Schedule J amounts, named in EXPENSE_FIELDS
   rent_or_mortgage: number;
   real_estate_taxes: number;
   home_insurance: number;
   home_maintenance: number;
   hoa_dues: number;
+  electricity_heat_gas: number;
+  water_sewer_garbage: number;
+  phone_internet_cable: number;
   utilities: number;
   food_and_groceries: number;
   childcare: number;
@@ -320,6 +323,8 @@ export interface ExpenseInfo {
   vehicle_maintenance: number;
   entertainment: number;
   charitable_contributions: number;
+  life_insurance: number;
+  health_insurance: number;
   vehicle_insurance: number;
   insurance_not_deducted: number;
   taxes_not_deducted: number;
@@ -331,7 +336,9 @@ export interface ExpenseInfo {
   other_property_hoa_dues: number;
   other_expenses: number;
 
-  // The three "Specify" texts beside lines 16, 19 and 21, up to 100 characters each
+  // The five "Specify" texts beside lines 6d, 15d, 16, 19 and 21, up to 100 characters each
+  utilities_specify: string;
+  insurance_specify: string;
   taxes_specify: string;
   support_others_specify: string;
   other_expenses_specify: string;
@@ -344,7 +351,7 @@ export interface ExpenseInfo {
 }
 
 /**
- * The 24 monthly expense amounts, in Schedule J's order, under the names the backend stores
+ * The 29 monthly expense amounts, in Schedule J's order, under the names the backend stores
  * and the court forms read. DRF drops any other name without an error, so the step sums and
  * sends only these.
  */
@@ -354,6 +361,9 @@ export const EXPENSE_FIELDS = [
   'home_insurance',
   'home_maintenance',
   'hoa_dues',
+  'electricity_heat_gas',
+  'water_sewer_garbage',
+  'phone_internet_cable',
   'utilities',
   'food_and_groceries',
   'childcare',
@@ -363,6 +373,8 @@ export const EXPENSE_FIELDS = [
   'vehicle_maintenance',
   'entertainment',
   'charitable_contributions',
+  'life_insurance',
+  'health_insurance',
   'vehicle_insurance',
   'insurance_not_deducted',
   'taxes_not_deducted',
@@ -377,8 +389,10 @@ export const EXPENSE_FIELDS = [
 
 export type ExpenseField = (typeof EXPENSE_FIELDS)[number];
 
-/** The three "Specify" texts, which sit beside lines 16, 19 and 21 */
+/** The five "Specify" texts, which sit beside lines 6d, 15d, 16, 19 and 21 */
 export const EXPENSE_SPECIFY_FIELDS = [
+  'utilities_specify',
+  'insurance_specify',
   'taxes_specify',
   'support_others_specify',
   'other_expenses_specify',

@@ -10,6 +10,7 @@ import pytest
 from django.db import connection
 
 from apps.forms.services.derivations import DERIVATIONS
+from apps.intake.claims import total_monthly_expenses
 from apps.intake.models import ExpenseInfo
 
 NEW_LINES = {
@@ -42,7 +43,7 @@ def test_the_new_schedule_j_lines_reach_the_total_every_form_prints(filer_sessio
     assert DERIVATIONS["fee_waiver_monthly_expenses"](session) == "1900.00"
 
 
-def test_an_empty_expenses_body_stores_24_zero_amounts_and_leaves_line_3_unanswered(
+def test_an_empty_expenses_body_stores_29_zero_amounts_and_leaves_line_3_unanswered(
     filer_session,
 ):
     client, session = filer_session
@@ -50,7 +51,7 @@ def test_an_empty_expenses_body_stores_24_zero_amounts_and_leaves_line_3_unanswe
     assert response.status_code == 200
     reply = response.json()["expense_info"]
     row = ExpenseInfo.objects.get(session=session)
-    assert len(ExpenseInfo.AMOUNT_FIELDS) == 24
+    assert len(ExpenseInfo.AMOUNT_FIELDS) == 29
     assert all(Decimal(getattr(row, f)) == 0 for f in ExpenseInfo.AMOUNT_FIELDS)
     assert row.expenses_include_others is None and reply["expenses_include_others"] is None
     assert all(reply[f] == "" for f in ExpenseInfo.SPECIFY_FIELDS)
@@ -69,8 +70,84 @@ def test_line_3_takes_only_yes_no_or_null(filer_session):
     assert accepted.status_code == 200
 
 
+SPLIT_LINES = (
+    "electricity_heat_gas",
+    "water_sewer_garbage",
+    "phone_internet_cable",
+    "life_insurance",
+    "health_insurance",
+)
+
+# The 24 amounts the Expenses step sent before the 6a-6c, 15a and 15b split (R11): a literal, never
+# derived from AMOUNT_FIELDS, which now holds 29.
+OLD_AMOUNTS = (
+    "rent_or_mortgage",
+    "real_estate_taxes",
+    "home_insurance",
+    "home_maintenance",
+    "hoa_dues",
+    "utilities",
+    "food_and_groceries",
+    "childcare",
+    "clothing",
+    "personal_care",
+    "medical_expenses",
+    "vehicle_maintenance",
+    "entertainment",
+    "charitable_contributions",
+    "vehicle_insurance",
+    "insurance_not_deducted",
+    "taxes_not_deducted",
+    "child_support_paid",
+    "support_others",
+    "other_property_taxes",
+    "other_property_insurance",
+    "other_property_upkeep",
+    "other_property_hoa_dues",
+    "other_expenses",
+)
+
+
+@pytest.mark.parametrize("field", SPLIT_LINES)
+def test_each_split_line_reaches_the_monthly_expense_total(filer_session, field):
+    client, session = filer_session
+    response = client.patch(_url(session), {"expense_info": {field: "12.34"}}, format="json")
+    assert response.status_code == 200
+    row = ExpenseInfo.objects.get(session=session)
+    assert row.calculate_total_monthly_expenses() == 12.34  # the model sums to a float
+    assert total_monthly_expenses(session) == Decimal("12.34")
+    assert client.get(_url(session)).json()["expense_info"]["total_monthly_expenses"] == 12.34
+
+
+def test_a_stale_tabs_patch_of_the_24_old_amounts_leaves_the_five_new_lines_alone(
+    filer_session,
+):
+    client, session = filer_session
+    stored = {name: f"{i}.00" for i, name in enumerate(SPLIT_LINES, start=1)}
+    stored |= {"utilities_specify": "Demo words", "insurance_specify": "Demo words"}
+    assert client.patch(_url(session), {"expense_info": stored}, format="json").status_code == 200
+
+    body = {name: "10.00" for name in OLD_AMOUNTS}
+    body |= {"taxes_specify": "", "support_others_specify": "", "other_expenses_specify": ""}
+    body["expenses_include_others"] = "no"
+    response = client.patch(_url(session), {"expense_info": body}, format="json")
+
+    assert response.status_code == 200, response.json()
+    row = ExpenseInfo.objects.get(session=session)
+    for name, amount in stored.items():
+        assert str(getattr(row, name)) == amount, name
+    assert row.utilities == Decimal("10.00")
+
+
 @pytest.mark.parametrize(
-    "field", ["taxes_specify", "support_others_specify", "other_expenses_specify"]
+    "field",
+    [
+        "taxes_specify",
+        "support_others_specify",
+        "other_expenses_specify",
+        "utilities_specify",
+        "insurance_specify",
+    ],
 )
 def test_a_specify_text_over_100_characters_is_refused(filer_session, field):
     client, session = filer_session
