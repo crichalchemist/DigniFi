@@ -21,6 +21,9 @@ import {
 import { ASSET_LINES } from '../../constants/assetLines';
 import { fill } from '../../components/wizard/steps/claims/claimNames';
 import {
+  AMOUNT_DECIMALS,
+  AMOUNT_NEGATIVE,
+  AMOUNT_TOO_LARGE,
   CLAIM_GAP_LINE_4,
   CLAIM_GAP_LEGACY_VEHICLE,
   CODEBTOR_GAP_NO_NAME,
@@ -34,12 +37,15 @@ import {
   NO_DEBTS_BUTTON,
   OLD_ROWS_NOTE,
   OTHER_SSN_SAVED,
+  PAYSTUB_EMPLOYER_HINT,
   PETITION_ADD_OTHER_NAME,
   PETITION_GATE_EVICTION,
   REPLACE_SAVED,
   REVIEW_GAPS_UNAVAILABLE,
   REVIEW_NO_DEBTS,
   REVIEW_NOTHING_MISSING,
+  SCHEDULE_I_GATE_LINE_11,
+  SCHEDULE_I_GATE_LINE_13,
 } from '../../constants/copy';
 
 // DebtorInfoStep reads account email via useAuth; wizard test renders without
@@ -2605,6 +2611,39 @@ describe('IntakeWizard a new debt after Complete', { timeout: 30_000 }, () => {
   });
 });
 
+// Step 2's Schedule I answers while none is given (4c-R7): yours and lines 11 and 13, each null
+const SCHEDULE_I_STEP_2_NULL = {
+  employment_status: null,
+  occupation: null,
+  employer_name: null,
+  employer_street: null,
+  employer_street_2: null,
+  employer_city: null,
+  employer_state: null,
+  employer_zip: null,
+  time_employed: null,
+  line_11_answer: null,
+  line_11_text: null,
+  line_11_amount: null,
+  line_13_answer: null,
+  line_13_text: null,
+};
+// The spouse's line 1, sent only for a spouse filing together
+const SCHEDULE_I_SPOUSE_NULL = {
+  spouse_employment_status: null,
+  spouse_occupation: null,
+  spouse_employer_name: null,
+  spouse_employer_street: null,
+  spouse_employer_street_2: null,
+  spouse_employer_city: null,
+  spouse_employer_state: null,
+  spouse_employer_zip: null,
+  spouse_time_employed: null,
+};
+// Lines 11 and 13 answered No, so a test that presses Continue on step 2 can leave the step
+// (4c-R4, PF-4c-I: never in the shared onIncome, whose radios all start unchecked)
+const LINES_11_13_NO = { line_11_answer: 'no' as const, line_13_answer: 'no' as const };
+
 // ===========================================================================
 // Income save (DIG-41)
 // ===========================================================================
@@ -2632,6 +2671,8 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
       total_monthly_income: 3200,
       created_at: '2026-10-01T10:00:00Z',
     },
+    // Lines 11 and 13 answered, so Continue can leave the step (4c-R4); answered_on is read-only
+    schedule_i_answers: { ...LINES_11_13_NO, answered_on: '2026-10-16' },
   };
   const savedAmounts = {
     monthly_gross_wages: 3100.5,
@@ -2689,6 +2730,7 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
           ...NEW_ANSWERS,
         },
         household: { members: null },
+        schedule_i_answers: { ...SCHEDULE_I_STEP_2_NULL, ...LINES_11_13_NO },
       });
     }
   });
@@ -2709,6 +2751,7 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
         ...NEW_ANSWERS,
       },
       household: { members: null },
+      schedule_i_answers: { ...SCHEDULE_I_STEP_2_NULL, ...LINES_11_13_NO },
     });
   });
 });
@@ -2844,6 +2887,7 @@ describe('IntakeWizard household and spouse', { timeout: 30_000 }, () => {
           { relationship: 'daughter', age: null, lives_with_you: null, claimed_or_supported: null },
         ],
       },
+      schedule_i_answers: SCHEDULE_I_STEP_2_NULL,
     });
   });
 
@@ -2981,6 +3025,27 @@ describe('IntakeWizard household and spouse', { timeout: 30_000 }, () => {
       status: 'completed',
       current_step: 4,
       expense_info: completedSession.expense_info,
+      // Every Schedule I key the step shows, the spouse's too, an employer kept under Not
+      // employed, the amount as the server's string, and the read-only keys (4c-R7)
+      schedule_i_answers: {
+        employment_status: 'employed',
+        occupation: 'Analyst',
+        employer_name: 'Demo Analytics',
+        employer_street: '1 Demo Way',
+        employer_city: 'Chicago',
+        employer_state: 'IL',
+        employer_zip: '60601',
+        time_employed: '4 years',
+        spouse_employment_status: 'not_employed',
+        spouse_employer_name: 'Demo Kept Employer',
+        line_11_answer: 'yes',
+        line_11_text: 'My mother',
+        line_11_amount: '250.00',
+        line_13_answer: 'no',
+        schedule_j_line_24_answer: 'no',
+        answered_on: '2026-10-16',
+      },
+      paystub_employer_name: 'Demo Analytics LLC',
     });
     const { container } = renderWizard();
     await screen.findByRole('heading', { name: /expenses/i, level: 2 });
@@ -3020,6 +3085,7 @@ describe('IntakeWizard household and spouse', { timeout: 30_000 }, () => {
     serveSessionSaves({
       ...priyaAtIncome,
       spouse_income: { ...priyaAtIncome.spouse_income, monthly_gross_wages: '1234.56' },
+      schedule_i_answers: LINES_11_13_NO,
     });
     server.use(
       http.post('http://localhost:8000/api/audit/logs/', async ({ request }) => {
@@ -3178,7 +3244,8 @@ describe('IntakeWizard household and spouse', { timeout: 30_000 }, () => {
 
   // As for assets and debts: ids are paired by position, never guessed
   it("a reply that doesn't list each household row sent fails the save", async () => {
-    serveSessionSaves(onIncome);
+    // Lines 11 and 13 answered, so it is Continue's save that fails (4c-R4)
+    serveSessionSaves({ ...onIncome, schedule_i_answers: LINES_11_13_NO });
     const unanswered = { age: null, lives_with_you: null, claimed_or_supported: null };
     server.use(
       http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
@@ -3203,6 +3270,246 @@ describe('IntakeWizard household and spouse', { timeout: 30_000 }, () => {
 
     expect(await screen.findByText(/couldn't save just now/i)).toBeInTheDocument();
     expect(container.querySelector('.step-title')).toHaveTextContent('Income');
+  });
+});
+
+// ===========================================================================
+// Schedule I lines 1, 11 and 13 on the Income step (4c spec §6.2)
+// ===========================================================================
+
+describe('IntakeWizard Schedule I on the Income step', { timeout: 30_000 }, () => {
+  const openIncome = () => screen.findByRole('heading', { name: /income/i, level: 2 });
+  const scheduleI = (body: Record<string, unknown> | undefined) =>
+    body?.schedule_i_answers as Record<string, unknown> | undefined;
+  const statusLine = () => document.querySelector('.income-info-step > [role="status"]');
+  const continueButton = () => screen.getByRole('button', { name: 'Continue' });
+  let stepUpdates: number[];
+
+  beforeEach(() => {
+    stepUpdates = [];
+    server.use(
+      http.post(
+        'http://localhost:8000/api/intake/sessions/:id/update_step/',
+        async ({ request }) => {
+          const { current_step } = (await request.json()) as { current_step: number };
+          stepUpdates.push(current_step);
+          return HttpResponse.json({
+            session: { ...onIncome, current_step },
+            message: 'Step updated.',
+          });
+        }
+      ),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+  });
+
+  // Each step sends only its own keys, so neither step's saved copy overwrites the other's
+  it("step 2's body carries only step 2's Schedule I keys", async () => {
+    const { bodies } = serveSessionSaves({
+      ...onIncome,
+      schedule_i_answers: {
+        employment_status: 'employed',
+        employer_name: 'Demo Diner',
+        line_11_answer: 'no',
+        schedule_j_line_24_answer: 'yes',
+        schedule_j_line_24_text: 'The car loan ends in May',
+        answered_on: '2026-10-16',
+      },
+      paystub_employer_name: 'Demo Diner LLC',
+    });
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('occupation'), { target: { value: 'Cook' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const body = bodies.at(-1) as Record<string, unknown>;
+    expect(Object.keys(body)).toEqual(['income_info', 'household', 'schedule_i_answers']);
+    // Line 24 is step 4's; the read-only date and the pay stub's name are never sent
+    expect(scheduleI(body)).toEqual({
+      ...SCHEDULE_I_STEP_2_NULL,
+      employment_status: 'employed',
+      occupation: 'Cook',
+      employer_name: 'Demo Diner',
+      line_11_answer: 'no',
+    });
+  });
+
+  // A hidden spouse block neither saves nor clears what the server holds (D5)
+  it('the spouse keys are sent only for married filing together', async () => {
+    const { bodies } = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      pick('marital_status', 'not_filing');
+      pick('spouse_household', 'married_together');
+      pick('spouse_employment_status', 'employed');
+      fireEvent.change(field('spouse_employer_name'), { target: { value: 'Demo Clinic' } });
+      await waitSeconds(3);
+      expect(scheduleI(bodies.at(-1))).toEqual({
+        ...SCHEDULE_I_STEP_2_NULL,
+        ...SCHEDULE_I_SPOUSE_NULL,
+        spouse_employment_status: 'employed',
+        spouse_employer_name: 'Demo Clinic',
+      });
+
+      pick('spouse_household', 'married_separately');
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(scheduleI(bodies.at(-1))).toEqual(SCHEDULE_I_STEP_2_NULL);
+    expect(document.querySelector('[name="spouse_employment_status"]')).toBeNull();
+  });
+
+  // D4: Continue waits for the two gates, but a page of typed income still saves meanwhile
+  it('Continue waits for lines 11 and 13 while autosave still saves typed income', async () => {
+    const { bodies } = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+    // Nothing touched yet: the status line says nothing
+    expect(statusLine()).toBeEmptyDOMElement();
+    expect(continueButton()).toBeDisabled();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('monthly_gross_wages'), { target: { value: '3200' } });
+      await waitSeconds(3);
+      expect(bodies).toHaveLength(1);
+      expect((bodies[0].income_info as Record<string, unknown>).monthly_gross_wages).toBe(3200);
+      expect(continueButton()).toBeDisabled();
+
+      pick('line_11_answer', 'no');
+      await waitSeconds(3);
+      expect(statusLine()).toHaveTextContent(SCHEDULE_I_GATE_LINE_13);
+      expect(continueButton()).toBeDisabled();
+      expect(scheduleI(bodies.at(-1))?.line_11_answer).toBe('no');
+
+      pick('line_13_answer', 'no');
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(statusLine()).toBeEmptyDOMElement();
+    expect(continueButton()).toBeEnabled();
+    await userEvent.click(continueButton());
+    await waitFor(() => expect(stepUpdates).toEqual([3]));
+  });
+
+  it('the status line names line 11 first, once focus leaves the two lines', async () => {
+    serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+    expect(statusLine()).toBeEmptyDOMElement();
+    fireEvent.blur(field('line_13_answer'), { relatedTarget: field('monthly_gross_wages') });
+    expect(statusLine()).toHaveTextContent(SCHEDULE_I_GATE_LINE_11);
+  });
+
+  it('a loaded record hydrates the step', async () => {
+    serveSessionSaves({
+      ...onIncome,
+      schedule_i_answers: {
+        employment_status: 'employed',
+        occupation: 'Analyst',
+        employer_name: 'Demo Analytics',
+        employer_state: 'IL',
+        employer_zip: '60601',
+        line_11_answer: 'yes',
+        line_11_text: 'My mother',
+        line_11_amount: '250.00',
+        line_13_answer: 'yes',
+        line_13_text: 'A raise in March',
+        answered_on: '2026-10-16',
+      },
+      paystub_employer_name: 'Demo Analytics LLC',
+    });
+    renderWizard();
+    await openIncome();
+
+    expect(
+      document.querySelector('input[name="employment_status"][value="employed"]')
+    ).toBeChecked();
+    expect(field('occupation')).toHaveValue('Analyst');
+    expect(field('employer_name')).toHaveValue('Demo Analytics');
+    expect(field('employer_state')).toHaveValue('IL');
+    expect(field('employer_zip')).toHaveValue('60601');
+    // The amount stays the server's string, never a hydrated number
+    expect(field('line_11_amount')).toHaveValue('250.00');
+    expect(field('line_11_text')).toHaveValue('My mother');
+    expect(field('line_13_text')).toHaveValue('A raise in March');
+    expect(
+      screen.getByText(PAYSTUB_EMPLOYER_HINT.replace('{name}', 'Demo Analytics LLC'))
+    ).toBeInTheDocument();
+    // Both lines answered: Continue needs nothing more
+    await waitFor(() => expect(continueButton()).toBeEnabled());
+  });
+
+  // PF-4c-C: every string the step sends is one the server takes, or one stray keystroke would
+  // fail every autosave on the step
+  it('a line 11 amount the server would refuse holds autosave and Continue and shows why', async () => {
+    const { bodies } = serveSessionSaves({
+      ...onIncome,
+      schedule_i_answers: { line_11_answer: 'yes', line_13_answer: 'no' },
+    });
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      for (const [typed, reason] of [
+        ['12.', AMOUNT_DECIMALS],
+        ['1e3', AMOUNT_DECIMALS],
+        ['abc', AMOUNT_DECIMALS],
+        ['12.505', AMOUNT_DECIMALS],
+        ['-5', AMOUNT_NEGATIVE],
+        ['10000000000', AMOUNT_TOO_LARGE],
+      ]) {
+        fireEvent.change(field('line_11_amount'), { target: { value: typed } });
+        await waitSeconds(3);
+        expect(bodies, typed).toHaveLength(0);
+        expect(field('line_11_amount'), typed).toHaveValue(typed);
+        expect(screen.getByText(reason), typed).toBeInTheDocument();
+        expect(continueButton(), typed).toBeDisabled();
+      }
+
+      // A refused amount rides the body under No too, so it still holds and its box stays shown
+      pick('line_11_answer', 'no');
+      await waitSeconds(3);
+      expect(bodies).toHaveLength(0);
+      expect(field('line_11_amount')).toHaveValue('10000000000');
+      expect(continueButton()).toBeDisabled();
+      pick('line_11_answer', 'yes');
+
+      // The server's own shape goes as typed
+      fireEvent.change(field('line_11_amount'), { target: { value: '12.50' } });
+      await waitSeconds(3);
+      expect(bodies).toHaveLength(1);
+      expect(scheduleI(bodies[0])?.line_11_amount).toBe('12.50');
+      expect(screen.queryByText(AMOUNT_TOO_LARGE)).not.toBeInTheDocument();
+      expect(continueButton()).toBeEnabled();
+
+      // A blank box goes as null, never as ""
+      fireEvent.change(field('line_11_amount'), { target: { value: '' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toHaveLength(2);
+    expect(scheduleI(bodies[1])?.line_11_amount).toBeNull();
+    expect(continueButton()).toBeEnabled();
   });
 });
 
@@ -5605,7 +5912,8 @@ describe('IntakeWizard business and rental list', { timeout: 30_000 }, () => {
 
   // Ids are paired by position, never guessed
   it("a reply that doesn't list each entry sent fails the save", async () => {
-    serveSessionSaves(onIncome);
+    // Lines 11 and 13 answered, so it is Continue's save that fails (4c-R4)
+    serveSessionSaves({ ...onIncome, schedule_i_answers: LINES_11_13_NO });
     const unanswered = {
       description: null,
       gross: null,
@@ -5900,7 +6208,7 @@ describe('IntakeWizard take-home pay', { timeout: 30_000 }, () => {
   };
 
   it('Continue on Income opens Take-home pay, and Continue there sends 4', async () => {
-    serveSessionSaves(filerOnIncome);
+    serveSessionSaves({ ...filerOnIncome, schedule_i_answers: LINES_11_13_NO });
     const { container } = renderWizard();
     await screen.findByRole('heading', { name: /income/i, level: 2 });
 
@@ -5970,6 +6278,7 @@ describe('IntakeWizard take-home pay', { timeout: 30_000 }, () => {
         marital_status: 'not_married',
         income_now_different: null,
       },
+      schedule_i_answers: LINES_11_13_NO,
     });
     renderWizard();
     await openTakeHomePay();
@@ -6060,6 +6369,7 @@ describe('IntakeWizard window notice', { timeout: 30_000 }, () => {
       monthly_gross_wages: '3100.50',
       answered_window: { start: '2026-04-01', end: '2026-09-30' },
     },
+    schedule_i_answers: LINES_11_13_NO,
   };
 
   it('Continue on the Income step clears its window notice', async () => {

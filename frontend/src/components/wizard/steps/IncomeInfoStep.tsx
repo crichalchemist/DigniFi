@@ -12,6 +12,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { FormField, Button } from '../../common';
 import { HouseholdList } from './HouseholdList';
 import { IncomeEntryList } from './IncomeEntryList';
+import { EmploymentBlock } from './scheduleI/EmploymentBlock';
+import { LineQuestion } from './scheduleI/LineQuestion';
+import { scheduleIGate } from './scheduleI/scheduleIGaps';
 import { amountError, decimalToNumber, parseAmount } from '../../../utils/parseAmount';
 import { newHouseholdMember } from '../../../utils/householdRows';
 import { flooredNet, startFromAverages } from '../../../utils/incomeEntries';
@@ -22,6 +25,10 @@ import { MAX_AGE, MAX_HOUSEHOLD_ROWS } from '../../../constants/household';
 import {
   ASSISTANCE_QUESTION,
   AVERAGING_SENTENCE,
+  FORM_106I_LINE_11,
+  FORM_106I_LINE_11_BOX_LABEL,
+  FORM_106I_LINE_13_QUESTION,
+  FORM_106I_LINE_13_YES,
   INTEREST_LABEL,
   LINE_1_QUESTION,
   LIVING_SEPARATELY_DECLARATION,
@@ -30,6 +37,8 @@ import {
 } from '../../../constants/formText';
 import {
   AGE_OUT_OF_RANGE,
+  AMOUNT_DECIMALS,
+  AMOUNT_NEGATIVE,
   ASSISTANCE_HEADING,
   ASSISTANCE_OWN_BOXES_NOTE,
   BOTH_TOTALS_MONTHLY,
@@ -42,6 +51,8 @@ import {
   NONCASH_VALUE_LABEL,
   NOT_ANSWERED_YET,
   NOW_DIFFERENT_QUESTION,
+  SCHEDULE_I_LINE_11_AMOUNT_LABEL,
+  SCHEDULE_I_LINE_11_QUESTION,
   SPOUSE_ASSISTANCE_HEADING,
   SPOUSE_ASSISTANCE_QUESTION,
   SPOUSE_CASH_AMOUNT_LABEL,
@@ -62,6 +73,7 @@ import type {
   IncomeInfo,
   IncomePeriod,
   MaritalStatus,
+  ScheduleIAnswers,
   SpouseIncome,
   WizardRow,
   YesNo,
@@ -93,6 +105,11 @@ interface IncomeInfoStepProps {
   onNoEntriesChange: (pressed: boolean) => void;
   spouseNoEntries: boolean;
   onSpouseNoEntriesChange: (pressed: boolean) => void;
+  /** The wizard's Schedule I answers (4c). The step keeps no copy, so a Delete's nulls are sent. */
+  scheduleIAnswers: ScheduleIAnswers;
+  onScheduleIAnswersChange: (answers: ScheduleIAnswers) => void;
+  /** The employer's name a pay stub gave, or "": a hint beside your employer box (4c-R10) */
+  paystubEmployerName?: string;
 }
 
 type IncomeSource = (typeof INCOME_FIELDS)[number];
@@ -235,6 +252,21 @@ function YesNoGroup({ name, legend, answer, onAnswer, headingId }: YesNoGroupPro
   );
 }
 
+// The one shape the server takes for line 11's amount: digits, then at most two places (PF-4c-C)
+const PLAIN_AMOUNT = /^\d+(\.\d{1,2})?$/;
+
+/**
+ * Why the server would refuse line 11's amount, in the words the other amount boxes use, or
+ * undefined. A blank box is sent as null, never refused.
+ */
+function line11AmountError(value: string | null | undefined): string | undefined {
+  if (value == null || value.trim() === '') return undefined;
+  if (!PLAIN_AMOUNT.test(value)) {
+    return value.trimStart().startsWith('-') ? AMOUNT_NEGATIVE : AMOUNT_DECIMALS;
+  }
+  return amountError(Number(value), 12);
+}
+
 /** A month's total, in dollars and cents */
 function formatTotal(total: number) {
   return `$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -260,6 +292,9 @@ export function IncomeInfoStep({
   onNoEntriesChange,
   spouseNoEntries,
   onSpouseNoEntriesChange,
+  scheduleIAnswers,
+  onScheduleIAnswersChange,
+  paystubEmployerName,
 }: IncomeInfoStepProps) {
   // Fields start undefined (empty) rather than 0 so an untouched field reads
   // blank, while a deliberately entered 0 is preserved by parseAmount + `?? ''`.
@@ -269,6 +304,8 @@ export function IncomeInfoStep({
   // The spouse row this visit added, whose "Lives with you?" follows the marriage answer until
   // the filer answers it. A loaded row is never followed: its answer is the filer's (U:308).
   const [followedKey, setFollowedKey] = useState<string | null>(null);
+  // Focus has left lines 11 and 13: the status line may then name the one still unanswered
+  const [linesLeft, setLinesLeft] = useState(false);
 
   const livingTogether = formData.marital_status === 'married_together';
 
@@ -357,8 +394,27 @@ export function IncomeInfoStep({
 
     for (const [index, message] of Object.entries(ageErrors)) newErrors[`age_${index}`] = message;
 
+    // Line 11's amount as the server takes it. It rides the body whatever the answer (4c-R6), so
+    // it is checked whatever the answer, and its box stays shown while it says why
+    const line11Error = line11AmountError(scheduleIAnswers.line_11_amount);
+    if (line11Error) newErrors.line_11_amount = line11Error;
+
     return newErrors;
-  }, [formData, spouseData, livingTogether, ageErrors, entryRows, spouseEntryRows]);
+  }, [
+    formData,
+    spouseData,
+    livingTogether,
+    ageErrors,
+    entryRows,
+    spouseEntryRows,
+    scheduleIAnswers.line_11_amount,
+  ]);
+
+  // Continue waits for lines 11 and 13 (4c-R4); the status line names the first one left once
+  // either is answered or focus has left them
+  const linesGate = scheduleIGate(scheduleIAnswers);
+  const linesTouched =
+    linesLeft || scheduleIAnswers.line_11_answer != null || scheduleIAnswers.line_13_answer != null;
 
   // Update parent when form data changes
   useEffect(() => {
@@ -741,6 +797,14 @@ export function IncomeInfoStep({
         </section>
       ))}
 
+      {/* Schedule I line 1, the filer's column */}
+      <EmploymentBlock
+        answers={scheduleIAnswers}
+        onChange={onScheduleIAnswersChange}
+        spouse={false}
+        payStubName={paystubEmployerName}
+      />
+
       <IncomeEntryList
         rows={entryRows}
         onRowsChange={onEntryRowsChange}
@@ -762,6 +826,8 @@ export function IncomeInfoStep({
             INCOME_SECTIONS.flatMap((section) => section.rows),
             true
           )}
+          {/* Schedule I line 1, the spouse's column, only while it is shown (D5) */}
+          <EmploymentBlock answers={scheduleIAnswers} onChange={onScheduleIAnswersChange} spouse />
           <IncomeEntryList
             rows={spouseEntryRows}
             onRowsChange={onSpouseEntryRowsChange}
@@ -773,6 +839,40 @@ export function IncomeInfoStep({
           {nowAndAssistance(true)}
         </section>
       )}
+
+      {/* Schedule I lines 11 and 13, for the household */}
+      <section
+        className="form-section"
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            setLinesLeft(true);
+          }
+        }}
+      >
+        <LineQuestion
+          question={SCHEDULE_I_LINE_11_QUESTION}
+          note={FORM_106I_LINE_11}
+          name="line_11_answer"
+          answers={scheduleIAnswers}
+          onChange={onScheduleIAnswersChange}
+          boxes={[
+            { key: 'line_11_text', label: FORM_106I_LINE_11_BOX_LABEL },
+            {
+              key: 'line_11_amount',
+              label: SCHEDULE_I_LINE_11_AMOUNT_LABEL,
+              amount: true,
+              error: errors.line_11_amount,
+            },
+          ]}
+        />
+        <LineQuestion
+          question={FORM_106I_LINE_13_QUESTION}
+          name="line_13_answer"
+          answers={scheduleIAnswers}
+          onChange={onScheduleIAnswersChange}
+          boxes={[{ key: 'line_13_text', label: FORM_106I_LINE_13_YES, long: true }]}
+        />
+      </section>
 
       {/* Total Summary */}
       <section className="form-section form-section--summary">
@@ -794,6 +894,16 @@ export function IncomeInfoStep({
             : 'This is your total monthly income before taxes and deductions.'}
         </p>
       </section>
+
+      {/* A status, not an alert, as on Contracts & Leases. It stays mounted because a screen reader
+          may not read a status region that arrives with its text. */}
+      <div role="status">
+        {linesTouched && linesGate !== null && (
+          <div className="info-box">
+            <p className="info-message">{linesGate}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
