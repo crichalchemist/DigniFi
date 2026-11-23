@@ -74,6 +74,28 @@ export interface PersonaIncome {
   // Schedule I line 8f, other government assistance
   assistance: PersonaAssistance;
   spouse_assistance?: PersonaAssistance;
+  // Schedule I line 1 (employment) and lines 11 and 13, answered on the Income step
+  schedule_i: PersonaScheduleI;
+}
+
+/** One person's Schedule I line 1; an employer-less persona (Andrés, self-employed) leaves it out */
+export interface PersonaEmployment {
+  status: 'employed' | 'not_employed';
+  occupation: string;
+  employer_name?: string;
+  employer_street?: string;
+  employer_city?: string;
+  employer_state?: string;
+  employer_zip?: string;
+  time_employed?: string;
+}
+
+export interface PersonaScheduleI {
+  you: PersonaEmployment;
+  // The spouse's, only for a persona living with their spouse
+  spouse?: PersonaEmployment;
+  line_11: 'yes' | 'no';
+  line_13: 'yes' | 'no';
 }
 
 /** One person's answer to Schedule I 8f, with cash and non-cash help kept apart */
@@ -310,6 +332,8 @@ export interface PersonaData {
   expenses: Record<string, number>;
   // Schedule J line 3, answered on the Expenses step
   expenses_include_others: 'yes' | 'no';
+  // Schedule J line 24, answered on the Expenses step
+  schedule_j_line_24: 'yes' | 'no';
   // The Specify boxes beside lines 16, 19 and 21, typed only by a persona who has something to say
   expense_texts?: Partial<
     Record<'taxes_specify' | 'support_others_specify' | 'other_expenses_specify', string>
@@ -428,6 +452,20 @@ export const MARIA: PersonaData = {
     business: [],
     now_different: 'no',
     assistance: { answer: 'yes', noncash_kind: 'SNAP (food stamps)', noncash_value: 350 },
+    schedule_i: {
+      you: {
+        status: 'employed',
+        occupation: 'Cashier',
+        employer_name: 'Demo Pharmacy',
+        employer_street: '200 Demo Ave',
+        employer_city: 'Chicago',
+        employer_state: 'IL',
+        employer_zip: '60601',
+        time_employed: '6 years',
+      },
+      line_11: 'no',
+      line_13: 'no',
+    },
   },
   deductions: {
     payroll_tax: 400,
@@ -440,6 +478,7 @@ export const MARIA: PersonaData = {
     payroll_other: 0,
   },
   expenses_include_others: 'no',
+  schedule_j_line_24: 'no',
   expenses: {
     rent_or_mortgage: 1100,
     utilities: 180,
@@ -602,9 +641,24 @@ export const JAMES: PersonaData = {
     business: [],
     now_different: 'no',
     assistance: { answer: 'no' },
+    schedule_i: {
+      you: {
+        status: 'employed',
+        occupation: 'Maintenance technician',
+        employer_name: 'Demo Hotel',
+        employer_street: '300 Demo Plaza',
+        employer_city: 'Chicago',
+        employer_state: 'IL',
+        employer_zip: '60602',
+        time_employed: '9 years',
+      },
+      line_11: 'no',
+      line_13: 'no',
+    },
   },
   deductions: { payroll_tax: 1288, payroll_union_dues: 45 },
   expenses_include_others: 'no',
+  schedule_j_line_24: 'no',
   expenses: {
     rent_or_mortgage: 1650,
     utilities: 120,
@@ -765,10 +819,35 @@ export const PRIYA: PersonaData = {
     spouse_business: [],
     spouse_now_different: 'no',
     spouse_assistance: { answer: 'no' },
+    schedule_i: {
+      you: {
+        status: 'employed',
+        occupation: 'Software engineer',
+        employer_name: 'Demo Software LLC',
+        employer_street: '400 Demo Blvd',
+        employer_city: 'Chicago',
+        employer_state: 'IL',
+        employer_zip: '60606',
+        time_employed: '4 years',
+      },
+      spouse: {
+        status: 'employed',
+        occupation: 'Tutor',
+        employer_name: 'Demo Tutoring Center',
+        employer_street: '410 Demo Blvd',
+        employer_city: 'Chicago',
+        employer_state: 'IL',
+        employer_zip: '60606',
+        time_employed: '2 years',
+      },
+      line_11: 'no',
+      line_13: 'no',
+    },
   },
   deductions: { payroll_tax: 2450, payroll_voluntary_retirement: 600, payroll_insurance: 620 },
   spouse_deductions: { payroll_tax: 250 },
   expenses_include_others: 'yes',
+  schedule_j_line_24: 'no',
   expenses: {
     rent_or_mortgage: 2800,
     utilities: 250,
@@ -1014,10 +1093,35 @@ export const DESHAWN: PersonaData = {
     spouse_business: [],
     spouse_now_different: 'no',
     spouse_assistance: { answer: 'no' },
+    schedule_i: {
+      you: {
+        status: 'employed',
+        occupation: 'Warehouse supervisor',
+        employer_name: 'Demo Logistics',
+        employer_street: '500 Demo Rd',
+        employer_city: 'Chicago',
+        employer_state: 'IL',
+        employer_zip: '60609',
+        time_employed: '11 years',
+      },
+      spouse: {
+        status: 'employed',
+        occupation: 'Grocery clerk',
+        employer_name: 'Demo Grocery',
+        employer_street: '510 Demo Rd',
+        employer_city: 'Chicago',
+        employer_state: 'IL',
+        employer_zip: '60609',
+        time_employed: '3 years',
+      },
+      line_11: 'no',
+      line_13: 'no',
+    },
   },
   deductions: { payroll_tax: 450 },
   spouse_deductions: { payroll_tax: 115 },
   expenses_include_others: 'yes',
+  schedule_j_line_24: 'no',
   expenses: {
     rent_or_mortgage: 0,
     utilities: 200,
@@ -1195,9 +1299,24 @@ export const SARAH: PersonaData = {
     business: [],
     now_different: 'no',
     assistance: { answer: 'no' },
+    schedule_i: {
+      you: {
+        status: 'employed',
+        occupation: 'Bookstore clerk',
+        employer_name: 'Demo Books',
+        employer_street: '600 Demo St',
+        employer_city: 'Chicago',
+        employer_state: 'IL',
+        employer_zip: '60622',
+        time_employed: '1 year',
+      },
+      line_11: 'no',
+      line_13: 'no',
+    },
   },
   deductions: { payroll_tax: 250 },
   expenses_include_others: 'no',
+  schedule_j_line_24: 'no',
   expenses: {
     rent_or_mortgage: 850,
     utilities: 80,
@@ -1329,9 +1448,18 @@ export const ANDRES: PersonaData = {
     ],
     now_different: 'no',
     assistance: { answer: 'no' },
+    schedule_i: {
+      you: {
+        status: 'employed',
+        occupation: 'Rideshare and delivery driver',
+      },
+      line_11: 'no',
+      line_13: 'no',
+    },
   },
   deductions: {},
   expenses_include_others: 'no',
+  schedule_j_line_24: 'no',
   expenses: {
     rent_or_mortgage: 1150,
     utilities: 210,

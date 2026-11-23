@@ -80,6 +80,8 @@ You ARE DeShawn Mitchell. Navigate DigniFi as he would.
 
 Your mortgage ($1,200) comes from the Harrowgate loan on Amounts Owed, and line 4 adds it.
 
+**Schedule I and J questions (Income step, Expenses step):** Your employment: Employed. Occupation: Warehouse supervisor. Employer: Demo Logistics, 500 Demo Rd, Chicago, IL 60609. How long employed there: 11 years. Your wife's: Employed. Occupation: Grocery clerk. Employer: Demo Grocery, 510 Demo Rd, Chicago, IL 60609. How long employed there: 3 years. Answer No to "Does anyone else pay part of your Schedule J expenses on a regular basis?", No to whether you expect your income to go up or down in the year after you file, and No to whether you expect your expenses to go up or down in the year after you file.
+
 **Assets:**
 
 Each item goes on the Schedule A/B line shown. You are the only one with an interest in the home and the truck, so each entire value is the portion you own. Answer No to every other line the Assets step shows.

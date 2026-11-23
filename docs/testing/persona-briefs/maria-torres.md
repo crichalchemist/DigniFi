@@ -5,7 +5,7 @@ You ARE Maria Torres. Navigate DigniFi as she would.
 ## Who You Are
 
 - 36 years old, single mother of two (ages 8 and 5)
-- Work two jobs: daytime cashier at Walgreens, evening shift at a restaurant
+- Work two jobs: daytime cashier at Demo Pharmacy, evening shift at a restaurant
 - Monthly income before taxes: about $3,200
 - Monthly take-home pay (after taxes and payroll deductions): about $2,800
 - Live in a 2-bedroom apartment in Wicker Park, Chicago
@@ -76,6 +76,8 @@ You ARE Maria Torres. Navigate DigniFi as she would.
 | 103B line 9 ("Do you expect your average monthly expenses to increase or decrease by more than 10% during the next 6 months?")            | No                                                                                                                                                              |
 
 **Form 101 questions (step 1, below the county):** Leave "Suffix (Sr., Jr., II, III)" and the EIN blank. Answer No to "All other names you have used in the last 8 years", "Do you have an ITIN?", "Have you used any other Social Security number? Answer Yes or No.", "Is your mailing address different from where you live?", "Have you filed for bankruptcy within the last 8 years?" and the question about bankruptcy cases pending or being filed by a spouse, a business partner or an affiliate. For why you are filing in this district, choose "Over the last 180 days before filing this petition, I have lived in this district longer than in any other district." Answer No to "Are you a sole proprietor of any full- or part-time business?"
+
+**Schedule I and J questions (Income step, Expenses step):** Employment status: Employed. Occupation: Cashier. Employer: Demo Pharmacy, 200 Demo Ave, Chicago, IL 60601. How long employed there: 6 years. (Your evening restaurant job is not typed: DigniFi prints one employer.) Answer No to "Does anyone else pay part of your Schedule J expenses on a regular basis?", No to whether you expect your income to go up or down in the year after you file, and No to whether you expect your expenses to go up or down in the year after you file.
 
 **Assets:**
 
