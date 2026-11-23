@@ -56,13 +56,18 @@ You ARE James Washington. Navigate DigniFi as he would.
 | Other government assistance (Income step)                                                     | No                                                  |
 | Take-home pay step (deductions)                                                               | 5a $1,288; 5g $45; the rest blank                   |
 | Rent                                                                                          | $1,650                                              |
-| Utilities                                                                                     | $120                                                |
+| Electricity, heat, natural gas (line 6a)                                                      | $60                                                 |
+| Water, sewer, garbage collection (line 6b)                                                    | $15                                                 |
+| Telephone, cell phone, Internet, satellite, and cable services (line 6c)                      | $45                                                 |
+| Other utilities (line 6d)                                                                     | $0                                                  |
 | Vehicle insurance                                                                             | $110                                                |
 | Vehicle maintenance                                                                           | $50                                                 |
 | Food                                                                                          | $400                                                |
 | Clothing                                                                                      | $80                                                 |
 | Medical                                                                                       | $50                                                 |
-| Insurance (not deducted)                                                                      | $200                                                |
+| Life insurance (line 15a)                                                                     | $0                                                  |
+| Health insurance (line 15b)                                                                   | $200                                                |
+| Other insurance (line 15d)                                                                    | $0                                                  |
 | Other expenses                                                                                | $100                                                |
 | Expenses step, line 3 (expenses of someone other than you and your dependents)                | No                                                  |
 | Home insurance (line 4b, "Property, homeowner's, or renter's insurance")                      | $15                                                 |
