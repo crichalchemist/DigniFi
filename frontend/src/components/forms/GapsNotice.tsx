@@ -19,6 +19,7 @@ import {
   PETITION_DETAIL_TOO_LONG,
   PETITION_DETAIL_TOO_LONG_101A,
   PETITION_DETAIL_TOO_LONG_ROW,
+  SCHEDULE_I_DETAIL_TOO_LONG,
 } from '../../constants/copy';
 import { WIZARD_STEPS } from '../../constants/wizardSteps';
 import type { CompletionGap } from '../../types/api';
@@ -50,12 +51,14 @@ const TOO_LONG_SENTENCES = [
   patternOf(PETITION_DETAIL_TOO_LONG),
   patternOf(PETITION_DETAIL_TOO_LONG_101A),
   patternOf(PETITION_DETAIL_TOO_LONG_ROW),
+  patternOf(SCHEDULE_I_DETAIL_TOO_LONG),
 ];
 
 /**
  * A too-long answer never prints blank: Generate refuses the form whose box can't take it (Form
- * 101, Form 101A or Form 103B; a row's {forms} names Form 101 or Form 103B, and Form 101A's own
- * sentence names it; Form 101A, like 103B, is measured only while it is in the packet), and a
+ * 101, Form 101A, Form 103B, Schedule I or Schedule J; a row's {forms} names Form 101 or Form 103B,
+ * and Form 101A's, Schedule I's and Schedule J's own sentences name them; Form 101A, like 103B, is
+ * measured only while it is in the packet), and a
  * text over its character cap that its box still takes prints whole. So the blank count leaves
  * it out
  */

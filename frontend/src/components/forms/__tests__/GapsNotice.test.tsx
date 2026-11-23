@@ -11,6 +11,7 @@ import {
   PETITION_DETAIL_TOO_LONG,
   PETITION_DETAIL_TOO_LONG_101A,
   PETITION_DETAIL_TOO_LONG_ROW,
+  SCHEDULE_I_DETAIL_TOO_LONG,
 } from '../../../constants/copy';
 import type { CompletionGap } from '../../../types/api';
 
@@ -140,6 +141,26 @@ describe('GapsNotice', () => {
 
     const notice = screen.getByRole('status');
     expect(within(notice).getByText(tooLong)).toBeInTheDocument();
+    expect(notice).not.toHaveTextContent(/blank/i);
+  });
+
+  it('a too-long Schedule I answer is not counted as a blank one', () => {
+    const tooLong = SCHEDULE_I_DETAIL_TOO_LONG.replace('{label}', "Employer's name").replace(
+      '{form}',
+      'Schedule I'
+    );
+    const tooLongJ = SCHEDULE_I_DETAIL_TOO_LONG.replace('{label}', 'Line 24, Explain').replace(
+      '{form}',
+      'Schedule J'
+    );
+    renderNotice([
+      { ...detail('income_info', tooLong), forms: ['schedule_i'] },
+      { ...detail('expense_info', tooLongJ), forms: ['schedule_j'] },
+    ]);
+
+    const notice = screen.getByRole('status');
+    expect(within(notice).getByText(tooLong)).toBeInTheDocument();
+    expect(within(notice).getByText(tooLongJ)).toBeInTheDocument();
     expect(notice).not.toHaveTextContent(/blank/i);
   });
 

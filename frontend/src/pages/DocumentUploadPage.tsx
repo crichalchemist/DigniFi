@@ -4,6 +4,7 @@ import { FileDropZone } from '../components/documents/FileDropZone';
 import { UploadQueue, type QueueItem } from '../components/documents/UploadQueue';
 import { uploadDocument, APIClientError } from '../api/client';
 import { useIntake } from '../context/IntakeContext';
+import { PAYSTUB_UPLOAD_HELP } from '../constants/copy';
 
 const ILND_DISTRICT_ID = 1;
 
@@ -16,7 +17,7 @@ const UPLOAD_AREAS = [
   {
     type: 'pay_stub',
     label: 'Pay stubs',
-    help: "Recent pay stubs from your job. Your employer's name is used for your income form (Schedule I).",
+    help: PAYSTUB_UPLOAD_HELP,
   },
   {
     type: 'credit_report',

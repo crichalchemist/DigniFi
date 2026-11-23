@@ -6,6 +6,7 @@ import { http, HttpResponse, delay } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider } from '../../context/IntakeContext';
 import { setAccessToken } from '../../api/client';
+import { PAYSTUB_UPLOAD_HELP } from '../../constants/copy';
 import { DocumentUploadPage } from '../DocumentUploadPage';
 
 const API = 'http://localhost:8000/api';
@@ -116,10 +117,10 @@ describe('DocumentUploadPage', () => {
     renderUploadPage();
     const payStubs = screen.getByRole('region', { name: 'Pay stubs' });
 
-    // Schedule I prints the pay typed on the Income step; a stub supplies only the employer's name.
-    expect(payStubs).toHaveTextContent(
-      "Your employer's name is used for your income form (Schedule I)."
-    );
+    // Schedule I prints the pay typed on the Income step; a stub supplies only the employer's name,
+    // which the Income step shows beside the box so the filer can check it (4c-R10).
+    expect(payStubs).toHaveTextContent(PAYSTUB_UPLOAD_HELP);
+    expect(payStubs).not.toHaveTextContent('is used for your income form');
     expect(payStubs).not.toHaveTextContent(/pay before taxes/i);
     await readyZone('Pay stubs');
   });
