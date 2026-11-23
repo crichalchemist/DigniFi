@@ -38,6 +38,7 @@ from apps.intake.tests.builders import (
     linked_lease,
     linked_loan,
 )
+from apps.intake.tests.test_expense_lines_storage import OLD_AMOUNTS
 from apps.users.models import User
 
 
@@ -273,7 +274,7 @@ def test_an_older_wizards_step_4_save_keeps_a_stored_retired_figure(filer, field
     Remove, a body of its own, may clear a figure the filer never chose to remove."""
     client, session = filer
     _store(session, **{field: "350"})
-    body = {name: "10.00" for name in ExpenseInfo.AMOUNT_FIELDS}
+    body = {name: "10.00" for name in OLD_AMOUNTS}
     body |= {name: 0 for name in ExpenseInfo.LEGACY_FIELDS}
 
     response = _patch(client, session, body)
