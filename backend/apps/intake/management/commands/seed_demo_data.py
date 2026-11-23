@@ -38,6 +38,7 @@ from apps.intake.models import (
     IntakeSession,
     MeansTestAnswers,
     PetitionAnswers,
+    ScheduleIAnswers,
     SecuredDebtAnswers,
     SOFACreditorPayment,
     SOFAPriorIncome,
@@ -188,6 +189,36 @@ def _petition(rents_residence: str, **more) -> dict:
     if rents_residence == "yes":
         answers["eviction_judgment"] = "no"
     return {**answers, **more}
+
+
+def _employer(occupation, name, street, city, state, zip_code, how_long, prefix="") -> dict:
+    """Schedule I line 1 for a person employed by one invented "Demo" employer: the status, the
+    occupation, the employer's name and address and how long. prefix "spouse_" is the spouse's
+    column."""
+    return {
+        f"{prefix}employment_status": "employed",
+        f"{prefix}occupation": occupation,
+        f"{prefix}employer_name": name,
+        f"{prefix}employer_street": street,
+        f"{prefix}employer_city": city,
+        f"{prefix}employer_state": state,
+        f"{prefix}employer_zip": zip_code,
+        f"{prefix}time_employed": how_long,
+    }
+
+
+def _schedule_i(*line_1: dict) -> dict:
+    """Schedule I's and Schedule J line 24's answers (4c): line 1 for the filer (and the spouse),
+    and No on lines 11 and 13 and Schedule J line 24, as every persona's brief reads."""
+    answers = {}
+    for block in line_1:
+        answers.update(block)
+    return {
+        **answers,
+        "line_11_answer": "no",
+        "line_13_answer": "no",
+        "schedule_j_line_24_answer": "no",
+    }
 
 
 def claim_links(session, pairs) -> list[dict]:
@@ -365,6 +396,13 @@ def _maria_torres() -> dict:
         "claims": {"contracts_answer": "yes", "codebtors_answer": "no", "community_lived": "no"},
         # Form 101's own questions on steps 1, 5 and 7 (4b-ii): she rents.
         "petition": _petition("yes"),
+        # Schedule I line 1 and lines 11, 13 and J 24 (4c): the job her brief names, renamed to
+        # an invented employer.
+        "schedule_i": _schedule_i(
+            _employer(
+                "Cashier", "Demo Pharmacy", "200 Demo Ave", "Chicago", "IL", "60601", "6 years"
+            )
+        ),
         # Schedule C, asked on the page after the filing-fee page (3g1)
         "exemptions": {
             "line_1": "state_and_federal",
@@ -532,6 +570,18 @@ def _james_washington() -> dict:
         "claims": {"contracts_answer": "yes", "codebtors_answer": "no", "community_lived": "no"},
         # Form 101's own questions on steps 1, 5 and 7 (4b-ii): he rents.
         "petition": _petition("yes"),
+        # Schedule I line 1 and lines 11, 13 and J 24 (4c)
+        "schedule_i": _schedule_i(
+            _employer(
+                "Maintenance technician",
+                "Demo Hotel",
+                "300 Demo Plaza",
+                "Chicago",
+                "IL",
+                "60602",
+                "9 years",
+            )
+        ),
         # Schedule C, asked on the page after the filing-fee page (3g1)
         "exemptions": {
             "line_1": "state_and_federal",
@@ -753,6 +803,28 @@ def _priya_sharma() -> dict:
         "claims": {"contracts_answer": "yes", "codebtors_answer": "yes", "community_lived": "no"},
         # Form 101's own questions on steps 1, 5 and 7 (4b-ii): she rents.
         "petition": _petition("yes"),
+        # Schedule I line 1, hers and her husband's, and lines 11, 13 and J 24 (4c)
+        "schedule_i": _schedule_i(
+            _employer(
+                "Software engineer",
+                "Demo Software LLC",
+                "400 Demo Blvd",
+                "Chicago",
+                "IL",
+                "60606",
+                "4 years",
+            ),
+            _employer(
+                "Tutor",
+                "Demo Tutoring Center",
+                "410 Demo Blvd",
+                "Chicago",
+                "IL",
+                "60606",
+                "2 years",
+                prefix="spouse_",
+            ),
+        ),
         # Schedule C, asked on the page after the filing-fee page (3g1)
         "exemptions": {
             "line_1": "state_and_federal",
@@ -979,6 +1051,28 @@ def _deshawn_mitchell() -> dict:
         "claims": {"contracts_answer": "no", "codebtors_answer": "no", "community_lived": "no"},
         # Form 101's own questions on steps 1, 5 and 7 (4b-ii): he owns the home he lives in.
         "petition": _petition("no"),
+        # Schedule I line 1, his and his wife's, and lines 11, 13 and J 24 (4c)
+        "schedule_i": _schedule_i(
+            _employer(
+                "Warehouse supervisor",
+                "Demo Logistics",
+                "500 Demo Rd",
+                "Chicago",
+                "IL",
+                "60609",
+                "11 years",
+            ),
+            _employer(
+                "Grocery clerk",
+                "Demo Grocery",
+                "510 Demo Rd",
+                "Chicago",
+                "IL",
+                "60609",
+                "3 years",
+                prefix="spouse_",
+            ),
+        ),
         # Schedule C, asked on the page after the filing-fee page (3g1)
         "exemptions": {
             "line_1": "state_and_federal",
@@ -1110,6 +1204,13 @@ def _sarah_chen() -> dict:
         "claims": {"contracts_answer": "yes", "codebtors_answer": "no", "community_lived": "no"},
         # Form 101's own questions on steps 1, 5 and 7 (4b-ii): she rents.
         "petition": _petition("yes"),
+        # Schedule I line 1 and lines 11, 13 and J 24 (4c): her roommate pays the landlord
+        # directly, so line 11 is No, and line 13's No matches her 103B line 4.
+        "schedule_i": _schedule_i(
+            _employer(
+                "Bookstore clerk", "Demo Books", "600 Demo St", "Chicago", "IL", "60622", "1 year"
+            )
+        ),
         # Schedule C, asked on the page after the filing-fee page (3g1)
         "exemptions": {
             "line_1": "state_and_federal",
@@ -1420,6 +1521,11 @@ def _andres_kettleby() -> dict:
             business_zip="60505",
             business_kind="none",
         ),
+        # Schedule I line 1 and lines 11, 13 and J 24 (4c): he works for himself, so no employer
+        # name (owner ruling P1), which leaves Schedule I's employer box blank, a detail.
+        "schedule_i": _schedule_i(
+            {"employment_status": "employed", "occupation": "Rideshare and delivery driver"}
+        ),
         # Schedule C, asked on the page after the filing-fee page (3g1)
         "exemptions": {
             "line_1": "state_and_federal",
@@ -1607,6 +1713,11 @@ class Command(BaseCommand):
         PetitionAnswers.objects.create(
             session=session,
             answers=json.dumps(data["petition"]),
+            answered_on=fill_date().isoformat(),
+        )
+        ScheduleIAnswers.objects.create(
+            session=session,
+            answers=json.dumps(data["schedule_i"]),
             answered_on=fill_date().isoformat(),
         )
 

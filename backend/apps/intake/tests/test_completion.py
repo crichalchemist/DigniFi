@@ -42,6 +42,7 @@ from apps.intake.petition import (
     GATE_RENTS,
     GATE_SOLE_PROPRIETOR,
 )
+from apps.intake.schedule_i import GATE_J24, GATE_LINE_11, GATE_LINE_13
 from apps.intake.tests.builders import (
     answer_asset_lines,
     answer_claims,
@@ -518,7 +519,12 @@ def test_complete_lists_every_gap_in_wizard_order(filer, district):
         {"step": "income_info", "message": ENTRIES_UNANSWERED},
         {"step": "income_info", "message": NOW_DIFFERENT_UNANSWERED},
         {"step": "income_info", "message": ASSISTANCE_UNANSWERED},
+        # Schedule I lines 11 and 13, after the Income step's own questions (4c-R2).
+        {"step": "income_info", "message": GATE_LINE_11},
+        {"step": "income_info", "message": GATE_LINE_13},
         {"step": "expense_info", "message": EXPENSES_STEP},
+        # Schedule J line 24, listed even while the Expenses step was never saved (4c-R2).
+        {"step": "expense_info", "message": GATE_J24},
         # The hazard ends the Assets step, whose own lines are all answered here.
         {"step": "assets", "message": GATE_HAZARD},
         {"step": "debts", "message": SCANNED_DEBTS},
