@@ -1150,7 +1150,9 @@ def _schedule_i_value_ok(key: str, value) -> bool:
     if key in ScheduleIAnswers.AMOUNT_KEYS:
         # What DecimalField(12, 2) holds: below 10 ** 10, by value, so leading zeros pass.
         return _SCHEDULE_I_AMOUNT.fullmatch(value) is not None and Decimal(value) < 10**10
-    if len(value) > ScheduleIAnswers.TEXT_CEILING:
+    # A text may be as long as its box's measured cap, which the browser's box allows: line 24's
+    # is above the flat ceiling.
+    if len(value) > max(ScheduleIAnswers.TEXT_CEILING, ScheduleIAnswers.TEXT_LIMITS.get(key, 0)):
         return False
     # Half of a surrogate pair can't be written as UTF-8, so every later read of the session
     # would fail to render: refuse it before anything is stored, as for Form 101's texts.

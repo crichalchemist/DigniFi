@@ -66,6 +66,33 @@ def test_a_text_over_500_characters_is_refused(filer):
     assert _patch(client, session, {"line_13_text": "x" * 500}).status_code == 200
 
 
+def test_line_24_takes_as_many_characters_as_its_box_cap(filer):
+    # The browser's box allows the measured cap (631), so the server must not refuse a text the
+    # box lets the filer type: that would be a 400 on every autosave.
+    client, session = filer
+    cap = ScheduleIAnswers.TEXT_LIMITS["schedule_j_line_24_text"]
+    assert cap == 631
+    assert _patch(client, session, {"schedule_j_line_24_text": "x" * cap}).status_code == 200
+    assert _stored(session) == {"schedule_j_line_24_text": "x" * cap}
+
+
+def test_line_24_refuses_a_text_one_past_its_box_cap_and_saves_nothing(filer):
+    client, session = filer
+    refused = _patch(client, session, {"schedule_j_line_24_text": "x" * 632})
+    assert refused.status_code == 400
+    assert refused.json() == {
+        "schedule_i_answers": ["Check the answer for schedule_j_line_24_text."]
+    }
+    assert not ScheduleIAnswers.objects.filter(session=session).exists()
+
+
+def test_a_text_with_a_smaller_cap_still_stops_at_500(filer):
+    client, session = filer
+    refused = _patch(client, session, {"line_13_text": "x" * 501})
+    assert refused.status_code == 400
+    assert not ScheduleIAnswers.objects.filter(session=session).exists()
+
+
 @pytest.mark.parametrize("amount", ["-1", "1e3", "abc", "10000000000.00", 12, "", "12."])
 def test_an_amount_that_is_not_a_plain_decimal_at_or_above_zero_is_refused(filer, amount):
     # Stored, any of these would make the line 11 and line 12 boxes fail at Generate.
