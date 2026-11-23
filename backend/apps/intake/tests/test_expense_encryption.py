@@ -54,6 +54,11 @@ EXPENSE_AMOUNTS = [
     "child_support_paid",
     "insurance_not_deducted",
     "other_expenses",
+    "electricity_heat_gas",
+    "water_sewer_garbage",
+    "phone_internet_cable",
+    "life_insurance",
+    "health_insurance",
 ]
 
 
@@ -84,9 +89,22 @@ def test_an_empty_expenses_body_still_creates_the_row_with_zero_amounts(filer): 
 
 
 @pytest.mark.parametrize("amount", ["-1.00", "100000000.00"], ids=["negative", "too_wide"])
-def test_an_expense_amount_outside_the_forms_boxes_is_refused(filer, amount):
+@pytest.mark.parametrize(
+    "field",
+    [
+        "utilities",
+        "electricity_heat_gas",
+        "water_sewer_garbage",
+        "phone_internet_cable",
+        "life_insurance",
+        "health_insurance",
+    ],
+)
+def test_an_expense_amount_outside_the_forms_boxes_is_refused(filer, field, amount):
     client, session = filer
-    assert _save(client, session, {"expense_info": {"utilities": amount}}).status_code == 400
+    response = _save(client, session, {"expense_info": {field: amount}})
+    assert response.status_code == 400
+    assert field in response.json()["expense_info"]
 
 
 def test_the_data_source_stays_plaintext(filer):  # not filer data (spec §3.1)

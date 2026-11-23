@@ -334,9 +334,16 @@ export interface PersonaData {
   expenses_include_others: 'yes' | 'no';
   // Schedule J line 24, answered on the Expenses step
   schedule_j_line_24: 'yes' | 'no';
-  // The Specify boxes beside lines 16, 19 and 21, typed only by a persona who has something to say
+  // The Specify boxes beside lines 6d, 15d, 16, 19 and 21, typed only by a persona who has something to say
   expense_texts?: Partial<
-    Record<'taxes_specify' | 'support_others_specify' | 'other_expenses_specify', string>
+    Record<
+      | 'utilities_specify'
+      | 'insurance_specify'
+      | 'taxes_specify'
+      | 'support_others_specify'
+      | 'other_expenses_specify',
+      string
+    >
   >;
   assets: PersonaAsset[];
   /** Gate lines answered Yes: Part 5's lines show only under 37's Yes (Part 6's under 46's) */
@@ -481,7 +488,10 @@ export const MARIA: PersonaData = {
   schedule_j_line_24: 'no',
   expenses: {
     rent_or_mortgage: 1100,
-    utilities: 180,
+    electricity_heat_gas: 95,
+    water_sewer_garbage: 25,
+    phone_internet_cable: 60,
+    utilities: 0,
     home_maintenance: 0,
     vehicle_insurance: 85,
     vehicle_maintenance: 40,
@@ -490,7 +500,9 @@ export const MARIA: PersonaData = {
     medical_expenses: 75,
     childcare: 400,
     child_support_paid: 0,
-    insurance_not_deducted: 120,
+    life_insurance: 120,
+    health_insurance: 0,
+    insurance_not_deducted: 0,
     other_expenses: 50,
     personal_care: 40,
   },
@@ -661,7 +673,10 @@ export const JAMES: PersonaData = {
   schedule_j_line_24: 'no',
   expenses: {
     rent_or_mortgage: 1650,
-    utilities: 120,
+    electricity_heat_gas: 60,
+    water_sewer_garbage: 15,
+    phone_internet_cable: 45,
+    utilities: 0,
     home_maintenance: 0,
     vehicle_insurance: 110,
     vehicle_maintenance: 50,
@@ -670,7 +685,9 @@ export const JAMES: PersonaData = {
     medical_expenses: 50,
     childcare: 0,
     child_support_paid: 0,
-    insurance_not_deducted: 200,
+    life_insurance: 0,
+    health_insurance: 200,
+    insurance_not_deducted: 0,
     other_expenses: 100,
     home_insurance: 15,
     personal_care: 40,
@@ -850,7 +867,10 @@ export const PRIYA: PersonaData = {
   schedule_j_line_24: 'no',
   expenses: {
     rent_or_mortgage: 2800,
-    utilities: 250,
+    electricity_heat_gas: 120,
+    water_sewer_garbage: 40,
+    phone_internet_cable: 90,
+    utilities: 0,
     home_maintenance: 100,
     vehicle_insurance: 180,
     vehicle_maintenance: 60,
@@ -859,7 +879,9 @@ export const PRIYA: PersonaData = {
     medical_expenses: 100,
     childcare: 1200,
     child_support_paid: 0,
-    insurance_not_deducted: 350,
+    life_insurance: 170,
+    health_insurance: 0,
+    insurance_not_deducted: 180,
     other_expenses: 200,
     home_insurance: 20,
     personal_care: 60,
@@ -868,6 +890,7 @@ export const PRIYA: PersonaData = {
     taxes_not_deducted: 200,
   },
   expense_texts: {
+    insurance_specify: 'Disability insurance',
     taxes_specify: 'IRS installment agreement, 2025 tax',
     other_expenses_specify: "Children's after-school activities",
   },
@@ -1124,7 +1147,10 @@ export const DESHAWN: PersonaData = {
   schedule_j_line_24: 'no',
   expenses: {
     rent_or_mortgage: 0,
-    utilities: 200,
+    electricity_heat_gas: 95,
+    water_sewer_garbage: 30,
+    phone_internet_cable: 55,
+    utilities: 20,
     home_maintenance: 100,
     vehicle_insurance: 95,
     vehicle_maintenance: 50,
@@ -1133,13 +1159,16 @@ export const DESHAWN: PersonaData = {
     medical_expenses: 60,
     childcare: 0,
     child_support_paid: 0,
-    insurance_not_deducted: 150,
+    life_insurance: 0,
+    health_insurance: 150,
+    insurance_not_deducted: 0,
     other_expenses: 40,
     personal_care: 40,
     entertainment: 25,
     charitable_contributions: 50,
   },
   expense_texts: {
+    utilities_specify: 'Septic tank pumping',
     other_expenses_specify: 'Printer ink, paper and postage',
   },
   assets: [
@@ -1319,7 +1348,10 @@ export const SARAH: PersonaData = {
   schedule_j_line_24: 'no',
   expenses: {
     rent_or_mortgage: 850,
-    utilities: 80,
+    electricity_heat_gas: 45,
+    water_sewer_garbage: 0,
+    phone_internet_cable: 35,
+    utilities: 0,
     home_maintenance: 0,
     vehicle_insurance: 0,
     vehicle_maintenance: 0,
@@ -1328,6 +1360,8 @@ export const SARAH: PersonaData = {
     medical_expenses: 20,
     childcare: 0,
     child_support_paid: 0,
+    life_insurance: 0,
+    health_insurance: 0,
     insurance_not_deducted: 0,
     other_expenses: 0,
     personal_care: 30,
@@ -1462,7 +1496,10 @@ export const ANDRES: PersonaData = {
   schedule_j_line_24: 'no',
   expenses: {
     rent_or_mortgage: 1150,
-    utilities: 210,
+    electricity_heat_gas: 110,
+    water_sewer_garbage: 0,
+    phone_internet_cable: 100,
+    utilities: 0,
     home_maintenance: 0,
     vehicle_insurance: 165,
     vehicle_maintenance: 60,
@@ -1471,6 +1508,8 @@ export const ANDRES: PersonaData = {
     medical_expenses: 45,
     childcare: 180,
     child_support_paid: 0,
+    life_insurance: 0,
+    health_insurance: 0,
     insurance_not_deducted: 0,
     other_expenses: 0,
     home_insurance: 15,

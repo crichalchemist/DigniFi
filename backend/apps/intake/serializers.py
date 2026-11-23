@@ -405,6 +405,21 @@ class ExpenseInfoSerializer(serializers.ModelSerializer):
     other_property_hoa_dues = serializers.DecimalField(
         max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
     )
+    electricity_heat_gas = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    water_sewer_garbage = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    phone_internet_cable = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    life_insurance = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    health_insurance = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
     # Retired (3c4): a 0 sent on its own is Remove, and any other figure is dropped in validate.
     vehicle_payment = serializers.DecimalField(
         max_digits=10, decimal_places=2, min_value=Decimal("0"), write_only=True, required=False
@@ -412,6 +427,8 @@ class ExpenseInfoSerializer(serializers.ModelSerializer):
     other_property_mortgages = serializers.DecimalField(
         max_digits=10, decimal_places=2, min_value=Decimal("0"), write_only=True, required=False
     )
+    utilities_specify = serializers.CharField(max_length=100, allow_blank=True, required=False)
+    insurance_specify = serializers.CharField(max_length=100, allow_blank=True, required=False)
     taxes_specify = serializers.CharField(max_length=100, allow_blank=True, required=False)
     support_others_specify = serializers.CharField(max_length=100, allow_blank=True, required=False)
     other_expenses_specify = serializers.CharField(max_length=100, allow_blank=True, required=False)

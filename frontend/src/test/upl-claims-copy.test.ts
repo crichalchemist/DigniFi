@@ -11,6 +11,7 @@
 
 import { describe, expect, it } from 'vitest';
 import * as copy from '../constants/copy';
+import copySource from '../constants/copy.ts?raw';
 
 const ADVICE: RegExp[] = [
   /\bshould\b/i,
@@ -150,6 +151,8 @@ export const OTHER_CLAIM_SENTENCES: Record<string, string> = {
   CODEBTOR_ADDRESS_HELP: copy.CODEBTOR_ADDRESS_HELP,
   LINE_4_HELP: copy.LINE_4_HELP,
   EXPENSES_LINKED_NOTE: copy.EXPENSES_LINKED_NOTE,
+  EXPENSES_LEGACY_UTILITIES: copy.EXPENSES_LEGACY_UTILITIES,
+  EXPENSES_LEGACY_INSURANCE: copy.EXPENSES_LEGACY_INSURANCE,
   LINE_4_PAY_BOTH: copy.LINE_4_PAY_BOTH,
   LINE_4_CLEAR: copy.LINE_4_CLEAR,
   NOT_SAVED_TRY_AGAIN: copy.NOT_SAVED_TRY_AGAIN,
@@ -219,4 +222,13 @@ describe('the claim steps give information, never advice', () => {
     expect(adviceIn('Enter $0 on the other line.')).toEqual([]);
     expect(adviceIn('Enter $0')).toEqual([]);
   });
+});
+
+describe('the Expenses step information lines', () => {
+  it.each(['EXPENSES_LEGACY_UTILITIES', 'EXPENSES_LEGACY_INSURANCE'])(
+    '%s carries counsel mark C-47 on the line above',
+    (name) => {
+      expect(copySource).toMatch(new RegExp(`// DRAFT: counsel C-47\\nexport const ${name}\\b`));
+    }
+  );
 });

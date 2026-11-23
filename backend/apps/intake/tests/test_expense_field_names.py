@@ -37,6 +37,11 @@ CANONICAL_EXPENSES = {
     "other_property_insurance": "30.00",
     "other_property_upkeep": "25.00",
     "other_property_hoa_dues": "20.00",
+    "electricity_heat_gas": "130.00",
+    "water_sewer_garbage": "45.00",
+    "phone_internet_cable": "95.00",
+    "life_insurance": "30.00",
+    "health_insurance": "60.00",
 }
 
 
@@ -57,4 +62,5 @@ def test_expense_saved_under_each_canonical_name_is_stored_and_returned(filer_se
     returned = client.get(f"/api/intake/sessions/{session.pk}/").json()["expense_info"]
     for name, amount in CANONICAL_EXPENSES.items():
         assert returned[name] == amount, name
-    assert returned["total_monthly_expenses"] == 2785.0 + 900.0
+    # 2785 (the first 12) + 900 (the next 12) + 360 (130 + 45 + 95 + 30 + 60, the split lines)
+    assert returned["total_monthly_expenses"] == 2785.0 + 900.0 + 360.0

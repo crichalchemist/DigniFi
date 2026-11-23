@@ -511,6 +511,9 @@ class ExpenseInfo(models.Model):
         "home_insurance",
         "home_maintenance",
         "hoa_dues",
+        "electricity_heat_gas",
+        "water_sewer_garbage",
+        "phone_internet_cable",
         "utilities",
         "food_and_groceries",
         "childcare",
@@ -520,6 +523,8 @@ class ExpenseInfo(models.Model):
         "vehicle_maintenance",
         "entertainment",
         "charitable_contributions",
+        "life_insurance",
+        "health_insurance",
         "vehicle_insurance",
         "insurance_not_deducted",
         "taxes_not_deducted",
@@ -535,6 +540,8 @@ class ExpenseInfo(models.Model):
     # stay in the table, encrypted, and no total reads them.
     LEGACY_FIELDS: ClassVar[tuple[str, ...]] = ("vehicle_payment", "other_property_mortgages")
     SPECIFY_FIELDS: ClassVar[tuple[str, ...]] = (
+        "utilities_specify",
+        "insurance_specify",
         "taxes_specify",
         "support_others_specify",
         "other_expenses_specify",
@@ -561,7 +568,7 @@ class ExpenseInfo(models.Model):
         max_digits=10,
         decimal_places=2,
         default=0,
-        help_text="Gas, electric, water, etc.",
+        help_text="Schedule J line 6d, Utilities: Other",
     )
     home_maintenance = EncryptedDecimalField(
         max_digits=10, decimal_places=2, default=0, help_text="Repairs and upkeep"
@@ -604,7 +611,7 @@ class ExpenseInfo(models.Model):
         max_digits=10,
         decimal_places=2,
         default=0,
-        help_text="Health, life, or disability insurance not deducted from paycheck",
+        help_text="Schedule J line 15d, Other insurance",
     )
     other_expenses = EncryptedDecimalField(
         max_digits=10,
@@ -627,6 +634,15 @@ class ExpenseInfo(models.Model):
     other_property_insurance = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
     other_property_upkeep = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
     other_property_hoa_dues = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    # Schedule J lines 6a-6c, 15a and 15b, split out of utilities (6d) and insurance_not_deducted
+    # (15d) in 4c2, and the Specify texts of 6d and 15d
+    electricity_heat_gas = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    water_sewer_garbage = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    phone_internet_cable = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    life_insurance = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    health_insurance = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    utilities_specify = EncryptedCharField(max_length=100, blank=True, default="")
+    insurance_specify = EncryptedCharField(max_length=100, blank=True, default="")
     taxes_specify = EncryptedCharField(max_length=100, blank=True, default="")
     support_others_specify = EncryptedCharField(max_length=100, blank=True, default="")
     other_expenses_specify = EncryptedCharField(max_length=100, blank=True, default="")

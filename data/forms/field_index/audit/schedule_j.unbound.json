@@ -196,22 +196,6 @@
     "known": "DIG-52"
   },
   {
-    "pdf_field": "6c",
-    "widgets": [
-      {
-        "full_name": "6c",
-        "page": 2,
-        "tag": "T6",
-        "line": "6c",
-        "label": "Telephone, cell phone, Internet, satellite, and cable services",
-        "column": "Your expenses",
-        "on_state": null
-      }
-    ],
-    "why": "Line 6c 'Telephone, cell phone, Internet, satellite, and cable services'. No expense field exists; utilities is one lumped number.",
-    "known": "NEW"
-  },
-  {
     "pdf_field": "22b",
     "widgets": [
       {
