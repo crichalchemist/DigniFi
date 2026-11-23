@@ -15,6 +15,7 @@ import {
   FORM_106J_LINE_24_YES,
   LINE_3_QUESTION,
   LINE_4_GROUP_HEADING,
+  LINE_6_GROUP_HEADING,
   LINE_15_GROUP_HEADING,
   LINE_20_GROUP_HEADING,
   NONCASH_EXPENSES_SENTENCE,
@@ -22,6 +23,8 @@ import {
 import {
   CLAIM_GAP_LINE_4,
   DOUBLE_COUNT_EXPENSES_NOTE,
+  EXPENSES_LEGACY_INSURANCE,
+  EXPENSES_LEGACY_UTILITIES,
   EXPENSES_LINKED_NOTE,
   HIDDEN_ANSWERS,
   LINE_3_INFO,
@@ -127,10 +130,12 @@ describe('ExpenseInfoStep', () => {
     );
     expect(amounts.map((box) => box.name)).toEqual([...EXPENSE_FIELDS]);
     for (const field of EXPENSE_FIELDS) {
+      // Lines 6d and 21 are both "Other" in the form's words, so every box is found by name
       expect(inputNamed(field)).toHaveAccessibleName(EXPENSE_LINE_WORDS[field]);
     }
     for (const words of [
       LINE_4_GROUP_HEADING,
+      LINE_6_GROUP_HEADING,
       LINE_15_GROUP_HEADING,
       LINE_20_GROUP_HEADING,
       NONCASH_EXPENSES_SENTENCE,
@@ -163,14 +168,110 @@ describe('ExpenseInfoStep', () => {
     expect(line3).toHaveAccessibleDescription(LINE_3_INFO);
   });
 
-  it('asks 24 amounts and adds them into the monthly total', () => {
+  it('asks 29 amounts and adds them into the monthly total', () => {
     const { inputNamed, lastEmitted } = renderStep();
-    expect(EXPENSE_FIELDS).toHaveLength(24);
+    expect(EXPENSE_FIELDS).toHaveLength(29);
     for (const field of EXPENSE_FIELDS) {
       fireEvent.change(inputNamed(field)!, { target: { value: '1' } });
     }
-    expect(screen.getByText('$24.00')).toBeInTheDocument();
-    expect(lastEmitted().total_monthly_expenses).toBe(24);
+    expect(screen.getByText('$29.00')).toBeInTheDocument();
+    expect(lastEmitted().total_monthly_expenses).toBe(29);
+  });
+
+  it("line 6 asks each utility in the form's words inside its Utilities group", () => {
+    const { inputNamed } = renderStep();
+    const group = screen.getByRole('group', { name: LINE_6_GROUP_HEADING });
+    const names = Array.from(group.querySelectorAll<HTMLInputElement>('input')).map((i) => i.name);
+    expect(names).toEqual([
+      'electricity_heat_gas',
+      'water_sewer_garbage',
+      'phone_internet_cable',
+      'utilities',
+      'utilities_specify',
+    ]);
+    // 6d is found by its name: line 21 is "Other" too
+    expect(inputNamed('utilities')).toHaveAccessibleName('Other');
+    expect(group.contains(inputNamed('utilities'))).toBe(true);
+    expect(group.contains(inputNamed('utilities_specify'))).toBe(true);
+    expect(inputNamed('utilities_specify')).toHaveAccessibleName(
+      EXPENSE_SPECIFY_WORDS.utilities_specify
+    );
+  });
+
+  it('line 15 asks life and health insurance before vehicle and other insurance', () => {
+    renderStep();
+    const group = screen.getByRole('group', { name: LINE_15_GROUP_HEADING });
+    const names = Array.from(group.querySelectorAll<HTMLInputElement>('input')).map((i) => i.name);
+    expect(names).toEqual([
+      'life_insurance',
+      'health_insurance',
+      'vehicle_insurance',
+      'insurance_not_deducted',
+      'insurance_specify',
+    ]);
+  });
+
+  it('the utilities and insurance help texts are gone', () => {
+    renderStep();
+    expect(screen.queryByText('Electric, gas, water, trash, internet, phone')).toBeNull();
+    expect(screen.queryByText('Health, life, or disability insurance you pay directly')).toBeNull();
+    expect(screen.getByText('Monthly auto insurance premium')).toBeInTheDocument();
+  });
+
+  describe.each([
+    {
+      group: 'utilities',
+      other: 'utilities',
+      specify: 'utilities_specify',
+      words: 'Utilities (combined)',
+      sentence: EXPENSES_LEGACY_UTILITIES,
+      line: 'phone_internet_cable',
+    },
+    {
+      group: 'insurance',
+      other: 'insurance_not_deducted',
+      specify: 'insurance_specify',
+      words: 'Insurance (combined)',
+      sentence: EXPENSES_LEGACY_INSURANCE,
+      line: 'health_insurance',
+    },
+  ] as const)('the $group information line', ({ other, specify, words, sentence, line }) => {
+    const saved = { [other]: 180, [specify]: words } as Partial<ExpenseInfo>;
+
+    it('a total saved before the split shows its information line under the Specify box', () => {
+      const { inputNamed } = renderStep(saved);
+      expect(inputNamed(specify)).toHaveAccessibleDescription(sentence);
+      expect(screen.getByText(sentence)).toBeInTheDocument();
+      expect(screen.queryByRole('status', { name: sentence })).toBeNull();
+    });
+
+    it('the information line goes on the first keystroke in the words', () => {
+      const { inputNamed } = renderStep(saved);
+      fireEvent.change(inputNamed(specify)!, { target: { value: `${words}x` } });
+      expect(screen.queryByText(sentence)).toBeNull();
+    });
+
+    it('the information line goes once a line of its group has an amount', () => {
+      const { inputNamed } = renderStep(saved);
+      fireEvent.change(inputNamed(line)!, { target: { value: '30' } });
+      expect(screen.queryByText(sentence)).toBeNull();
+    });
+
+    it('the information line never shows for words the filer typed', () => {
+      renderStep({ [other]: 180, [specify]: 'Septic tank pumping' } as Partial<ExpenseInfo>);
+      expect(screen.queryByText(sentence)).toBeNull();
+    });
+
+    it('the information line never shows when the Other amount is $0', () => {
+      renderStep({ [other]: 0, [specify]: words } as Partial<ExpenseInfo>);
+      expect(screen.queryByText(sentence)).toBeNull();
+    });
+
+    it('the information line holds nothing back', () => {
+      const { canContinue } = renderStep(saved);
+      expect(screen.getByText(sentence)).toBeInTheDocument();
+      expect(canContinue()).toBe(true);
+    });
   });
 
   it('has no box for a car payment or a mortgage on other property', () => {
@@ -277,6 +378,8 @@ describe('ExpenseInfoStep', () => {
   });
 
   it.each([
+    ['utilities', 'utilities_specify'],
+    ['insurance_not_deducted', 'insurance_specify'],
     ['taxes_not_deducted', 'taxes_specify'],
     ['support_others', 'support_others_specify'],
     ['other_expenses', 'other_expenses_specify'],

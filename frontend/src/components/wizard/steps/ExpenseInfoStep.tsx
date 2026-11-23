@@ -24,6 +24,7 @@ import type {
 import { EXPENSE_FIELDS } from '../../../types/api';
 import { LineQuestion } from './scheduleI/LineQuestion';
 import { lineTwentyFourGate } from './scheduleI/scheduleIGaps';
+import { legacyTotalShown } from './expenses/legacyTotal';
 import {
   EXPENSES_HEADING,
   EXPENSE_LINE_WORDS,
@@ -33,6 +34,7 @@ import {
   FORM_106J_LINE_24_YES,
   LINE_3_QUESTION,
   LINE_4_GROUP_HEADING,
+  LINE_6_GROUP_HEADING,
   LINE_15_GROUP_HEADING,
   LINE_20_GROUP_HEADING,
   NONCASH_EXPENSES_SENTENCE,
@@ -40,6 +42,8 @@ import {
 import {
   CLAIM_GAP_LINE_4,
   DOUBLE_COUNT_EXPENSES_NOTE,
+  EXPENSES_LEGACY_INSURANCE,
+  EXPENSES_LEGACY_UTILITIES,
   EXPENSES_LINKED_NOTE,
   EXPENSE_HELP_HOME_MAINTENANCE,
   EXPENSE_HELP_OTHER,
@@ -72,14 +76,12 @@ const toCents = (amount: number) => Math.round(amount * 100);
 // form's words alone.
 const EXPENSE_HELP: Partial<Record<ExpenseField, string>> = {
   rent_or_mortgage: LINE_4_HELP,
-  utilities: 'Electric, gas, water, trash, internet, phone',
   home_maintenance: EXPENSE_HELP_HOME_MAINTENANCE,
   vehicle_insurance: 'Monthly auto insurance premium',
   vehicle_maintenance: 'Gas, public transit, parking, tolls',
   food_and_groceries: 'Groceries, dining out, household supplies',
   childcare: 'Daycare, after-school care, babysitting',
   medical_expenses: 'Doctor visits, prescriptions, co-pays not covered by insurance',
-  insurance_not_deducted: 'Health, life, or disability insurance you pay directly',
   clothing: 'Clothes, shoes, laundry, and dry cleaning',
   child_support_paid: 'Court-ordered support you pay to someone else',
   other_expenses: EXPENSE_HELP_OTHER,
@@ -198,7 +200,7 @@ export function ExpenseInfoStep({
     />
   );
 
-  const specifyBox = (field: ExpenseSpecifyField) => (
+  const specifyBox = (field: ExpenseSpecifyField, helpText?: string) => (
     <FormField
       key={field}
       label={EXPENSE_SPECIFY_WORDS[field]}
@@ -207,6 +209,7 @@ export function ExpenseInfoStep({
       maxLength={100}
       value={formData[field] ?? ''}
       onChange={(e) => handleTextChange(field, e.target.value)}
+      helpText={helpText}
     />
   );
 
@@ -317,7 +320,18 @@ export function ExpenseInfoStep({
           {amountBox('hoa_dues')}
         </fieldset>
 
-        {amountBox('utilities')}
+        <fieldset className="form-field">
+          <legend className="form-label">{LINE_6_GROUP_HEADING}</legend>
+          {amountBox('electricity_heat_gas')}
+          {amountBox('water_sewer_garbage')}
+          {amountBox('phone_internet_cable')}
+          {amountBox('utilities')}
+          {specifyBox(
+            'utilities_specify',
+            legacyTotalShown(formData, 'utilities') ? EXPENSES_LEGACY_UTILITIES : undefined
+          )}
+        </fieldset>
+
         {amountBox('food_and_groceries')}
         {amountBox('childcare')}
         {amountBox('clothing')}
@@ -329,8 +343,14 @@ export function ExpenseInfoStep({
 
         <fieldset className="form-field">
           <legend className="form-label">{LINE_15_GROUP_HEADING}</legend>
+          {amountBox('life_insurance')}
+          {amountBox('health_insurance')}
           {amountBox('vehicle_insurance')}
           {amountBox('insurance_not_deducted')}
+          {specifyBox(
+            'insurance_specify',
+            legacyTotalShown(formData, 'insurance') ? EXPENSES_LEGACY_INSURANCE : undefined
+          )}
         </fieldset>
 
         {amountBox('taxes_not_deducted')}

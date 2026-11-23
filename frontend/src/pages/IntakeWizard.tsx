@@ -691,7 +691,7 @@ export function IntakeWizard() {
       }
 
       case 'expense_info': {
-        // The 24 amounts, the three Specify texts and line 3. The total is read-only on the
+        // The 29 amounts, the five Specify texts and line 3. The total is read-only on the
         // server: the step adds it up in floating point, so it can differ from the server's
         // decimal sum in the last digit. A blank box is sent as 0, the column's default; left
         // out, a box the filer cleared would keep its old amount on the server (DIG-55). A
