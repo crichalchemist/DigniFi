@@ -87,8 +87,10 @@ import {
 } from '../components/wizard/steps/petition/petitionGaps';
 import { divisionOf } from '../constants/counties';
 import {
+  lineTwentyFourGate,
   scheduleIGate,
   STEP_2_SCHEDULE_I_KEYS,
+  STEP_4_SCHEDULE_I_KEYS,
 } from '../components/wizard/steps/scheduleI/scheduleIGaps';
 
 // ============================================================================
@@ -226,6 +228,17 @@ function step2ScheduleIBody(
   if (typeof body.line_11_amount === 'string' && body.line_11_amount.trim() === '') {
     body.line_11_amount = null;
   }
+  return body;
+}
+
+/**
+ * Step 4's `schedule_i_answers` (4c-R7): Schedule J's line 24 alone, both keys null when
+ * unanswered, built the same way from loaded and edited answers. A text kept under No still goes.
+ * `answered_on` and step 2's keys are never sent, so neither step's saved copy overwrites the other.
+ */
+function step4ScheduleIBody(answers: ScheduleIAnswers): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  for (const key of STEP_4_SCHEDULE_I_KEYS) body[key] = answers[key] ?? null;
   return body;
 }
 
@@ -681,12 +694,16 @@ export function IntakeWizard() {
         // server: the step adds it up in floating point, so it can differ from the server's
         // decimal sum in the last digit. A blank box is sent as 0, the column's default; left
         // out, a box the filer cleared would keep its old amount on the server (DIG-55). A
-        // blank Specify box is '' and an unanswered line 3 is null.
+        // blank Specify box is '' and an unanswered line 3 is null. Schedule J's line 24 rides
+        // beside it in `schedule_i_answers`, never inside `expense_info`.
         const expenses: Partial<ExpenseInfo> = {};
         for (const field of EXPENSE_FIELDS) expenses[field] = expenseData[field] ?? 0;
         for (const field of EXPENSE_SPECIFY_FIELDS) expenses[field] = expenseData[field] ?? '';
         expenses.expenses_include_others = expenseData.expenses_include_others ?? null;
-        return { expense_info: expenses } as Partial<IntakeSession>;
+        return {
+          expense_info: expenses,
+          schedule_i_answers: step4ScheduleIBody(scheduleIAnswers),
+        } as Partial<IntakeSession>;
       }
 
       case 'assets':
@@ -786,8 +803,14 @@ export function IntakeWizard() {
   });
 
   // What Continue waits for beyond the step's own checks (4c-R4): the Income step's lines 11 and
-  // 13. Autosave keeps reading the step's checks alone, so typed income saves while it waits.
-  const gate = currentStepKey === 'income_info' ? scheduleIGate(scheduleIAnswers) : null;
+  // 13, the Expenses step's line 24. Autosave keeps reading the step's checks alone, so typed
+  // amounts save while it waits.
+  const gate =
+    currentStepKey === 'income_info'
+      ? scheduleIGate(scheduleIAnswers)
+      : currentStepKey === 'expense_info'
+        ? lineTwentyFourGate(scheduleIAnswers)
+        : null;
 
   // Every way onto a step but the first read. The Assets step opens at the first Part with
   // something left, wherever the filer last was on it.
@@ -1196,6 +1219,8 @@ export function IntakeWizard() {
             linkedFirstMortgage={linkedSums(debtsData, contractsData, assetsData).firstMortgage}
             line4Confirmed={claimAnswers.line_4_both_confirmed ?? null}
             onLine4Confirm={confirmLine4}
+            scheduleIAnswers={scheduleIAnswers}
+            onScheduleIAnswersChange={setScheduleIAnswers}
           />
         );
 

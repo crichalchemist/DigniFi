@@ -44,6 +44,7 @@ import {
   REVIEW_GAPS_UNAVAILABLE,
   REVIEW_NO_DEBTS,
   REVIEW_NOTHING_MISSING,
+  SCHEDULE_I_GATE_J24,
   SCHEDULE_I_GATE_LINE_11,
   SCHEDULE_I_GATE_LINE_13,
 } from '../../constants/copy';
@@ -4015,7 +4016,13 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
 
   /** Serve a session sitting on the Expenses step (step 4); returns the PATCH bodies. */
   function serveExpensesSession(expense_info: Record<string, unknown> | null) {
-    const savedSession = { ...sessionAtStep1, current_step: 4, expense_info };
+    // Line 24 is answered, so Continue waits for nothing and step 4's body carries its keys
+    const savedSession = {
+      ...sessionAtStep1,
+      current_step: 4,
+      expense_info,
+      schedule_i_answers: { schedule_j_line_24_answer: 'no' },
+    };
     const patchBodies: Record<string, unknown>[] = [];
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
@@ -4052,7 +4059,7 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
     await screen.findByRole('heading', { name: /assets/i, level: 2 });
 
     const body = patchBodies[patchBodies.length - 1];
-    expect(Object.keys(body)).toEqual(['expense_info']);
+    expect(Object.keys(body)).toEqual(['expense_info', 'schedule_i_answers']);
     const expenseInfo = body.expense_info as Record<string, unknown>;
     // The 24 amounts, the three Specify texts and line 3, in that order, and nothing else (DRF
     // drops any other name silently). The boxes the filer left alone keep their saved amounts.
@@ -4136,6 +4143,161 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
 });
 
 // ===========================================================================
+// Schedule J line 24 on the Expenses step (4c spec §6.2)
+// ===========================================================================
+
+describe('IntakeWizard Schedule J line 24 on the Expenses step', { timeout: 30_000 }, () => {
+  const stored = {
+    ...sessionAtStep1,
+    current_step: 4,
+    expense_info: { data_source: 'manual', rent_or_mortgage: '1100.00' },
+  };
+  const openExpenses = () => screen.findByRole('heading', { name: /expenses/i, level: 2 });
+  const statusLine = () => document.querySelector('.expense-info-step > [role="status"]');
+  const continueButton = () => screen.getByRole('button', { name: 'Continue' });
+
+  function serve(scheduleIAnswers: Record<string, unknown>) {
+    const session = { ...stored, schedule_i_answers: scheduleIAnswers };
+    const bodies: Record<string, unknown>[] = [];
+    const stepUpdates: number[] = [];
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () => HttpResponse.json(session)),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+        bodies.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json(session);
+      }),
+      http.post(
+        'http://localhost:8000/api/intake/sessions/:id/update_step/',
+        async ({ request }) => {
+          const { current_step } = (await request.json()) as { current_step: number };
+          stepUpdates.push(current_step);
+          return HttpResponse.json({ session: { ...session, current_step }, message: 'ok' });
+        }
+      ),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+    return { bodies, stepUpdates };
+  }
+
+  it("step 4's body carries only the line 24 keys, never inside expense_info", async () => {
+    // Step 2's keys and the read-only date are on the record; none of them is step 4's to send
+    const { bodies } = serve({
+      employment_status: 'employed',
+      employer_name: 'Demo Diner',
+      line_11_answer: 'no',
+      schedule_j_line_24_answer: 'yes',
+      schedule_j_line_24_text: 'The car loan ends in May',
+      answered_on: '2026-10-16',
+    });
+    renderWizard();
+    await openExpenses();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('utilities'), { target: { value: '90' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const body = bodies.at(-1) as Record<string, unknown>;
+    expect(Object.keys(body)).toEqual(['expense_info', 'schedule_i_answers']);
+    expect(body.schedule_i_answers).toEqual({
+      schedule_j_line_24_answer: 'yes',
+      schedule_j_line_24_text: 'The car loan ends in May',
+    });
+    const expenseInfo = body.expense_info as Record<string, unknown>;
+    expect(expenseInfo).not.toHaveProperty('schedule_j_line_24_answer');
+    expect(expenseInfo).not.toHaveProperty('schedule_j_line_24_text');
+  });
+
+  it('an unanswered line 24 goes as null, and a text kept under No still goes', async () => {
+    const { bodies } = serve({});
+    renderWizard();
+    await openExpenses();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('utilities'), { target: { value: '90' } });
+      await waitSeconds(3);
+      expect(bodies.at(-1)?.schedule_i_answers).toEqual({
+        schedule_j_line_24_answer: null,
+        schedule_j_line_24_text: null,
+      });
+
+      pick('schedule_j_line_24_answer', 'yes');
+      fireEvent.change(field('schedule_j_line_24_text'), { target: { value: 'Rent goes up' } });
+      pick('schedule_j_line_24_answer', 'no');
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    // The browser never clears what the filer typed: only Delete does
+    expect(bodies.at(-1)?.schedule_i_answers).toEqual({
+      schedule_j_line_24_answer: 'no',
+      schedule_j_line_24_text: 'Rent goes up',
+    });
+  });
+
+  it('Continue waits for line 24 while autosave still saves typed amounts', async () => {
+    const { bodies, stepUpdates } = serve({});
+    renderWizard();
+    await openExpenses();
+    expect(statusLine()).toBeEmptyDOMElement();
+    expect(continueButton()).toBeDisabled();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('utilities'), { target: { value: '90' } });
+      await waitSeconds(3);
+      expect(bodies).toHaveLength(1);
+      expect((bodies[0].expense_info as Record<string, unknown>).utilities).toBe(90);
+      expect(continueButton()).toBeDisabled();
+
+      // Focus leaves line 24 unanswered: the status line says why
+      fireEvent.blur(field('schedule_j_line_24_answer'), {
+        relatedTarget: field('clothing'),
+      });
+      expect(statusLine()).toHaveTextContent(SCHEDULE_I_GATE_J24);
+      expect(continueButton()).toBeDisabled();
+
+      pick('schedule_j_line_24_answer', 'no');
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(statusLine()).toBeEmptyDOMElement();
+    expect(continueButton()).toBeEnabled();
+    await userEvent.click(continueButton());
+    await waitFor(() => expect(stepUpdates).toEqual([5]));
+  });
+
+  it('showing step 4 again sends nothing', async () => {
+    const { bodies } = serve({
+      schedule_j_line_24_answer: 'yes',
+      schedule_j_line_24_text: 'The car loan ends in May',
+      answered_on: '2026-10-16',
+    });
+    renderWizard();
+    await openExpenses();
+
+    vi.useFakeTimers();
+    try {
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toEqual([]);
+  });
+});
+
+// ===========================================================================
 // The line 4 question (3c4 B48)
 // ===========================================================================
 
@@ -4173,6 +4335,7 @@ describe('IntakeWizard line 4 question', { timeout: 15_000 }, () => {
     assets: [homeRow],
     debts: [mortgage],
     expense_info: { data_source: 'manual', rent_or_mortgage: '1200.00' },
+    schedule_i_answers: { schedule_j_line_24_answer: 'no' },
   };
   const sentence = fill(CLAIM_GAP_LINE_4, { typed: '1,200.00', linked: '1,200.00' });
 
@@ -4285,7 +4448,7 @@ describe('IntakeWizard line 4 question', { timeout: 15_000 }, () => {
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
     await waitFor(() => expect(patchBodies.length).toBeGreaterThan(0));
     const body = patchBodies[patchBodies.length - 1];
-    expect(Object.keys(body)).toEqual(['expense_info']);
+    expect(Object.keys(body)).toEqual(['expense_info', 'schedule_i_answers']);
     expect(Object.keys(body.expense_info as object)).toEqual([
       ...EXPENSE_FIELDS,
       ...EXPENSE_SPECIFY_FIELDS,

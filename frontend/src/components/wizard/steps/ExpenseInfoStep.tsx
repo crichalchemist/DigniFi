@@ -14,12 +14,23 @@ import { Button, FormField } from '../../common';
 import { amountError, parseAmount } from '../../../utils/parseAmount';
 import { fill } from './claims/claimNames';
 import { formatFigure } from './claims/linkedPayments';
-import type { ExpenseField, ExpenseInfo, ExpenseSpecifyField, YesNo } from '../../../types/api';
+import type {
+  ExpenseField,
+  ExpenseInfo,
+  ExpenseSpecifyField,
+  ScheduleIAnswers,
+  YesNo,
+} from '../../../types/api';
 import { EXPENSE_FIELDS } from '../../../types/api';
+import { LineQuestion } from './scheduleI/LineQuestion';
+import { lineTwentyFourGate } from './scheduleI/scheduleIGaps';
 import {
   EXPENSES_HEADING,
   EXPENSE_LINE_WORDS,
   EXPENSE_SPECIFY_WORDS,
+  FORM_106J_LINE_24_EXAMPLE,
+  FORM_106J_LINE_24_QUESTION,
+  FORM_106J_LINE_24_YES,
   LINE_3_QUESTION,
   LINE_4_GROUP_HEADING,
   LINE_15_GROUP_HEADING,
@@ -50,6 +61,9 @@ interface ExpenseInfoStepProps {
   line4Confirmed?: string | null;
   /** Saves "I pay both"; rejects when the save fails */
   onLine4Confirm?: (figure: string) => Promise<void>;
+  /** The record Schedule J's line 24 lives in; the wizard holds it and sends it with this step */
+  scheduleIAnswers: ScheduleIAnswers;
+  onScheduleIAnswersChange: (answers: ScheduleIAnswers) => void;
 }
 
 const toCents = (amount: number) => Math.round(amount * 100);
@@ -78,6 +92,8 @@ export function ExpenseInfoStep({
   linkedFirstMortgage = 0,
   line4Confirmed = null,
   onLine4Confirm,
+  scheduleIAnswers,
+  onScheduleIAnswersChange,
 }: ExpenseInfoStepProps) {
   // Fields start undefined (empty) rather than 0 so an untouched field reads
   // blank, while a deliberately entered 0 is preserved by parseAmount + `?? ''`.
@@ -152,6 +168,12 @@ export function ExpenseInfoStep({
     setLine4Failed(false);
     setFormData((prev) => ({ ...prev, rent_or_mortgage: 0 }));
   };
+
+  // Continue waits for line 24 (4c-R4); the status line says why once it is answered or focus has
+  // left it. Autosave reads the step's own checks alone, so typed amounts save meanwhile.
+  const [line24Left, setLine24Left] = useState(false);
+  const line24Gate = lineTwentyFourGate(scheduleIAnswers);
+  const line24Touched = line24Left || scheduleIAnswers.schedule_j_line_24_answer != null;
 
   const line3Answer = formData.expenses_include_others;
   const line3NoteId = 'expenses_include_others-unanswered';
@@ -340,6 +362,36 @@ export function ExpenseInfoStep({
           <p className="total-help-text">{EXPENSES_LINKED_NOTE}</p>
         </div>
       </section>
+
+      {/* Schedule J line 24, the last question on the form. Focus leaving the section is what
+          "touched" means for a filer who never answers it. */}
+      <section
+        className="form-section"
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            setLine24Left(true);
+          }
+        }}
+      >
+        <LineQuestion
+          question={FORM_106J_LINE_24_QUESTION}
+          note={FORM_106J_LINE_24_EXAMPLE}
+          name="schedule_j_line_24_answer"
+          answers={scheduleIAnswers}
+          onChange={onScheduleIAnswersChange}
+          boxes={[{ key: 'schedule_j_line_24_text', label: FORM_106J_LINE_24_YES, long: true }]}
+        />
+      </section>
+
+      {/* A status, not an alert, and mounted throughout, because a screen reader may not read a
+          status region that arrives with its text. */}
+      <div role="status">
+        {line24Touched && line24Gate !== null && (
+          <div className="info-box">
+            <p className="info-message">{line24Gate}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
