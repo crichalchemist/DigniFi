@@ -64,12 +64,17 @@ def completion_gaps(session) -> list[Gap]:
 
     Form 101's own questions (petition_step_gaps, both kinds) go where their steps ask them: step
     1's after the county, the hazard after the Assets step's gaps, and the rent and eviction after
-    the Contracts gaps, before Codebtors' (4b-R4).
+    the Contracts gaps, before Codebtors' (4b-R4). Schedule I's (schedule_i_step_gaps, both
+    kinds) go right after the Income step's, and Schedule J line 24's right after the Expenses
+    step's (4c-R2).
     """
     # Imported here: petition.py imports Gap from this module, so a top-level import is a cycle.
+    # schedule_i.py imports Gap inside its function, and is imported here the same way (4c-R2).
     from .petition import petition_step_gaps
+    from .schedule_i import schedule_i_step_gaps
 
     petition = petition_step_gaps(session)
+    schedule_i = schedule_i_step_gaps(session)
     gaps = []
 
     # The forms' own identity checks, so Complete and the forms say the same thing.
@@ -88,6 +93,9 @@ def completion_gaps(session) -> list[Gap]:
     # Every gap the Income step leaves, in order: the same check the means test refuses
     # with (3e1 spec §9.1).
     gaps.extend(Gap(str(gap), gap.step, GATE) for gap in income_step_gaps(session))
+    # Schedule I lines 1, 11 and 13, which the Income step asks after its own questions. Never
+    # in income_step_gaps: no means test or household count reads them (4c).
+    gaps.extend(g for g in schedule_i if g.step == "income_info")
 
     # Take-home pay and Schedule J line 3 are Complete's alone: the means test and the forms
     # don't read them (3e2 spec §8).
@@ -102,6 +110,9 @@ def completion_gaps(session) -> list[Gap]:
         gaps.append(Gap(EXPENSES_STEP_NEVER_SAVED, "expense_info", GATE))
     elif session.expense_info.expenses_include_others is None:
         gaps.append(Gap(EXPENSES_INCLUDE_OTHERS_UNANSWERED, "expense_info", GATE))
+    # Schedule J line 24, asked on the Expenses step. Its record is not the Expenses row, so its
+    # gate is listed even while that step was never saved (4c-R2).
+    gaps.extend(g for g in schedule_i if g.step == "expense_info")
 
     # Schedule A/B's walk: every gap, after Schedule J line 3 and before the scanned debts,
     # which is wizard order (3b spec §7).

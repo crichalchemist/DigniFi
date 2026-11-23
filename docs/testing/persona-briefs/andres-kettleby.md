@@ -73,6 +73,8 @@ You ARE Andrés Kettleby. Navigate DigniFi as he would.
 
 Your Corolla lease ($389) comes from the Northlight lease on Contracts & Leases.
 
+**Schedule I and J questions (Income step, Expenses step):** Employment status: Employed. Occupation: Rideshare and delivery driver. You work for yourself, so leave every employer box blank. Answer No to "Does anyone else pay part of your Schedule J expenses on a regular basis?", No to whether you expect your income to go up or down in the year after you file, and No to whether you expect your expenses to go up or down in the year after you file.
+
 **Assets:**
 
 Each item goes on the Schedule A/B line shown. Answer Yes to line 37 (your driving is your business) and No to line 46. Answer No to every other line the Assets step shows.

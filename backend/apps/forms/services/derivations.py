@@ -47,6 +47,7 @@ from apps.intake.income import (
     uses_current,
 )
 from apps.intake.models import IntakeSession
+from apps.intake.schedule_i import married_together
 
 _ZERO = Decimal("0.00")
 _TWO_PLACES = Decimal("0.01")
@@ -57,12 +58,11 @@ _TWO_PLACES = Decimal("0.01")
 # ---------------------------------------------------------------------------
 
 
-def _safe_debtor_attr(session: IntakeSession, attr: str, default: str = "") -> str:
-    try:
-        val = getattr(session.debtor_info, attr)
-        return str(val) if val is not None else default
-    except Exception:
-        return default
+def _debtor_text(session: IntakeSession, attr: str) -> str:
+    """A DebtorInfo column as text, "" for None. A session with no DebtorInfo raises: Complete
+    refuses one, so a form reaching it is DigniFi's defect, never a blank identity (4c-R11)."""
+    value = getattr(session.debtor_info, attr)
+    return "" if value is None else str(value)
 
 
 def _full_name(session: IntakeSession) -> str:
@@ -687,14 +687,6 @@ def _fee_text(name: str, under: str | None = None) -> Callable[[IntakeSession], 
 # ---------------------------------------------------------------------------
 
 
-def _schedule_i_occupation_debtor1(session: IntakeSession) -> str:
-    return _safe_debtor_attr(session, "occupation", "")
-
-
-def _schedule_i_employer_debtor1(session: IntakeSession) -> str:
-    return _safe_debtor_attr(session, "employer_name", "")
-
-
 def _on_row(session: IntakeSession, spouse: bool, rule: Callable) -> str:
     """One Schedule I figure for one column: blank with no row, else the row rule's."""
     row = _column(session, spouse)
@@ -743,11 +735,10 @@ def _schedule_i_other_income_label(session: IntakeSession) -> str:
 
 def _schedule_i_income_total(session: IntakeSession) -> str:
     """
-    Schedule I lines 10 and 12: both columns, Social Security included (C1), unlike CMI.
+    Schedule I line 10's total: both columns, Social Security included (C1), unlike CMI.
 
     The spouse's column counts only for a filer living with their spouse (3e1 spec §10.2). A
-    blank column counts as zero, and the total is blank only when both are. Line 11 is never
-    asked and counts as zero (step 2 spec §6.1).
+    blank column counts as zero, and the total is blank only when both are.
     """
     columns = (
         _on_row(session, False, _money(_line10)),
@@ -756,6 +747,46 @@ def _schedule_i_income_total(session: IntakeSession) -> str:
     if columns == ("", ""):
         return ""
     return _fmt(sum((Decimal(column or "0") for column in columns), _ZERO))
+
+
+def _line_11_typed(session: IntakeSession) -> str:
+    """Line 11's typed amount while the answer is Yes, stripped; "" otherwise or with none."""
+    if _schedule_i(session, "line_11_answer") != "yes":
+        return ""
+    return _schedule_i(session, "line_11_amount").strip()
+
+
+def _schedule_i_line_11_amount(session: IntakeSession) -> str:
+    """
+    Line 11's amount (4c-R3): 0.00 under No, as the form says to write $0 for a line asked;
+    under Yes the typed amount, a typed 0 as 0.00 and none blank; blank while unanswered.
+    """
+    if _schedule_i(session, "line_11_answer") == "no":
+        return _fmt(_ZERO)
+    typed = _line_11_typed(session)
+    return _fmt(Decimal(typed)) if typed else ""
+
+
+def _fee_waiver_line_8_amount(session: IntakeSession) -> str:
+    """103B line 8's "How much": line 11's typed amount under Yes, as 103B says to copy line 11's
+    total; blank otherwise, since 103B ticks its own No box (4c-R3)."""
+    typed = _line_11_typed(session)
+    return _fmt(Decimal(typed)) if typed else ""
+
+
+def _schedule_i_line_12(session: IntakeSession) -> str:
+    """
+    Line 12: line 10's total plus what line 11 adds, the typed amount under Yes (4c-R3).
+
+    Blank only while line 10 is blank and line 11 adds nothing; otherwise a blank line 10
+    counts as zero.
+    """
+    line_10 = _schedule_i_income_total(session)
+    typed = _line_11_typed(session)
+    adds = Decimal(typed) if typed else _ZERO
+    if line_10 == "" and adds == 0:
+        return ""
+    return _fmt(Decimal(line_10 or "0") + adds)
 
 
 # Each Schedule I line, one column: (rule name, the row's rule). A _debtor1 and a _spouse twin
@@ -869,7 +900,7 @@ def _schedule_j_monthly_net_income(session: IntakeSession) -> str:
 
     23a is Schedule I line 12 and 23b is line 22c, so 23c is computed from those rules.
     """
-    income = _schedule_i_income_total(session)
+    income = _schedule_i_line_12(session)
     if income == "":
         return ""
     return _fmt(Decimal(income) - Decimal(_total_monthly_expenses(session)))
@@ -950,6 +981,11 @@ def split_district_name(name: str) -> tuple[str, str]:
 
 def _petition(session: IntakeSession, key: str) -> str:
     return record_value(session, f"petition.{key}")
+
+
+def _schedule_i(session: IntakeSession, key: str) -> str:
+    """A ScheduleIAnswers key as text; "" when unanswered or the session has no record (4c)."""
+    return record_value(session, f"schedule_i.{key}")
 
 
 def _valid_itin(session: IntakeSession) -> str:
@@ -1054,9 +1090,7 @@ def _register_digits(prefix: str, reader, start: int, count: int, fix: dict[str,
         )
 
 
-_register_digits(
-    "ssn_last4_digit", lambda s: _safe_debtor_attr(s, "ssn"), 5, 4, {"step": "debtor_info"}
-)
+_register_digits("ssn_last4_digit", lambda s: _debtor_text(s, "ssn"), 5, 4, {"step": "debtor_info"})
 _register_digits("itin_last4_digit", _valid_itin, 5, 4, _step_of("itin"))
 
 
@@ -1090,7 +1124,7 @@ _register("court_state", lambda s: split_district_name(s.district.name)[1], {})
 
 # Each street splits into Number and Street; the three detail addresses print under their Yes.
 for _prefix, _reader, _fix in (
-    ("home", lambda s: _safe_debtor_attr(s, "street_address"), {"step": "debtor_info"}),
+    ("home", lambda s: _debtor_text(s, "street_address"), {"step": "debtor_info"}),
     (
         "mailing",
         _under("mailing_answer", _asked("mailing_street")),
@@ -1207,7 +1241,7 @@ def _header_part(session: IntakeSession, part: str) -> str:
     from apps.forms.services.text_fit import fit
     from apps.forms.services.widgets import template_widgets
 
-    text = _safe_debtor_attr(session, f"{part}_name")
+    text = _debtor_text(session, f"{part}_name")
     boxes = [w for w in template_widgets(_HEADER_TEMPLATE) if w.full_name in _HEADER_BOXES[part]]
     missing = set(_HEADER_BOXES[part]) - {w.full_name for w in boxes}
     if missing:
@@ -1254,6 +1288,34 @@ _PETITION_PREDICATES: dict[str, Callable[..., bool]] = {
     )
 }
 
+# Schedule I's and Schedule J line 24's boxes print only what the step shows (4c-R5): your
+# occupation once your status is chosen, your employer under Employed, the spouse's column only
+# while married with the spouse at home (`married_together`: the spouse isn't filing), and each
+# line's text under its own Yes.
+_SCHEDULE_I_PREDICATES: dict[str, Callable[..., bool]] = {
+    "schedule_i_status_answered": lambda s, answer_cache=None: (
+        _schedule_i(s, "employment_status") != ""
+    ),
+    "schedule_i_employed": lambda s, answer_cache=None: (
+        _schedule_i(s, "employment_status") == "employed"
+    ),
+    "schedule_i_spouse_shown": lambda s, answer_cache=None: (
+        married_together(s) and _schedule_i(s, "spouse_employment_status") != ""
+    ),
+    "schedule_i_spouse_employed": lambda s, answer_cache=None: (
+        married_together(s) and _schedule_i(s, "spouse_employment_status") == "employed"
+    ),
+    "schedule_i_line_11_yes": lambda s, answer_cache=None: (
+        _schedule_i(s, "line_11_answer") == "yes"
+    ),
+    "schedule_i_line_13_yes": lambda s, answer_cache=None: (
+        _schedule_i(s, "line_13_answer") == "yes"
+    ),
+    "schedule_j_line_24_yes": lambda s, answer_cache=None: (
+        _schedule_i(s, "schedule_j_line_24_answer") == "yes"
+    ),
+}
+
 
 # ---------------------------------------------------------------------------
 # DERIVATIONS dict (all referenced functions must be defined above)
@@ -1262,15 +1324,15 @@ _PETITION_PREDICATES: dict[str, Callable[..., bool]] = {
 DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "full_name": _full_name,
     "family_size": _family_size,
-    "first_name": lambda s: _safe_debtor_attr(s, "first_name"),
-    "middle_name": lambda s: _safe_debtor_attr(s, "middle_name"),
-    "last_name": lambda s: _safe_debtor_attr(s, "last_name"),
-    "city": lambda s: _safe_debtor_attr(s, "city"),
-    "state": lambda s: _safe_debtor_attr(s, "state"),
-    "zip_code": lambda s: _safe_debtor_attr(s, "zip_code"),
+    "first_name": lambda s: _debtor_text(s, "first_name"),
+    "middle_name": lambda s: _debtor_text(s, "middle_name"),
+    "last_name": lambda s: _debtor_text(s, "last_name"),
+    "city": lambda s: _debtor_text(s, "city"),
+    "state": lambda s: _debtor_text(s, "state"),
+    "zip_code": lambda s: _debtor_text(s, "zip_code"),
     "county": _county,
-    "phone": lambda s: _safe_debtor_attr(s, "phone"),
-    "email": lambda s: _safe_debtor_attr(s, "email"),
+    "phone": lambda s: _debtor_text(s, "phone"),
+    "email": lambda s: _debtor_text(s, "email"),
     "chapter": lambda s: "7",
     "debtor_type": lambda s: "Individual",
     "district_name": lambda s: s.district.name,
@@ -1375,15 +1437,13 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     ),
     # Line 6 is Schedule J line 22c: one figure on both forms
     "fee_waiver_monthly_expenses": _total_monthly_expenses,
+    # Line 8's amount is Schedule I line 11's (4c-R3)
+    "fee_waiver_line_8_amount": _fee_waiver_line_8_amount,
     # Schedule I income line item derivations
-    "schedule_i_occupation_debtor1": _schedule_i_occupation_debtor1,
-    "schedule_i_employer_debtor1": _schedule_i_employer_debtor1,
-    "schedule_i_employer_street_debtor1": lambda s: _safe_debtor_attr(s, "employer_street", ""),
-    "schedule_i_employer_city_debtor1": lambda s: _safe_debtor_attr(s, "employer_city", ""),
-    "schedule_i_employer_state_debtor1": lambda s: _safe_debtor_attr(s, "employer_state", ""),
-    "schedule_i_employer_zip_debtor1": lambda s: _safe_debtor_attr(s, "employer_zip", ""),
     **_schedule_i_twins(),
     "schedule_i_income_total": _schedule_i_income_total,
+    "schedule_i_line_11_amount": _schedule_i_line_11_amount,
+    "schedule_i_line_12": _schedule_i_line_12,
     "schedule_i_payroll_other_specify": _payroll_other_specify,
     "schedule_i_assistance_specify": _assistance_specify,
     "schedule_i_other_income_label": _schedule_i_other_income_label,
@@ -1438,7 +1498,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     ),
     "schedule_j_total_expenses": _total_monthly_expenses,
     # Line 23a is Schedule I line 12: one figure on both forms
-    "schedule_j_total_income": _schedule_i_income_total,
+    "schedule_j_total_income": _schedule_i_line_12,
     "schedule_j_monthly_net_income": _schedule_j_monthly_net_income,
     "schedule_j_joint_case": _schedule_j_joint_case,
     "schedule_j_has_dependents": _schedule_j_has_dependents,
@@ -1520,6 +1580,8 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "schedule_i_other_income_debtor1": {"step": "income_info"},
     "schedule_i_other_income_total_debtor1": {"step": "income_info"},
     "schedule_i_income_total": {"step": "income_info"},
+    "schedule_i_line_11_amount": {"step": "income_info"},
+    "schedule_i_line_12": {"step": "income_info"},
     "schedule_i_income_total_debtor1": {"step": "income_info"},
     "schedule_i_net_wages_spouse": {"step": "income_info"},
     "schedule_i_overtime_spouse": {"step": "income_info"},
@@ -1540,6 +1602,8 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "fee_waiver_income_noncash": {"step": "income_info"},
     "fee_waiver_income_total": {"step": "income_info"},
     "fee_waiver_noncash_kinds": {"step": "income_info"},
+    # 103B line 8 copies Schedule I line 11, asked on the Income step
+    "fee_waiver_line_8_amount": {"step": "income_info"},
     # Lines that read both the Income step and Take-home pay link to the earlier one (§17 Call 33)
     "schedule_i_take_home_pay_debtor1": {"step": "income_info"},
     "schedule_i_take_home_pay_spouse": {"step": "income_info"},
@@ -1645,15 +1709,8 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "fee_waiver_others_covered_who": {"page": "/filing-fee"},
     "fee_waiver_expense_change_explanation": {"page": "/filing-fee"},
     # No link. The district and its median income table come from DigniFi's own data.
-    # The Schedule I occupation and employer address read fields no model has, so they
-    # always print blank.
     "district_name": {},
     "line13a_median_income": {},
-    "schedule_i_occupation_debtor1": {},
-    "schedule_i_employer_street_debtor1": {},
-    "schedule_i_employer_city_debtor1": {},
-    "schedule_i_employer_state_debtor1": {},
-    "schedule_i_employer_zip_debtor1": {},
     # Schedule H line 2: the spouse's name and address are entered on the Codebtors step
     "schedule_h_community_state": {"step": "codebtors"},
     "schedule_h_spouse_name": {"step": "codebtors"},
@@ -1739,4 +1796,5 @@ PREDICATES: dict[str, Callable[[IntakeSession], bool]] = {
         s, "address_history_gate", answer_cache
     ),
     **_PETITION_PREDICATES,
+    **_SCHEDULE_I_PREDICATES,
 }

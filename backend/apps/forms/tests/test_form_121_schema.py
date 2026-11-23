@@ -66,10 +66,6 @@ class TestForm121Schema:
         field_map = resolve(load_schema("form_121"), session_with_ssn)
         assert field_map["Bankruptcy District Information"] == "Northern District of Illinois"
 
-    def test_without_debtor(self, session):
-        field_map = resolve(load_schema("form_121"), session)
-        assert "Bankruptcy District Information" in field_map
-
     def test_a_filer_with_a_social_security_number_is_never_marked_as_having_none(
         self, session_with_ssn
     ):

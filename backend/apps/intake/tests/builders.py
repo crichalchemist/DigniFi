@@ -6,7 +6,8 @@ defaults answer the other four: income not now different, no business or rental 
 government assistance, and $0 taken out of pay. answer_household also chooses to pay the filing
 fee in full (Form 101 line 8), so a forms test meets no refusal for a missing answer;
 payment_choice=None leaves the answer as it is. The claim answers default to no debts, and No on
-contracts, codebtors and H line 2.
+contracts, codebtors and H line 2. Schedule I's answers default to not employed and No on lines
+11, 13 and Schedule J line 24 (SCHEDULE_I_DEFAULTS).
 """
 
 import json
@@ -31,10 +32,24 @@ from apps.intake.models import (
     Household,
     MeansTestAnswers,
     PetitionAnswers,
+    ScheduleIAnswers,
     SecuredDebtAnswers,
     SpouseIncome,
 )
 from apps.intake.petition import STEP_1_GATES
+from apps.intake.schedule_i import married_together
+
+# Schedule I's and Schedule J line 24's answers that leave no gap (4c-R13): not employed, and No
+# on lines 11, 13 and 24. answer_household adds the spouse's "not employed" for a filer married
+# with the spouse at home (`married_together`).
+SCHEDULE_I_DEFAULTS = MappingProxyType(
+    {
+        "employment_status": "not_employed",
+        "line_11_answer": "no",
+        "line_13_answer": "no",
+        "schedule_j_line_24_answer": "no",
+    }
+)
 
 
 def answer_income_detail(
@@ -88,6 +103,7 @@ def answer_household(
     asset_lines: Iterable[str] | None = (),
     claims: Mapping[str, object] | None = MappingProxyType({}),
     exemptions: Mapping[str, object] | None = MappingProxyType({}),
+    schedule_i: Mapping[str, object] | None = SCHEDULE_I_DEFAULTS,
 ) -> Household:
     """Store the marriage answer, the county and the household list, and the spouse's amounts
     when given, through the session's own relations, so a test holding the session reads them.
@@ -111,6 +127,11 @@ def answer_household(
     exemptions overrides the Schedule C answers answer_exemptions stores (3g1), which default to
     line 1 answered, line 3 No and "not claiming" while the session has no stored claim (False
     once it has one); exemptions=None leaves them alone.
+
+    schedule_i answers Schedule I lines 1, 11 and 13 and Schedule J line 24 (4c). The default,
+    SCHEDULE_I_DEFAULTS (plus the spouse's "not employed" under married_together), gives way to
+    any key already stored, so a second call keeps what a test stored; a mapping passed is
+    applied whole, through answer_schedule_i; None leaves the record alone.
     """
     session.income_info.marital_status = marital_status
     session.income_info.save(update_fields=["marital_status"])
@@ -147,6 +168,15 @@ def answer_household(
         )
     if exemptions is not None:
         answer_exemptions(session, **exemptions)
+    if schedule_i is SCHEDULE_I_DEFAULTS:
+        defaults = dict(SCHEDULE_I_DEFAULTS)
+        if married_together(session):
+            defaults["spouse_employment_status"] = "not_employed"
+        record = getattr(session, "schedule_i_answers", None)
+        stored = record.get_answers() if record else {}
+        answer_schedule_i(session, **{k: v for k, v in defaults.items() if k not in stored})
+    elif schedule_i is not None:
+        answer_schedule_i(session, **schedule_i)
     return household
 
 
@@ -190,6 +220,20 @@ def answer_petition(session, **over) -> PetitionAnswers:
     stored = record.get_answers()
     defaults = {key: value for key, value in PETITION_DEFAULTS.items() if key not in stored}
     record.merge({**defaults, **over})
+    record.save()
+    return record
+
+
+def answer_schedule_i(session, **answers) -> ScheduleIAnswers:
+    """Store Schedule I's and Schedule J line 24's answers (4c), through the session's own
+    relation.
+
+    The record is made if missing. A None removes the key (unanswered), and an unknown key raises
+    KeyError, as the record's own merge does. Never a fresh query, so the session a test holds
+    never reads a stale copy.
+    """
+    record = getattr(session, "schedule_i_answers", None) or ScheduleIAnswers(session=session)
+    record.merge(answers)
     record.save()
     return record
 

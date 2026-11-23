@@ -3,6 +3,7 @@ widgets is bound to its calculator line or blank on purpose, and only the filer'
 carry legal review (3h3 plan R1, R2, R15, R21)."""
 
 import json
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -16,7 +17,7 @@ from apps.forms.field_index import export_state
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.tests.test_derivations import TEN_SOURCES
-from apps.intake.models import IncomeInfo, IntakeSession
+from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
 from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
@@ -142,7 +143,16 @@ def session(db):
         court_name="U.S. Bankruptcy Court",
         filing_fee_chapter_7=Decimal("338.00"),
     )
-    return IntakeSession.objects.create(user=user, district=district)
+    session = IntakeSession.objects.create(user=user, district=district)
+    # The form's identity boxes read DebtorInfo, which a filer always has here (4c-R11).
+    DebtorInfo.objects.create(
+        session=session,
+        first_name="Demo",
+        last_name="Filer",
+        ssn="900-00-0003",  # IRS-reserved range: synthetic
+        date_of_birth=date(1990, 1, 15),
+    )
+    return session
 
 
 def test_line_1_copies_the_monthly_income_from_122a1_line_11(session):

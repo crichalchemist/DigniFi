@@ -408,6 +408,44 @@
       "legal_review": false
     },
     {
+      "pdf_field": "Check 8",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "no": "/no",
+        "yes": "/yes"
+      },
+      "page": 2,
+      "label": "Does anyone other than you regularly pay any of these expenses?",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "schedule_i.line_11_answer",
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Yes How much do you regularly receive as contributions",
+      "type": "text",
+      "source": "derived",
+      "page": 2,
+      "label": "How much do you regularly receive as contributions?",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "fee_waiver_line_8_amount",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
       "pdf_field": "Check 9",
       "type": "checkbox",
       "source": "derived",

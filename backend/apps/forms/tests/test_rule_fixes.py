@@ -215,7 +215,6 @@ def test_a_precondition_is_read_by_its_name_or_as_an_attribute(source, raises):
         ("fee_waiver_others_covered_who", {"page": "/filing-fee"}),
         ("district_name", {}),  # the district list is DigniFi's
         ("line13a_median_income", {}),  # the median table is DigniFi's
-        ("schedule_i_occupation_debtor1", {}),  # reads a field no model has: always blank
         *[
             (f"schedule_i_{n}_{c}", {"step": "take_home_pay"})
             for n in (
@@ -242,6 +241,10 @@ def test_a_precondition_is_read_by_its_name_or_as_an_attribute(source, raises):
         ("schedule_i_interest_spouse", {"step": "income_info"}),
         ("schedule_i_assistance_debtor1", {"step": "income_info"}),
         ("schedule_i_assistance_specify", {"step": "income_info"}),
+        # 4c: line 11 is asked on the Income step; line 12, 103B line 8 and J 23a read it there
+        ("schedule_i_line_11_amount", {"step": "income_info"}),
+        ("schedule_i_line_12", {"step": "income_info"}),
+        ("fee_waiver_line_8_amount", {"step": "income_info"}),
     ],
 )
 def test_a_rule_links_to_where_its_input_is_entered(rule, fix):

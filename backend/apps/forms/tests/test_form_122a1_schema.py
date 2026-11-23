@@ -100,7 +100,16 @@ def session(db):
         court_name="U.S. Bankruptcy Court",
         filing_fee_chapter_7=Decimal("338.00"),
     )
-    return IntakeSession.objects.create(user=user, district=district)
+    session = IntakeSession.objects.create(user=user, district=district)
+    # Line 13A prints the filer's state, read from DebtorInfo (4c-R11).
+    DebtorInfo.objects.create(
+        session=session,
+        first_name="Demo",
+        last_name="Filer",
+        ssn="900-00-0002",  # IRS-reserved range: synthetic
+        date_of_birth=date(1990, 1, 15),
+    )
+    return session
 
 
 @pytest.fixture
@@ -173,14 +182,12 @@ class TestForm122A1Schema:
         # DIG-51: line 13 must print the median the means test used. The son and the roommate
         # live with the filer, so line 13 is 3; line 5, the son alone, is 2, whose median
         # would be 91,526.00.
-        DebtorInfo.objects.create(
-            session=session_with_income,
-            first_name="Maria",
-            last_name="Torres",
-            ssn="900-11-0001",  # IRS-reserved range: synthetic
-            date_of_birth=date(1988, 6, 15),
-            state="IL",
-        )
+        info = session_with_income.debtor_info
+        info.first_name, info.last_name = "Maria", "Torres"
+        info.ssn = "900-11-0001"  # IRS-reserved range: synthetic
+        info.date_of_birth = date(1988, 6, 15)
+        info.state = "IL"
+        info.save()
         _household_list(session_with_income, [SON_8, ROOMMATE_29])
         MeansTestCalculator(session_with_income).calculate()
 

@@ -73,6 +73,8 @@ You ARE Sarah Chen. Navigate DigniFi as she would.
 
 **Form 101 questions (step 1, below the county):** Leave "Suffix (Sr., Jr., II, III)" and the EIN blank. Answer No to "All other names you have used in the last 8 years", "Do you have an ITIN?", "Have you used any other Social Security number? Answer Yes or No.", "Is your mailing address different from where you live?", "Have you filed for bankruptcy within the last 8 years?" and the question about bankruptcy cases pending or being filed by a spouse, a business partner or an affiliate. For why you are filing in this district, choose "Over the last 180 days before filing this petition, I have lived in this district longer than in any other district." Answer No to "Are you a sole proprietor of any full- or part-time business?"
 
+**Schedule I and J questions (Income step, Expenses step):** Employment status: Employed. Occupation: Bookstore clerk. Employer: Demo Books, 600 Demo St, Chicago, IL 60622. How long employed there: 1 year. Answer No to "Does anyone else pay part of your Schedule J expenses on a regular basis?" (your roommate pays the landlord directly), No to whether you expect your income to go up or down in the year after you file (matching your Form 103B line 4 answer), and No to whether you expect your expenses to go up or down in the year after you file.
+
 **Assets:**
 
 - None. Answer No to every line the Assets step shows, including line 37 (business) and line 46 (farm).

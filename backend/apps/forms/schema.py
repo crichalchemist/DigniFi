@@ -784,6 +784,11 @@ def validate_schema(
         problem = _petition_binding_error(binding)
         if problem:
             errors.append(("E007", f"{binding!r}: {problem}"))
+    # A schedule_i. key the record doesn't store reads blank at resolve time too (4c).
+    for binding in sorted(b for b in petition_bindings if b.startswith("schedule_i.")):
+        problem = _schedule_i_binding_error(binding)
+        if problem:
+            errors.append(("E007", f"{binding!r}: {problem}"))
     return errors
 
 
@@ -801,6 +806,18 @@ def _petition_binding_error(binding: str) -> str | None:
         return f"{key!r} is a row list, so its binding names a cell"
     if is_list and attr not in cells:
         return f"{attr!r} is not a cell of the {key!r} rows"
+    return None
+
+
+def _schedule_i_binding_error(binding: str) -> str | None:
+    """Why a schedule_i. binding names no value ScheduleIAnswers stores, or None when it does."""
+    from apps.intake.models import ScheduleIAnswers  # here, as this module's other late imports
+
+    key, is_list, _ = binding.removeprefix("schedule_i.").partition("[].")
+    if key not in ScheduleIAnswers.KEYS:
+        return "not a key ScheduleIAnswers asks"
+    if is_list:
+        return "ScheduleIAnswers holds no row list"
     return None
 
 

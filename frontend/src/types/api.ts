@@ -45,6 +45,10 @@ export interface IntakeSession {
   claim_answers?: ClaimAnswers;
   /** Form 101's and Form 121's asked answers, wherever the wizard asks them (4b spec §7.1) */
   petition_answers?: PetitionAnswers;
+  /** Schedule I lines 1, 11 and 13 and Schedule J line 24 (4c spec §7.2) */
+  schedule_i_answers?: ScheduleIAnswers;
+  /** Read-only: the employer's name a pay stub gave, or "" (4c-R10) */
+  paystub_employer_name?: string;
   /** The retired Expenses figures the server still holds, a two-place decimal string or null (3c4) */
   legacy_payments?: LegacyPayments;
   household?: Household | null;
@@ -746,6 +750,48 @@ export interface PetitionAnswers {
   /** Read-only: the fill date of the last change */
   answered_on?: string | null;
 }
+
+/** Every text key of ScheduleIAnswers: line 1's boxes (yours, then the spouse's) and the three lines' texts */
+export type ScheduleITextKey =
+  | 'occupation'
+  | 'employer_name'
+  | 'employer_street'
+  | 'employer_street_2'
+  | 'employer_city'
+  | 'employer_state'
+  | 'employer_zip'
+  | 'time_employed'
+  | 'spouse_occupation'
+  | 'spouse_employer_name'
+  | 'spouse_employer_street'
+  | 'spouse_employer_street_2'
+  | 'spouse_employer_city'
+  | 'spouse_employer_state'
+  | 'spouse_employer_zip'
+  | 'spouse_time_employed'
+  | 'line_11_text'
+  | 'line_13_text'
+  | 'schedule_j_line_24_text';
+
+export type EmploymentStatus = 'employed' | 'not_employed';
+
+/**
+ * Schedule I's lines 1, 11 and 13 and Schedule J's line 24 (4c spec §7.2). An absent or null key
+ * is unanswered; a yes/no is never a boolean. `line_11_amount` is a two-place decimal string, held
+ * and sent as typed.
+ */
+export type ScheduleIAnswers = {
+  [key in ScheduleITextKey]?: string | null;
+} & {
+  employment_status?: EmploymentStatus | null;
+  spouse_employment_status?: EmploymentStatus | null;
+  line_11_answer?: YesNo | null;
+  line_11_amount?: string | null;
+  line_13_answer?: YesNo | null;
+  schedule_j_line_24_answer?: YesNo | null;
+  /** Read-only: the fill date of the last change */
+  answered_on?: string | null;
+};
 
 /** A contract or codebtor the wizard holds: every field, and the browser's own key (3c2) */
 export type ContractRow = ExecutoryContract & { _key: string };

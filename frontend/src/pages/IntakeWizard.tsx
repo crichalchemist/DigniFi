@@ -61,6 +61,7 @@ import type {
   LegacyField,
   LegacyPayments,
   PetitionAnswers,
+  ScheduleIAnswers,
   SpouseIncome,
   WizardRow,
 } from '../types/api';
@@ -85,6 +86,12 @@ import {
   RENT_KEYS,
 } from '../components/wizard/steps/petition/petitionGaps';
 import { divisionOf } from '../constants/counties';
+import {
+  lineTwentyFourGate,
+  scheduleIGate,
+  STEP_2_SCHEDULE_I_KEYS,
+  STEP_4_SCHEDULE_I_KEYS,
+} from '../components/wizard/steps/scheduleI/scheduleIGaps';
 
 // ============================================================================
 // Wizard Configuration
@@ -203,6 +210,39 @@ function hydratePetition(answers: PetitionAnswers | undefined): PetitionAnswers 
   }
   return hydrated;
 }
+/**
+ * Step 2's `schedule_i_answers` (4c-R7): Schedule I lines 1, 11 and 13, every key null when
+ * unanswered, built the same way from loaded and edited answers. The nine spouse keys go only for a
+ * spouse at home, not filing (`married_together`), as `spouse_income` does, so a hidden block
+ * neither saves nor clears. The line 11 amount goes as typed, and a blank box as null (PF-4c-C).
+ * `answered_on` is never sent.
+ */
+function step2ScheduleIBody(
+  answers: ScheduleIAnswers,
+  marriedTogether: boolean
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  for (const key of STEP_2_SCHEDULE_I_KEYS) {
+    if (key.startsWith('spouse_') && !marriedTogether) continue;
+    body[key] = answers[key] ?? null;
+  }
+  if (typeof body.line_11_amount === 'string' && body.line_11_amount.trim() === '') {
+    body.line_11_amount = null;
+  }
+  return body;
+}
+
+/**
+ * Step 4's `schedule_i_answers` (4c-R7): Schedule J's line 24 alone, both keys null when
+ * unanswered, built the same way from loaded and edited answers. A text kept under No still goes.
+ * `answered_on` and step 2's keys are never sent, so neither step's saved copy overwrites the other.
+ */
+function step4ScheduleIBody(answers: ScheduleIAnswers): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  for (const key of STEP_4_SCHEDULE_I_KEYS) body[key] = answers[key] ?? null;
+  return body;
+}
+
 // The three step-4 steps and Review always autosave (step 4 spec §6.0, B3); Review has no body
 // until 4i, so the exclusion below stands. Typed `readonly string[]`, not `as const`:
 // `currentStepKey` is a plain string, and a literal tuple's `includes` would reject it.
@@ -352,6 +392,10 @@ export function IntakeWizard() {
   // server never reads them back; each is cleared once a save that carried it succeeds.
   const [petitionAnswers, setPetitionAnswers] = useState<PetitionAnswers>({});
   const [pendingSecrets, setPendingSecrets] = useState<Partial<Record<PetitionSecret, string>>>({});
+  // Schedule I lines 1, 11 and 13 and Schedule J line 24 (4c): step 2 sends its keys, step 4 its
+  // own. The pay stub's employer name is the read's, shown beside the box and never sent (4c-R10).
+  const [scheduleIAnswers, setScheduleIAnswers] = useState<ScheduleIAnswers>({});
+  const [paystubEmployerName, setPaystubEmployerName] = useState('');
   const [incomeData, setIncomeData] = useState<Partial<IncomeInfo>>({});
   // The Income step's household list, saved under `household` beside the income, and whether
   // the filer said no one else lives with them or depends on them
@@ -463,6 +507,8 @@ export function IntakeWizard() {
         }
         if (fresh.debtor_info) setDebtorData(fresh.debtor_info);
         setPetitionAnswers(hydratePetition(fresh.petition_answers));
+        setScheduleIAnswers(fresh.schedule_i_answers ?? {});
+        setPaystubEmployerName(fresh.paystub_employer_name ?? '');
         if (fresh.household) {
           setCounty(fresh.household.county);
           // A loaded row's key is its id. A list loaded as [] is the filer's "no one else".
@@ -611,6 +657,10 @@ export function IntakeWizard() {
         const body: Partial<Record<keyof IntakeSession, unknown>> = {
           income_info: income,
           household: { members: membersToSend(householdRows, noOneElse) },
+          schedule_i_answers: step2ScheduleIBody(
+            scheduleIAnswers,
+            incomeData.marital_status === 'married_together'
+          ),
         };
         // The spouse's ten only while they live together, so a hidden section neither saves nor
         // blocks, and the server keeps the figures it holds (3e1 spec §5.1)
@@ -645,12 +695,16 @@ export function IntakeWizard() {
         // server: the step adds it up in floating point, so it can differ from the server's
         // decimal sum in the last digit. A blank box is sent as 0, the column's default; left
         // out, a box the filer cleared would keep its old amount on the server (DIG-55). A
-        // blank Specify box is '' and an unanswered line 3 is null.
+        // blank Specify box is '' and an unanswered line 3 is null. Schedule J's line 24 rides
+        // beside it in `schedule_i_answers`, never inside `expense_info`.
         const expenses: Partial<ExpenseInfo> = {};
         for (const field of EXPENSE_FIELDS) expenses[field] = expenseData[field] ?? 0;
         for (const field of EXPENSE_SPECIFY_FIELDS) expenses[field] = expenseData[field] ?? '';
         expenses.expenses_include_others = expenseData.expenses_include_others ?? null;
-        return { expense_info: expenses } as Partial<IntakeSession>;
+        return {
+          expense_info: expenses,
+          schedule_i_answers: step4ScheduleIBody(scheduleIAnswers),
+        } as Partial<IntakeSession>;
       }
 
       case 'assets':
@@ -722,6 +776,7 @@ export function IntakeWizard() {
     spouseEntryRows,
     spouseNoEntries,
     spouseIncomeData,
+    scheduleIAnswers,
     expenseData,
     assetsData,
     assetAnswers,
@@ -748,6 +803,16 @@ export function IntakeWizard() {
       currentStepKey !== 'review',
   });
 
+  // What Continue waits for beyond the step's own checks (4c-R4): the Income step's lines 11 and
+  // 13, the Expenses step's line 24. Autosave keeps reading the step's checks alone, so typed
+  // amounts save while it waits.
+  const gate =
+    currentStepKey === 'income_info'
+      ? scheduleIGate(scheduleIAnswers)
+      : currentStepKey === 'expense_info'
+        ? lineTwentyFourGate(scheduleIAnswers)
+        : null;
+
   // Every way onto a step but the first read. The Assets step opens at the first Part with
   // something left, wherever the filer last was on it.
   const showStep = (stepNumber: number) => {
@@ -764,7 +829,7 @@ export function IntakeWizard() {
   // =========================================================================
 
   const handleNext = async () => {
-    if (!session || pressInFlightRef.current) return;
+    if (!session || pressInFlightRef.current || gate !== null) return;
     pressInFlightRef.current = true;
 
     try {
@@ -1128,6 +1193,9 @@ export function IntakeWizard() {
             onNoEntriesChange={setNoEntries}
             spouseNoEntries={spouseNoEntries}
             onSpouseNoEntriesChange={setSpouseNoEntries}
+            scheduleIAnswers={scheduleIAnswers}
+            onScheduleIAnswersChange={setScheduleIAnswers}
+            paystubEmployerName={paystubEmployerName}
           />
         );
 
@@ -1152,6 +1220,8 @@ export function IntakeWizard() {
             linkedFirstMortgage={linkedSums(debtsData, contractsData, assetsData).firstMortgage}
             line4Confirmed={claimAnswers.line_4_both_confirmed ?? null}
             onLine4Confirm={confirmLine4}
+            scheduleIAnswers={scheduleIAnswers}
+            onScheduleIAnswersChange={setScheduleIAnswers}
           />
         );
 
@@ -1318,7 +1388,7 @@ export function IntakeWizard() {
       onNext={handleNext}
       onPrevious={handlePrevious}
       onComplete={handleComplete}
-      canGoNext={canProceed}
+      canGoNext={canProceed && gate === null}
       canGoPrevious={currentStepNumber > 1}
       isLastStep={currentStepNumber === WIZARD_STEPS.length}
       sidebar={<MeansTestPreview sessionId={session.id} currentStep={currentStepNumber} />}
