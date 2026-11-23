@@ -225,7 +225,7 @@ describe('ExpenseInfoStep', () => {
       specify: 'utilities_specify',
       words: 'Utilities (combined)',
       sentence: EXPENSES_LEGACY_UTILITIES,
-      line: 'phone_internet_cable',
+      lines: ['electricity_heat_gas', 'water_sewer_garbage', 'phone_internet_cable'],
     },
     {
       group: 'insurance',
@@ -233,9 +233,9 @@ describe('ExpenseInfoStep', () => {
       specify: 'insurance_specify',
       words: 'Insurance (combined)',
       sentence: EXPENSES_LEGACY_INSURANCE,
-      line: 'health_insurance',
+      lines: ['life_insurance', 'health_insurance'],
     },
-  ] as const)('the $group information line', ({ other, specify, words, sentence, line }) => {
+  ] as const)('the $group information line', ({ other, specify, words, sentence, lines }) => {
     const saved = { [other]: 180, [specify]: words } as Partial<ExpenseInfo>;
 
     it('a total saved before the split shows its information line under the Specify box', () => {
@@ -251,7 +251,7 @@ describe('ExpenseInfoStep', () => {
       expect(screen.queryByText(sentence)).toBeNull();
     });
 
-    it('the information line goes once a line of its group has an amount', () => {
+    it.each(lines)('the information line goes once %s has an amount', (line) => {
       const { inputNamed } = renderStep(saved);
       fireEvent.change(inputNamed(line)!, { target: { value: '30' } });
       expect(screen.queryByText(sentence)).toBeNull();
