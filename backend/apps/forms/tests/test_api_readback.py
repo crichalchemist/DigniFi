@@ -57,9 +57,13 @@ def _step_bodies(data):
         return kept, deductions
 
     income, deductions = split(data["income"])
+    # Schedule I's answers go with the step that asks them (4c-R7): line 24 with the Expenses
+    # step, every other key with the Income step.
+    line_24 = {k: v for k, v in data["schedule_i"].items() if k.startswith("schedule_j_")}
     income_step = {
         "income_info": income,
         "household": {"members": data["household"]["members"]},
+        "schedule_i_answers": {k: v for k, v in data["schedule_i"].items() if k not in line_24},
     }
     take_home_pay_step = {"income_info": deductions}
     if data["spouse_income"] is not None:
@@ -70,7 +74,7 @@ def _step_bodies(data):
         {"debtor_info": data["debtor"], "household": {"county": data["household"]["county"]}},
         income_step,
         take_home_pay_step,
-        {"expense_info": data["expenses"]},
+        {"expense_info": data["expenses"], "schedule_i_answers": line_24},
         # Every row, with its line, details and values, and every line answer, as 3b spec §4 saves.
         {"assets": data["assets"], "asset_lines": data["asset_lines"]},
     ]

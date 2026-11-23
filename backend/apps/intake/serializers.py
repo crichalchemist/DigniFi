@@ -58,6 +58,7 @@ from .models import (
     IncomeInfo,
     IntakeSession,
     PetitionAnswers,
+    ScheduleIAnswers,
     SOFACreditorPayment,
     SOFAPriorIncome,
     SOFAReport,
@@ -1006,6 +1007,7 @@ _INTAKE_DATA = {
     "asset_lines",
     "claim_answers",
     "petition_answers",
+    "schedule_i_answers",
     "debts",
     "household",
     "spouse_income",
@@ -1115,6 +1117,52 @@ def _petition_rows_ok(key: str, rows) -> bool:
     return True
 
 
+class ScheduleIAnswersField(serializers.DictField):
+    """The filer's answers to Schedule I lines 1, 11 and 13 and Schedule J line 24, read from the
+    session's record, with the date of the last change (read-only)."""
+
+    def get_attribute(self, instance):
+        record = getattr(instance, "schedule_i_answers", None)
+        if record is None:
+            return {"answered_on": None}
+        return {**record.get_answers(), "answered_on": record.answered_on}
+
+
+def _save_schedule_i_answers(session: IntakeSession, data: dict) -> None:
+    """Set each answer sent; a null removes it (4c)."""
+    record, _ = ScheduleIAnswers.objects.get_or_create(session=session)
+    record.merge(data)
+    record.save()
+    session.schedule_i_answers = record
+
+
+# ASCII digits only: Python's \d also takes other scripts' digits, which no form prints.
+_SCHEDULE_I_AMOUNT = re.compile(r"[0-9]+(\.[0-9]{1,2})?")
+
+
+def _schedule_i_value_ok(key: str, value) -> bool:
+    if not isinstance(value, str):
+        return False
+    if key in ScheduleIAnswers.CHOICE_KEYS:
+        return value in ScheduleIAnswers.CHOICE_KEYS[key]
+    if key in ScheduleIAnswers.YES_NO_KEYS:
+        return value in ("yes", "no")
+    if key in ScheduleIAnswers.AMOUNT_KEYS:
+        # What DecimalField(12, 2) holds: below 10 ** 10, by value, so leading zeros pass.
+        return _SCHEDULE_I_AMOUNT.fullmatch(value) is not None and Decimal(value) < 10**10
+    # A text may be as long as its box's measured cap, which the browser's box allows: line 24's
+    # is above the flat ceiling.
+    if len(value) > max(ScheduleIAnswers.TEXT_CEILING, ScheduleIAnswers.TEXT_LIMITS.get(key, 0)):
+        return False
+    # Half of a surrogate pair can't be written as UTF-8, so every later read of the session
+    # would fail to render: refuse it before anything is stored, as for Form 101's texts.
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
 _LINE_4_FIGURE = re.compile(r"[0-9]{1,9}(\.[0-9]{1,2})?")
 
 
@@ -1148,6 +1196,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
     )
     claim_answers = ClaimAnswersField(required=False)
     petition_answers = PetitionAnswersField(required=False)
+    schedule_i_answers = ScheduleIAnswersField(required=False)
     debts = NestedDebtInfoSerializer(many=True, required=False)
     household = HouseholdSerializer(required=False, allow_null=True)
     spouse_income = SpouseIncomeSerializer(required=False, allow_null=True)
@@ -1155,6 +1204,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
     district_name = serializers.CharField(source="district.name", read_only=True)
     income_window = serializers.SerializerMethodField()
     legacy_payments = serializers.SerializerMethodField()
+    paystub_employer_name = serializers.SerializerMethodField()
 
     class Meta:
         model = IntakeSession
@@ -1172,11 +1222,13 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "asset_lines",
             "claim_answers",
             "petition_answers",
+            "schedule_i_answers",
             "debts",
             "household",
             "spouse_income",
             "income_window",
             "legacy_payments",
+            "paystub_employer_name",
             "created_at",
             "completed_at",
         ]
@@ -1191,6 +1243,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "district_name",
             "income_window",
             "legacy_payments",
+            "paystub_employer_name",
         ]
 
     def validate_asset_lines(self, answers):
@@ -1245,6 +1298,28 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             answers[key] = value
         return answers
 
+    def validate_schedule_i_answers(self, sent):
+        """Check each key and its shape; a message names the key, never the value. A text over
+        its cap is stored: the gap list names it (B47)."""
+        answers = {}
+        for key, value in sent.items():
+            if key == "answered_on":
+                continue  # echoed by a read or set by the server; never written from a body
+            if key not in ScheduleIAnswers.KEYS:
+                raise serializers.ValidationError(f"Not a Schedule I answer: {key}.")
+            if value is not None and not _schedule_i_value_ok(key, value):
+                raise serializers.ValidationError(f"Check the answer for {key}.")
+            answers[key] = value
+        return answers
+
+    def get_paystub_employer_name(self, obj) -> str:
+        """The employer name read from a pay stub, shown beside the box and never saved into it
+        (4c-R10); "" without one. Read from the prefetched rows, in Python."""
+        for aggregate in obj.ingested_aggregates.all():
+            if aggregate.ingest_key == "paystub.employer_name":
+                return aggregate.value.strip()
+        return ""
+
     def get_income_window(self, obj) -> dict:
         """The six full months before today, which the Income step's figures cover."""
         start, end = income_window(fill_date())
@@ -1271,6 +1346,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         asset_lines_data = validated_data.pop("asset_lines", None)
         claim_answers_data = validated_data.pop("claim_answers", None)
         petition_answers_data = validated_data.pop("petition_answers", None)
+        schedule_i_answers_data = validated_data.pop("schedule_i_answers", None)
 
         # Create session
         session = IntakeSession.objects.create(**validated_data)
@@ -1300,6 +1376,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         if petition_answers_data:
             _save_petition_answers(session, petition_answers_data)
 
+        if schedule_i_answers_data:
+            _save_schedule_i_answers(session, schedule_i_answers_data)
+
         # Create assets
         for asset_data in assets_data:
             AssetInfo.objects.create(session=session, **asset_data)
@@ -1323,6 +1402,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         if validated_data.get("petition_answers") == {}:
             # Only echoed read-only keys, or nothing: no answer to save, so nothing reopens.
             del validated_data["petition_answers"]
+        if validated_data.get("schedule_i_answers") == {}:
+            # Only an echoed answered_on, or nothing: no answer to save, so nothing reopens.
+            del validated_data["schedule_i_answers"]
         if _INTAKE_DATA.intersection(validated_data):
             instance.reopen()
 
@@ -1336,6 +1418,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         asset_lines_data = validated_data.pop("asset_lines", None)
         claim_answers_data = validated_data.pop("claim_answers", None)
         petition_answers_data = validated_data.pop("petition_answers", None)
+        schedule_i_answers_data = validated_data.pop("schedule_i_answers", None)
 
         # Update session fields
         for attr, value in validated_data.items():
@@ -1373,6 +1456,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
         if petition_answers_data is not None:
             _save_petition_answers(instance, petition_answers_data)
+
+        if schedule_i_answers_data is not None:
+            _save_schedule_i_answers(instance, schedule_i_answers_data)
 
         # The response lists a sent list in sent order, so the wizard can pair each row it
         # sent with its id (DIG-273). Every other read sorts as to_representation says.

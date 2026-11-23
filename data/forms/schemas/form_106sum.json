@@ -165,7 +165,7 @@
       "required": false,
       "conditional_on": null,
       "value": null,
-      "rule": "schedule_i_income_total",
+      "rule": "schedule_i_line_12",
       "ingest_key": null,
       "binding": null,
       "repeat": null,

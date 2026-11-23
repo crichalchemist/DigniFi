@@ -10,6 +10,7 @@ import type {
   IncomeInfo,
   IncomePeriod,
   Relationship,
+  ScheduleIAnswers,
   SpouseIncome,
   WizardRow,
 } from '../../../../types/api';
@@ -78,6 +79,7 @@ function renderStep(
     const [spouseEntryRows, setSpouseEntryRows] = useState(spouseEntries);
     const [noEntries, setNoEntries] = useState(false);
     const [spouseNoEntries, setSpouseNoEntries] = useState(false);
+    const [scheduleI, setScheduleI] = useState<ScheduleIAnswers>({});
     return (
       <IncomeInfoStep
         initialData={initialData}
@@ -115,6 +117,8 @@ function renderStep(
           heldNoEntries.spouse = next;
           setSpouseNoEntries(next);
         }}
+        scheduleIAnswers={scheduleI}
+        onScheduleIAnswersChange={setScheduleI}
       />
     );
   }
@@ -307,10 +311,17 @@ describe('IncomeInfoStep, family first', () => {
       ['marital_status', 'not_married'],
       ['marital_status', 'married_spouse_filing'],
       ['marital_status', 'not_filing'],
+      // Schedule I line 1, 11 and 13 (4c): none answered for the filer either
+      ['employment_status', 'employed'],
+      ['employment_status', 'not_employed'],
       ['income_now_different', 'yes'],
       ['income_now_different', 'no'],
       ['assistance_answer', 'yes'],
       ['assistance_answer', 'no'],
+      ['line_11_answer', 'no'],
+      ['line_11_answer', 'yes'],
+      ['line_13_answer', 'no'],
+      ['line_13_answer', 'yes'],
     ]);
     for (const radio of radios) expect(radio).not.toBeChecked();
     expect(

@@ -30,18 +30,26 @@ from apps.forms.field_index import export_state, index_path
 from apps.forms.registry import get_all_form_types
 from apps.forms.schema import load_schema
 from apps.forms.services.answer_records import PETITION_STEP_OF_KEY
-from apps.forms.services.fill_resolver import _key, resolve_binding, row_fixes
+from apps.forms.services.fill_resolver import _key, resolve, resolve_binding, row_fixes
 from apps.forms.services.means_cells import means_value
 from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
 from apps.forms.services.widgets import template_widgets
 from apps.forms.tests.oracle import case_param
 from apps.forms.tests.pdf_readback import read_drawn
+from apps.forms.tests.test_form_122a1_schema import SPOUSE_WAGES_ONLY, answer_income_step
 from apps.forms.tests.test_means_cells import FULL_LINES
 from apps.intake.asset_lines import PROPERTY_KINDS
-from apps.intake.models import AssetInfo, ExemptionClaim, IntakeSession, PetitionAnswers
+from apps.intake.models import (
+    AssetInfo,
+    ExemptionClaim,
+    IntakeSession,
+    PetitionAnswers,
+    ScheduleIAnswers,
+)
 from apps.intake.tests.builders import (
     answer_asset_lines,
     answer_exemptions,
+    answer_schedule_i,
     complete_codebtor,
     complete_contract,
     complete_debt,
@@ -811,6 +819,113 @@ def test_every_tagged_twin_fills_its_one_widget():
             if w.drawn and (w.full_name, w.page, w.tag) == (f.pdf_field, f.page, f.tag)
         ]
         assert len(drawn) == 1
+
+
+def test_every_schedule_i_binding_names_a_key_the_record_asks():
+    # A schedule_i. key the record doesn't list reads blank, so a misspelt binding would print
+    # nothing and fail no other test (4c, S:420).
+    keys = {
+        binding.removeprefix("schedule_i.")
+        for form_type in get_all_form_types()
+        for f in load_schema(form_type).fields
+        for binding in (f.binding or "",)
+        if binding.startswith("schedule_i.")
+    }
+    assert keys
+    assert keys - set(ScheduleIAnswers.KEYS) == set()
+
+
+# Schedule I's names drawn twice: name → (the index row's attribute that tells the two widgets
+# apart, {tag → (the rule or binding that fills it, that attribute's value)}). Line 1's "How long
+# employed there?" sits in each column; "Assistance 8f" is 8f's Specify and line 11's.
+_SCHEDULE_I_TWINS = {
+    "Time employed Debtor 1": (
+        "column",
+        {
+            "T28": ("schedule_i.time_employed", "Debtor 1"),
+            "T29": ("schedule_i.spouse_time_employed", "Debtor 2 or non-filing spouse"),
+        },
+    ),
+    "Assistance 8f": (
+        "line",
+        {
+            "T36": ("schedule_i_assistance_specify", "8f"),
+            "T49": ("schedule_i.line_11_text", "11"),
+        },
+    ),
+}
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("name", list(_SCHEDULE_I_TWINS))
+def test_every_tagged_schedule_i_twin_fills_its_one_widget(name):
+    # A bare key would fill both widgets, so each binding names one by its tag: your tenure prints
+    # in your column and your spouse's in theirs, and line 11's words on line 11, never on 8f
+    # (4c Review Focus 6).
+    schema = load_schema("schedule_i")
+    attribute, twins = _SCHEDULE_I_TWINS[name]
+    tagged = {f.tag: f for f in schema.fields if f.pdf_field == name}
+    assert {tag: f.binding or f.rule for tag, f in tagged.items()} == {
+        tag: producer for tag, (producer, _) in twins.items()
+    }
+    index = json.loads(index_path(schema.template_filename).read_text())
+    beside = {r["tag"]: r[attribute] for r in index if r["full_name"] == name}
+    assert beside == {tag: value for tag, (_, value) in twins.items()}
+    sentinels = {_key(f): f"S{tag}" for tag, f in tagged.items()}
+    drawn = {w.tag: w.value for w in _drawn("schedule_i", sentinels) if w.full_name == name}
+    assert drawn == {tag: f"S{tag}" for tag in twins}
+
+
+def _schedule_i_choice_cases():
+    # Every box pair a ScheduleIAnswers key ticks, on each form that prints one.
+    for form_type in ("schedule_i", "schedule_j", "form_103b"):
+        for f in _fields(form_type, ("checkbox", "radio")):
+            if (f.binding or "").startswith("schedule_i."):
+                for answer in (None, *sorted(f.choices or {})):
+                    yield pytest.param(
+                        form_type,
+                        f.binding,
+                        answer,
+                        id=f"{form_type}:{f.pdf_field}:{answer or 'absent'}",
+                    )
+
+
+@pytest.fixture
+def married_together_session(db):
+    """A filer married with the spouse at home, not filing: both columns print."""
+    user = get_user_model().objects.create_user(username="tier1schedulei", password="pass")
+    district = District.objects.create(
+        code="ilnd",
+        name="Northern District of Illinois",
+        state="IL",
+        court_name="U.S. Bankruptcy Court",
+        filing_fee_chapter_7=Decimal("338.00"),
+    )
+    session = IntakeSession.objects.create(user=user, district=district)
+    answer_income_step(
+        session, "married_together", SPOUSE_WAGES_ONLY, monthly_gross_wages=Decimal("2000.00")
+    )
+    return session
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("form_type,binding,answer", list(_schedule_i_choice_cases()))
+def test_every_schedule_i_choice_map_prints_exactly_the_stored_answer(
+    form_type, binding, answer, married_together_session
+):
+    # Never a box the filer didn't tick (§5.3): an unanswered question ticks neither box of its
+    # pair, and each answer ticks its own box and no other.
+    session = married_together_session
+    answer_schedule_i(session, **{binding.removeprefix("schedule_i."): answer})
+    schema = load_schema(form_type)
+    f = next(f for f in schema.fields if f.binding == binding)
+    values = {k: v for k, v in resolve(schema, session).items() if k == _key(f)}
+    ticks = [
+        w.state
+        for w in _drawn(form_type, values)
+        if w.full_name == f.pdf_field and w.state not in ("", "/Off")
+    ]
+    assert ticks == ([] if answer is None else [f.choices[answer]])
 
 
 def test_every_checkbox_binding_maps_its_answers_to_a_box():

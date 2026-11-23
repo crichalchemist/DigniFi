@@ -33,6 +33,7 @@ from apps.intake.petition import (
     GATE_RENTS,
     GATE_SOLE_PROPRIETOR,
 )
+from apps.intake.schedule_i import DETAIL_EMPLOYMENT
 from apps.intake.tests.builders import (
     answer_asset_lines,
     answer_household,
@@ -155,9 +156,10 @@ def test_the_gap_list_is_what_complete_refuses_in_the_same_order(filer, unfinish
     assert [(g.step, str(g)) for g in gates] == [
         (e["step"], e["message"]) for e in response.data["errors"]
     ]
-    # The venue choice is the one detail an untouched intake lists (step 1 asks it, and Form 101
-    # prints the line blank), and Complete never names it (4b-R4).
-    assert [str(g) for g in gaps if g.kind == Gap.DETAIL] == [DETAIL_VENUE]
+    # The venue choice and the employment status are the details an untouched intake lists (steps
+    # 1 and 2 ask them, and Form 101 and Schedule I print the lines blank), and Complete never
+    # names them (4b-R4, 4c-R1).
+    assert [str(g) for g in gaps if g.kind == Gap.DETAIL] == [DETAIL_VENUE, DETAIL_EMPLOYMENT]
 
 
 def test_a_finished_intake_has_no_gaps(filer, completed):

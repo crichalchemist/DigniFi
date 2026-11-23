@@ -9,7 +9,7 @@
  * UPL disclaimers live in ./upl.ts — this file covers non-legal copy.
  */
 
-import type { YesNo } from '../types/api';
+import type { ScheduleITextKey, YesNo } from '../types/api';
 
 // ============================================================================
 // Wizard Copy
@@ -1041,8 +1041,9 @@ export const FEE_NO_TABLE =
 export const FEE_LINE_5_NOTE =
   'The court decides whether you can pay in installments, from what you write here and the rest of the form.';
 
+// DRAFT: counsel C-42
 export const FEE_OTHER_LINES_NOTE =
-  'DigniFi leaves line 8 and Part 3 of Form 103B blank for now, and the details of lines 17 to 20. Form 103B also asks for a copy of your Schedule A/B.';
+  'DigniFi leaves Part 3 of Form 103B blank for now, and the details of lines 17 to 20. Form 103B also asks for a copy of your Schedule A/B.';
 
 // Form 103A's title is printed plain: one string can't carry italics
 export const INSTALLMENTS_NOTICE =
@@ -1726,6 +1727,80 @@ export const HIDDEN_ANSWERS =
   'Your earlier answers here are saved but hidden. Show them or delete them.';
 export const SHOW_HIDDEN = 'Show';
 export const DELETE_HIDDEN = 'Delete';
+
+// Schedule I lines 1, 11 and 13 and Schedule J line 24 (4c, words owner-approved 2026-11-22). The
+// gap sentences mirror apps/intake/schedule_i.py word for word; test_schedule_i_frontend_copy.py
+// pins them. {label} is a box in plain words (SCHEDULE_I_TEXT_LABELS) and {form} the form whose
+// box refuses it, "Schedule I" or "Schedule J"; the server fills both in.
+// DRAFT: counsel C-42
+export const SCHEDULE_I_LINE_11_QUESTION =
+  'Does anyone else pay part of your Schedule J expenses on a regular basis?';
+// DRAFT: counsel C-42
+export const SCHEDULE_I_LINE_11_AMOUNT_LABEL = 'How much they pay each month';
+// DRAFT: counsel C-42
+export const SCHEDULE_I_ONE_EMPLOYER =
+  'DigniFi prints one employer on Schedule I. The form asks you to attach a separate page for any other job.';
+// {name} is the employer's name the pay stub gave
+// DRAFT: counsel C-42
+export const PAYSTUB_EMPLOYER_HINT = 'Your pay stub says: {name}';
+// DRAFT: counsel C-42
+export const PAYSTUB_UPLOAD_HELP =
+  "Recent pay stubs from your job. The Income step shows the employer's name from your stub so you can check it.";
+// DRAFT: counsel C-42
+export const SCHEDULE_I_GATE_LINE_11 =
+  'Say if anyone else pays part of your Schedule J expenses on a regular basis.';
+// DRAFT: counsel C-42
+export const SCHEDULE_I_GATE_LINE_13 =
+  'Say whether you expect your income to go up or down in the year after you file.';
+// DRAFT: counsel C-42
+export const SCHEDULE_I_GATE_J24 =
+  'Say whether you expect your expenses to go up or down in the year after you file.';
+// DRAFT: counsel C-42
+export const SCHEDULE_I_DETAIL_EMPLOYMENT = 'Choose Employed or Not employed.';
+// DRAFT: counsel C-42
+export const SCHEDULE_I_DETAIL_SPOUSE_EMPLOYMENT =
+  'Choose Employed or Not employed for your spouse.';
+// DRAFT: counsel C-42
+export const SCHEDULE_I_DETAIL_EMPLOYER =
+  "Add your employer's name, or change your answer to Not employed.";
+// DRAFT: counsel C-42
+export const SCHEDULE_I_DETAIL_SPOUSE_EMPLOYER =
+  "Add your spouse's employer's name, or change their answer to Not employed.";
+// DRAFT: counsel C-42
+export const SCHEDULE_I_DETAIL_LINE_11_AMOUNT =
+  'Add how much others pay each month, or change your answer to No.';
+// DRAFT: counsel C-42
+export const SCHEDULE_I_DETAIL_LINE_13 =
+  'Explain the change you expect in your income, or change your answer to No.';
+// DRAFT: counsel C-42
+export const SCHEDULE_I_DETAIL_J24 =
+  'Explain the change you expect in your expenses, or change your answer to No.';
+// DRAFT: counsel C-42
+export const SCHEDULE_I_DETAIL_TOO_LONG =
+  'Your answer for {label} is too long for its box on {form}.';
+// The {label} of each text, schedule_i.limits.json's `labels` (owner W18)
+// DRAFT: counsel C-42
+export const SCHEDULE_I_TEXT_LABELS: Record<ScheduleITextKey, string> = {
+  occupation: 'Occupation',
+  employer_name: "Employer's name",
+  employer_street: "Employer's address",
+  employer_street_2: "Employer's address, line 2",
+  employer_city: "Employer's city",
+  employer_state: "Employer's state",
+  employer_zip: "Employer's ZIP Code",
+  time_employed: 'How long employed there',
+  spouse_occupation: "Your spouse's occupation",
+  spouse_employer_name: "Your spouse's employer's name",
+  spouse_employer_street: "Your spouse's employer's address",
+  spouse_employer_street_2: "Your spouse's employer's address, line 2",
+  spouse_employer_city: "Your spouse's employer's city",
+  spouse_employer_state: "Your spouse's employer's state",
+  spouse_employer_zip: "Your spouse's employer's ZIP Code",
+  spouse_time_employed: 'How long your spouse has been employed there',
+  line_11_text: 'Line 11, Specify',
+  line_13_text: 'Line 13, Explain',
+  schedule_j_line_24_text: 'Line 24, Explain',
+};
 
 // The write-only numbers: the server says only whether one is saved (F-3, owner ruling Q3)
 export const SSN_SAVED = 'Your Social Security number is saved. You can replace it.';

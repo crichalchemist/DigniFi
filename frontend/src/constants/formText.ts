@@ -952,3 +952,40 @@ export const FORM_101A_STAY_HEADING_B = '(b) Stay after the initial 30 days.';
 // after that heading, line breaks joined
 export const FORM_101B_STAY_SENTENCE =
   'If you wish to stay in your residence after that 30-day period and continue to receive the protection of the automatic stay under 11 U.S.C. § 362(a)(3), you must pay the entire delinquent amount to your landlord as stated in the eviction judgment before the 30-day period ends. You must also fill out Statement About Payment of an Eviction Judgment Against You (Official Form 101B), file it with the bankruptcy court, and serve your landlord a copy of it before the 30-day period ends.';
+
+// Schedule I (form_b106i.pdf) and Schedule J (form_b106j.pdf), quoted on the Income and Expenses
+// steps beside DigniFi's own questions (4c, owner-approved 2026-11-22). Each is the template's text
+// layer, the ’ kept and the line breaks joined; test_schedule_i_frontend_copy.py finds each whole
+// on its page. Schedule I page 1: the two column heads, which name your block and your spouse's
+export const FORM_106I_COLUMN_YOU = 'Debtor 1';
+export const FORM_106I_COLUMN_SPOUSE = 'Debtor 2 or non-filing spouse';
+// Schedule I page 1, line 1's labels
+export const FORM_106I_EMPLOYMENT_STATUS = 'Employment status';
+export const FORM_106I_EMPLOYED = 'Employed';
+export const FORM_106I_NOT_EMPLOYED = 'Not employed';
+export const FORM_106I_OCCUPATION = 'Occupation';
+export const FORM_106I_EMPLOYER_NAME = 'Employer’s name';
+export const FORM_106I_EMPLOYER_ADDRESS = 'Employer’s address';
+export const FORM_106I_HOW_LONG = 'How long employed there?';
+// Schedule I page 1, line 1's two notes, each as printed
+export const FORM_106I_LINE_1_NOTES = [
+  'If you have more than one job, attach a separate page with information about additional employers.',
+  'Include part-time, seasonal, or self-employed work. Occupation may include student or homemaker, if it applies.',
+];
+// Schedule I page 2, line 11's sentence, from "State" to the box label after it
+export const FORM_106I_LINE_11 =
+  'State all other regular contributions to the expenses that you list in Schedule J. Include contributions from an unmarried partner, members of your household, your dependents, your roommates, and other friends or relatives. Do not include any amounts already included in lines 2-10 or amounts that are not available to pay expenses listed in Schedule J. Specify:';
+// Schedule I page 2, the label of line 11's box
+export const FORM_106I_LINE_11_BOX_LABEL = 'Specify:';
+// Schedule I page 2, line 13's question and its two answers, the second cut at its box
+export const FORM_106I_LINE_13_QUESTION =
+  'Do you expect an increase or decrease within the year after you file this form?';
+export const FORM_106I_LINE_13_NO = 'No.';
+export const FORM_106I_LINE_13_YES = 'Yes. Explain:';
+// Schedule J page 3, line 24's question, its example and its two answers
+export const FORM_106J_LINE_24_QUESTION =
+  'Do you expect an increase or decrease in your expenses within the year after you file this form?';
+export const FORM_106J_LINE_24_EXAMPLE =
+  'For example, do you expect to finish paying for your car loan within the year or do you expect your mortgage payment to increase or decrease because of a modification to the terms of your mortgage?';
+export const FORM_106J_LINE_24_NO = 'No.';
+export const FORM_106J_LINE_24_YES = 'Yes. Explain here:';

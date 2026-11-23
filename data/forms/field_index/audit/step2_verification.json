@@ -2192,12 +2192,12 @@
   {
     "schema": "form_106sum",
     "pdf_field": "4",
-    "producer": "derived:schedule_i_income_total",
+    "producer": "derived:schedule_i_line_12",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "4",
-    "evidence": "Field index: 4 p1 line 4, 'Line 4: Copy your combined monthly income from line 12 of Schedule I' (adjudicated). Step 2 spec §5.5 (a separate Schedule I income total, bound to Schedule I lines 10 and 12 and 106Sum line 4), §6.1 C1 (two income totals: CMI without Social Security on 106Sum line 8, the Schedule I income total on line 4) and §6.2 (schedule_i_income_total); Appendix B's 106Sum chain. The audit's verified row on this box judged the old total_debts binding, which belongs on 3c."
+    "evidence": "Field index: 4 p1 line 4, 'Line 4: Copy your combined monthly income from line 12 of Schedule I' (adjudicated). Step 4 spec §6.2 (S:274): line 12 becomes line 10 plus line 11 (schedule_i_line_12), and 106Sum line 4 copies it; 4c-R3. Step 2 spec §6.1 C1 (two income totals: CMI without Social Security on 106Sum line 8, the Schedule I income total on line 4); Appendix B's 106Sum chain. The audit's verified row on this box judged the old total_debts binding, which belongs on 3c."
   },
   {
     "schema": "schedule_i",
@@ -2222,12 +2222,12 @@
   {
     "schema": "schedule_i",
     "pdf_field": "Amount 12",
-    "producer": "derived:schedule_i_income_total",
+    "producer": "derived:schedule_i_line_12",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Amount 12",
-    "evidence": "Field index: Amount 12 p2 line 12, column 'Combined monthly income', 'Add the amount in the last column of line 10 to the amount in line 11 (Combined monthly income)' (adjudicated). Line 11 (others' regular contributions) is never asked and counts as zero: step 2 spec §6.1 (totals that count an unasked line as zero; the section 6c decision covers Schedule I line 12) and C1 (the Schedule I income total, Social Security included), §5.5 and §6.2 (schedule_i_income_total). Appendix B R4: the box keeps a binding. The audit's verified row on this box judged the old cmi binding, which leaves Social Security out."
+    "evidence": "Field index: Amount 12 p2 line 12, column 'Combined monthly income', 'Add the amount in the last column of line 10 to the amount in line 11 (Combined monthly income)' (adjudicated). Step 4 spec §6.2 (S:274): line 12 becomes line 10 plus line 11 (schedule_i_line_12); 4c-R3: line 11 adds its typed amount under Yes and nothing under No, unanswered or a blank amount, and line 12 is blank only while line 10 is blank and line 11 adds nothing. Step 2 spec C1: the Schedule I income total, Social Security included. The audit's verified row on this box judged the old cmi binding, which leaves Social Security out."
   },
   {
     "schema": "schedule_i",
@@ -2358,6 +2358,266 @@
     "status": "confirmed",
     "correct_target": "Amount 10 Debtor 2",
     "evidence": "Field index: Amount 10 Debtor 2 p2 line 10, column 'For Debtor 2 or non-filing spouse', 'Calculate monthly income. Add line 7 + line 9.' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_income_total_debtor1."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Check emploment status Debtor 1",
+    "producer": "asked:schedule_i.employment_status",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check emploment status Debtor 1",
+    "evidence": "Field index: Check emploment status Debtor 1 p1 T8 (on-state employed, 'Employed') and T10 (on-state unemployed, 'Not employed') line 1, column 'Debtor 1', 'Employment status' (adjudicated). Step 4 spec §6.2 (S:600): line 1 prints the filer's own answer; choices employed -> /employed and not_employed -> /unemployed, an unanswered status ticking neither (§5.3). 4c-R5: printed whenever answered."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Occupation Debtor 1",
+    "producer": "asked:schedule_i.occupation",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Occupation Debtor 1",
+    "evidence": "Field index: Occupation Debtor 1 p1 T12 line 1, column 'Debtor 1', 'Occupation' (adjudicated). Step 4 spec §6.2 (S:600): the filer's own occupation. 4c-R5: printed only while schedule_i_status_answered holds. The audit's row on this box judged the old schedule_i_occupation_debtor1 rule, which read a field no model has."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Employers Name Debtor 1",
+    "producer": "asked:schedule_i.employer_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Employers Name Debtor 1",
+    "evidence": "Field index: Employers Name Debtor 1 p1 T14 line 1, column 'Debtor 1', 'Employer’s name' (adjudicated). Step 4 spec §6.2 (S:600): the filer's own answer; the pay stub's name is a hint beside the box, no longer printed (4c-R10, D7). 4c-R5: printed only while schedule_i_employed holds. The audit's row on this box judged the old ingested paystub.employer_name binding."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Employers Street1 Debtor 1",
+    "producer": "asked:schedule_i.employer_street",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Employers Street1 Debtor 1",
+    "evidence": "Field index: Employers Street1 Debtor 1 p1 T16 line 1, column 'Debtor 1', 'Employer’s address (Number Street)' (adjudicated). Step 4 spec §6.2 (S:600): the filer's own answer. 4c-R5: printed only while schedule_i_employed holds. The audit's row on this box judged the old schedule_i_employer_street_debtor1 rule, which read a field no model has."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Employers Street2 Debtor 1",
+    "producer": "asked:schedule_i.employer_street_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Employers Street2 Debtor 1",
+    "evidence": "Field index: Employers Street2 Debtor 1 p1 T18 line 1, column 'Debtor 1', 'Employer’s address (line 2)' (adjudicated). Step 4 spec §6.2 (S:600) and 4c-R9 (D6): street line 2 prints, Employers Street3 Debtor 1 stays unbound. 4c-R5: printed only while schedule_i_employed holds."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Employers City Debtor 1",
+    "producer": "asked:schedule_i.employer_city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Employers City Debtor 1",
+    "evidence": "Field index: Employers City Debtor 1 p1 T22 line 1, column 'Debtor 1', 'Employer’s address City' (adjudicated). Step 4 spec §6.2 (S:600): the filer's own answer. 4c-R5: printed only while schedule_i_employed holds. The audit's row on this box judged the old schedule_i_employer_city_debtor1 rule, which read a field no model has."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Employers State Debtor 1",
+    "producer": "asked:schedule_i.employer_state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Employers State Debtor 1",
+    "evidence": "Field index: Employers State Debtor 1 p1 T23 line 1, column 'Debtor 1', 'Employer’s address State' (adjudicated). Step 4 spec §6.2 (S:600): the filer's own answer. 4c-R5: printed only while schedule_i_employed holds. The audit's row on this box judged the old schedule_i_employer_state_debtor1 rule, which read a field no model has."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Employers Zip debtor 1",
+    "producer": "asked:schedule_i.employer_zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Employers Zip debtor 1",
+    "evidence": "Field index: Employers Zip debtor 1 p1 T24 line 1, column 'Debtor 1', 'Employer’s address ZIP Code' (adjudicated). Step 4 spec §6.2 (S:600): the filer's own answer. 4c-R5: printed only while schedule_i_employed holds. The audit's row on this box judged the old schedule_i_employer_zip_debtor1 rule, which read a field no model has."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Time employed Debtor 1",
+    "producer": "asked:schedule_i.time_employed",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Time employed Debtor 1",
+    "evidence": "Field index: Time employed Debtor 1 p1 T28 line 1, column 'Debtor 1', 'How long employed there?' (adjudicated). The name is drawn twice, so the binding is tagged @1:T28; T29 is the spouse's. Step 4 spec §6.2 (S:600): the filer's own answer. 4c-R5: printed only while schedule_i_employed holds. Tier 1's test_every_tagged_schedule_i_twin_fills_its_one_widget holds each tag to its column."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Check emploment status Debtor 2",
+    "producer": "asked:schedule_i.spouse_employment_status",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check emploment status Debtor 2",
+    "evidence": "Field index: Check emploment status Debtor 2 p1 T9 (on-state employed, 'Employed') and T11 (on-state unemployed, 'Not employed') line 1, column 'Debtor 2 or non-filing spouse', 'Employment status' (adjudicated). Step 4 spec §6.2 (S:600): the spouse's own answer under married_together (D5); choices employed -> /employed and not_employed -> /unemployed. 4c-R5: printed only while schedule_i_spouse_shown holds."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Occupation Debtor 2",
+    "producer": "asked:schedule_i.spouse_occupation",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Occupation Debtor 2",
+    "evidence": "Field index: Occupation Debtor 2 p1 T13 line 1, column 'Debtor 2 or non-filing spouse', 'Occupation' (adjudicated). Step 4 spec §6.2 (S:600): the spouse's own answer under married_together (D5). 4c-R5: printed only while schedule_i_spouse_shown holds."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Employers Name Debtor 2",
+    "producer": "asked:schedule_i.spouse_employer_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Employers Name Debtor 2",
+    "evidence": "Field index: Employers Name Debtor 2 p1 T15 line 1, column 'Debtor 2 or non-filing spouse', 'Employer’s name' (adjudicated). Step 4 spec §6.2 (S:600): the spouse's own answer under married_together (D5). 4c-R5: printed only while schedule_i_spouse_employed holds."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Employers Street1 Debtor 2",
+    "producer": "asked:schedule_i.spouse_employer_street",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Employers Street1 Debtor 2",
+    "evidence": "Field index: Employers Street1 Debtor 2 p1 T17 line 1, column 'Debtor 2 or non-filing spouse', 'Employer’s address (Number Street)' (adjudicated). Step 4 spec §6.2 (S:600): the spouse's own answer under married_together (D5). 4c-R5: printed only while schedule_i_spouse_employed holds."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Employers Street2 Debtor 2",
+    "producer": "asked:schedule_i.spouse_employer_street_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Employers Street2 Debtor 2",
+    "evidence": "Field index: Employers Street2 Debtor 2 p1 T19 line 1, column 'Debtor 2 or non-filing spouse', 'Employer’s address (line 2)' (adjudicated). Step 4 spec §6.2 (S:600) and 4c-R9 (D6): street line 2 prints, Employers Street3 Debtor 2 stays unbound. 4c-R5: printed only while schedule_i_spouse_employed holds."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Employers City Debtor 2",
+    "producer": "asked:schedule_i.spouse_employer_city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Employers City Debtor 2",
+    "evidence": "Field index: Employers City Debtor 2 p1 T25 line 1, column 'Debtor 2 or non-filing spouse', 'Employer’s address City' (adjudicated). Step 4 spec §6.2 (S:600): the spouse's own answer under married_together (D5). 4c-R5: printed only while schedule_i_spouse_employed holds."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Employers State Debtor 2",
+    "producer": "asked:schedule_i.spouse_employer_state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Employers State Debtor 2",
+    "evidence": "Field index: Employers State Debtor 2 p1 T26 line 1, column 'Debtor 2 or non-filing spouse', 'Employer’s address State' (adjudicated). Step 4 spec §6.2 (S:600): the spouse's own answer under married_together (D5). 4c-R5: printed only while schedule_i_spouse_employed holds."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Employers Zip debtor 2",
+    "producer": "asked:schedule_i.spouse_employer_zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Employers Zip debtor 2",
+    "evidence": "Field index: Employers Zip debtor 2 p1 T27 line 1, column 'Debtor 2 or non-filing spouse', 'Employer’s address ZIP Code' (adjudicated). Step 4 spec §6.2 (S:600): the spouse's own answer under married_together (D5). 4c-R5: printed only while schedule_i_spouse_employed holds."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Time employed Debtor 1",
+    "producer": "asked:schedule_i.spouse_time_employed",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Time employed Debtor 1",
+    "evidence": "Field index: Time employed Debtor 1 p1 T29 line 1, column 'Debtor 2 or non-filing spouse', 'How long employed there?' (adjudicated). The template names the spouse's box 'Debtor 1' too, so the binding is tagged @1:T29; T28 is the filer's. Step 4 spec §6.2 (S:600): the spouse's own answer under married_together (D5). 4c-R5: printed only while schedule_i_spouse_employed holds. Tier 1's test_every_tagged_schedule_i_twin_fills_its_one_widget holds each tag to its column."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Assistance 8f",
+    "producer": "asked:schedule_i.line_11_text",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Assistance 8f",
+    "evidence": "Field index: Assistance 8f p2 T49 line 11, 'State all other regular contributions to the expenses that you list in Schedule J. Specify:' (adjudicated). The template names line 11's Specify box 'Assistance 8f' too, so the binding is tagged @2:T49; T36 is line 8f's. Step 4 spec §6.2 (S:271): the Yes's Specify text. 4c-R3 and R5: printed only while schedule_i_line_11_yes holds. Tier 1's test_every_tagged_schedule_i_twin_fills_its_one_widget holds each tag to its line."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 11",
+    "producer": "derived:schedule_i_line_11_amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 11",
+    "evidence": "Field index: Amount 11 p2 T50 line 11, column 'Total', 'State all other regular contributions to the expenses that you list in Schedule J' (adjudicated). Step 4 spec §6.2 (S:271): the Yes's monthly amount. 4c-R3 (owner D3): 0.00 under No, as the form says to write $0 for a line asked; under Yes the typed amount (a typed 0 as 0.00, none blank); blank while unanswered."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Check increase",
+    "producer": "asked:schedule_i.line_13_answer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check increase",
+    "evidence": "Field index: Check increase p2 T52 (on-state no, 'No.') and T54 (on-state yes, 'Yes. Explain:') line 13, 'Do you expect an increase or decrease within the year after you file this form?' (adjudicated). Step 4 spec §6.2 (S:272): the filer's own answer; choices no -> /no and yes -> /yes, an unanswered line ticking neither (§5.3)."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Increase/Decrease 13",
+    "producer": "asked:schedule_i.line_13_text",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Increase/Decrease 13",
+    "evidence": "Field index: Increase/Decrease 13 p2 T53 line 13, 'Do you expect an increase or decrease within the year after you file this form? Yes. Explain:' (adjudicated). Step 4 spec §6.2 (S:272): the Yes's explanation. 4c-R5: printed only while schedule_i_line_13_yes holds."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "check24",
+    "producer": "asked:schedule_i.schedule_j_line_24_answer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check24",
+    "evidence": "Field index: check24 p3 T11 (on-state no, 'No.') and T13 (on-state yes, 'Yes.') line 24, 'Do you expect an increase or decrease in your expenses within the year after you file this form?' (adjudicated). Step 4 spec §6.4 (S:280): the filer's own answer, asked on the Expenses step; choices no -> /no and yes -> /yes, an unanswered line ticking neither (§5.3)."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Other 24",
+    "producer": "asked:schedule_i.schedule_j_line_24_text",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other 24",
+    "evidence": "Field index: Other 24 p3 T12 line 24, 'Do you expect an increase or decrease in your expenses within the year after you file this form? Yes. Explain here:' (adjudicated). Step 4 spec §6.4 (S:280): the Yes's explanation. 4c-R5: printed only while schedule_j_line_24_yes holds."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "Check 8",
+    "producer": "asked:schedule_i.line_11_answer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check 8",
+    "evidence": "Field index: Check 8 p2 T7 (on-state no, 'No') and T9 (on-state yes, 'Yes. How much do you regularly receive as contributions?') line 8, 'Does anyone other than you regularly pay any of these expenses?' (sampled_ok). Step 4 spec §13.1 (S:628): line 8 reads Schedule I line 11's answer; 4c-R3: choices no -> /no and yes -> /yes, neither while unanswered (§5.3); Check 7's /On is not this box's state."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "Yes How much do you regularly receive as contributions",
+    "producer": "derived:fee_waiver_line_8_amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Yes How much do you regularly receive as contributions",
+    "evidence": "Field index: Yes How much do you regularly receive as contributions p2 T8 line 8, 'How much do you regularly receive as contributions?' (sampled_ok). Step 4 spec §13.1 (S:628): line 8 copies Schedule I line 11's total. 4c-R3: the typed amount under Yes (a typed 0 as 0.00), blank under No (103B ticks its own No) and while unanswered."
   },
   {
     "schema": "schedule_j",
@@ -14407,7 +14667,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Assistance 8f",
-    "evidence": "Field index: Assistance 8f p2 line 8f, 'Other government assistance that you regularly receive. Specify:' (adjudicated). 3e2 spec §9.1: the cash then non-cash kind, only while the person answered Yes. Tagged T36: the name's other widget is T49, line 11, which stays blank."
+    "evidence": "Field index: Assistance 8f p2 line 8f, 'Other government assistance that you regularly receive. Specify:' (adjudicated). 3e2 spec §9.1: the cash then non-cash kind, only while the person answered Yes. Tagged T36: the name's other widget is T49, line 11, which its own tagged binding fills (4c)."
   },
   {
     "schema": "schedule_j",

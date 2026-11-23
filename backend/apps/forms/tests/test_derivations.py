@@ -158,9 +158,11 @@ SWITCHED_RULES = {
     "line7_other_income": ["monthly_other_income"],
     "line7_interest_and_dividends": ["monthly_interest_and_dividends"],
     "line3_alimony": ["monthly_alimony"],
-    # Schedule I line 12 and Schedule J 23a, which copies it: Social Security included (C1)
+    # Schedule I lines 10 and 12 and Schedule J 23a, which copies line 12: Social Security
+    # included (C1). With no line 11 answer, line 12 adds nothing to line 10 (4c-R3).
     "schedule_i_income_total": list(TEN_SOURCES),
     "schedule_i_income_total_debtor1": list(TEN_SOURCES),
+    "schedule_i_line_12": list(TEN_SOURCES),
     "schedule_j_total_income": list(TEN_SOURCES),
 }
 
@@ -315,3 +317,49 @@ def test_the_rental_rules_are_gone():
         "line3_real_property_income_spouse",
     }
     assert gone & (DERIVATIONS.keys() | RULE_FIXES.keys()) == set()
+
+
+# Each rule that reads the filer's own identity from DebtorInfo, one per way it is read (4c-R11):
+# a column as it is, a digit of the SSN, a street's Street box and a header's name part.
+IDENTITY_RULES = (
+    "first_name",
+    "middle_name",
+    "last_name",
+    "city",
+    "state",
+    "zip_code",
+    "phone",
+    "email",
+    "ssn_last4_digit_1",
+    "home_street",
+    "header_last_name",
+)
+IDENTITY_COLUMNS = (
+    "first_name",
+    "middle_name",
+    "last_name",
+    "city",
+    "state",
+    "zip_code",
+    "phone",
+    "email",
+    "ssn",
+    "street_address",
+)
+
+
+@pytest.mark.parametrize("rule", IDENTITY_RULES)
+def test_an_identity_box_with_no_value_prints_blank_not_none(session, rule):
+    # A box the filer left empty prints nothing, never the word "None" (4c-R11).
+    for column in IDENTITY_COLUMNS:
+        setattr(session.debtor_info, column, None)
+    assert DERIVATIONS[rule](session) == ""
+
+
+@pytest.mark.parametrize("rule", IDENTITY_RULES)
+def test_an_identity_rule_on_a_session_without_debtor_info_raises(session, rule):
+    # Complete refuses a session with no name and address, so a form reaching one is DigniFi's
+    # defect: it fails loudly instead of printing a blank identity (4c-R11).
+    bare = IntakeSession.objects.create(user=session.user, district=session.district)
+    with pytest.raises(DebtorInfo.DoesNotExist):
+        DERIVATIONS[rule](bare)

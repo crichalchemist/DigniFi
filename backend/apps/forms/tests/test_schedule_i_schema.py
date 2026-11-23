@@ -7,9 +7,12 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
+from apps.documents.models import IngestedAggregate
 from apps.forms.schema import load_schema
 from apps.forms.services.derivations import DERIVATIONS
 from apps.forms.services.fill_resolver import resolve
+from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.tests.pdf_readback import read_drawn
 from apps.forms.tests.test_derivations import SPOUSE_AT_HOME as SPOUSE_AT_HOME_ROW
 from apps.forms.tests.test_derivations import TEN_SOURCES
 from apps.forms.tests.test_form_122a1_schema import (
@@ -18,8 +21,16 @@ from apps.forms.tests.test_form_122a1_schema import (
     answer_income_step,
 )
 from apps.forms.tests.test_form_122a1_schema import LINE_BY_SOURCE as FORM_122A1_LINE_BY_SOURCE
-from apps.intake.models import DebtorInfo, Household, IncomeInfo, IntakeSession, SpouseIncome
-from apps.intake.tests.builders import answer_household
+from apps.intake.models import (
+    DebtorInfo,
+    ExpenseInfo,
+    Household,
+    IncomeInfo,
+    IntakeSession,
+    ScheduleIAnswers,
+    SpouseIncome,
+)
+from apps.intake.tests.builders import answer_household, answer_schedule_i
 
 User = get_user_model()
 
@@ -47,7 +58,7 @@ LINE_TOTALS = {
     "Amount 9 Debtor 1": "1016.00",  # line 9: 8a + 8b + ... + 8h
 }
 DEDUCTION_BOXES = tuple(f"Amount 5{x} Debtor 1" for x in "abcdefgh")
-NEVER_ASKED = {"Supplemental income date"}  # lines 11 and 13 and the Debtor 2 header are unbound
+NEVER_ASKED = {"Supplemental income date"}  # the Debtor 2 header is unbound too
 # Schedule I's combined monthly income and every box that copies it: all ten sources,
 # Social Security included (step 2 spec §6.1, C1), 1 + 2 + 4 + ... + 512.
 COMBINED_INCOME = {
@@ -56,7 +67,7 @@ COMBINED_INCOME = {
         "schedule_i",
         "Amount 10",
     ): "1023.00",  # line 10's total: Debtor 1 + a spouse at home, none here
-    ("schedule_i", "Amount 12"): "1023.00",  # line 12: line 10 + line 11, never asked
+    ("schedule_i", "Amount 12"): "1023.00",  # line 12: line 10 + line 11, answered No
     ("form_106sum", "4"): "1023.00",  # copies Schedule I line 12
     ("schedule_j", "23a"): "1023.00",  # copies Schedule I line 12
     # Current monthly income leaves Social Security (32) out.
@@ -76,25 +87,35 @@ def session(db):
         court_name="U.S. Bankruptcy Court",
         filing_fee_chapter_7=Decimal("338.00"),
     )
-    return IntakeSession.objects.create(user=user, district=district)
+    session = IntakeSession.objects.create(user=user, district=district)
+    # Form 122A-1, which some tests resolve beside Schedule I, prints the filer's state (4c-R11).
+    DebtorInfo.objects.create(
+        session=session,
+        first_name="Demo",
+        last_name="Filer",
+        ssn="900-00-0001",  # IRS-reserved range: synthetic
+        date_of_birth=date(1990, 1, 15),
+    )
+    return session
 
 
 @pytest.fixture
 def session_with_income(session):
-    DebtorInfo.objects.create(
-        session=session,
-        first_name="Jane",
-        middle_name="",
-        last_name="Doe",
-        ssn="123-45-6789",
-        date_of_birth=date(1990, 1, 15),
-        phone="312-555-0100",
-        email="jane@example.com",
-        street_address="123 Main St",
-        city="Chicago",
-        state="IL",
-        zip_code="60601",
-    )
+    info = session.debtor_info
+    for column, value in {
+        "first_name": "Jane",
+        "middle_name": "",
+        "last_name": "Doe",
+        "ssn": "123-45-6789",
+        "phone": "312-555-0100",
+        "email": "jane@example.com",
+        "street_address": "123 Main St",
+        "city": "Chicago",
+        "state": "IL",
+        "zip_code": "60601",
+    }.items():
+        setattr(info, column, value)
+    info.save()
     IncomeInfo.objects.create(
         session=session,
         monthly_gross_wages=Decimal("2000.00"),
@@ -239,8 +260,12 @@ class TestScheduleISchema:
             monthly_gross_wages=Decimal("12000.00"),
         )
         schedule_i = resolve(load_schema("schedule_i"), session)
-        printed = {b: v for b, v in schedule_i.items() if "Debtor 2" in b}
+        printed = {
+            b: v for b, v in schedule_i.items() if b.startswith("Amount") and "Debtor 2" in b
+        }
         assert printed and set(printed.values()) == {"0.00"}
+        # Line 1 is no amount: the builder's default answers the spouse Not employed (4c-R13).
+        assert schedule_i["Check emploment status Debtor 2"] == "/unemployed"
         assert (
             schedule_i["Amount 10 Debtor 1"],
             schedule_i["Amount 10"],
@@ -408,7 +433,8 @@ class TestScheduleIDeductionsAndAssistance:
             "TANF; SNAP (food stamps)",
         )
         assert DERIVATIONS["filer_cmi"](session) == "3000.00"
-        assert "Assistance 8f" not in fm  # untagged: line 11's widget (T49) is never filled
+        assert "Assistance 8f" not in fm  # no untagged key: it would fill line 11's T49 too
+        assert "Assistance 8f@2:T49" not in fm  # line 11 answered No
 
     def test_an_unknown_noncash_value_prints_blank_with_its_kind(self, session):
         _filer(session, monthly_gross_wages=Decimal("3000.00"))
@@ -496,3 +522,349 @@ class TestScheduleIDeductionsAndAssistance:
         assert (
             "Assistance 8f@2:T36" not in fm
         )  # the filer answered No; the spouse's kind isn't read
+
+
+# ---------------------------------------------------------------------------
+# 4c Task 3: line 1 prints from the filer's own answers (spec §6.2, S:600; 4c-R5, R9)
+# ---------------------------------------------------------------------------
+
+# Your line 1 answers, an employer invented for the test, and the box each prints in.
+YOUR_JOB = {
+    "employment_status": "employed",
+    "occupation": "Cashier",
+    "employer_name": "Demo Pharmacy",
+    "employer_street": "200 Demo Ave",
+    "employer_city": "Chicago",
+    "employer_state": "IL",
+    "employer_zip": "60601",
+    "time_employed": "6 years",
+}
+YOUR_BOXES = {
+    "Check emploment status Debtor 1": "/employed",
+    "Occupation Debtor 1": "Cashier",
+    "Employers Name Debtor 1": "Demo Pharmacy",
+    "Employers Street1 Debtor 1": "200 Demo Ave",
+    "Employers City Debtor 1": "Chicago",
+    "Employers State Debtor 1": "IL",
+    "Employers Zip debtor 1": "60601",
+    "Time employed Debtor 1@1:T28": "6 years",
+}
+YOUR_EMPLOYER_BOXES = tuple(YOUR_BOXES)[2:]
+SPOUSE_JOB = {
+    "spouse_employment_status": "employed",
+    "spouse_occupation": "Tutor",
+    "spouse_employer_name": "Demo Tutoring Center",
+    "spouse_employer_street": "410 Demo Blvd",
+    "spouse_employer_city": "Chicago",
+    "spouse_employer_state": "IL",
+    "spouse_employer_zip": "60606",
+    "spouse_time_employed": "2 years",
+}
+SPOUSE_BOXES = {
+    "Check emploment status Debtor 2": "/employed",
+    "Occupation Debtor 2": "Tutor",
+    "Employers Name Debtor 2": "Demo Tutoring Center",
+    "Employers Street1 Debtor 2": "410 Demo Blvd",
+    "Employers City Debtor 2": "Chicago",
+    "Employers State Debtor 2": "IL",
+    "Employers Zip debtor 2": "60606",
+    "Time employed Debtor 1@1:T29": "2 years",
+}
+SPOUSE_EMPLOYER_BOXES = tuple(SPOUSE_BOXES)[2:]
+# Every line 1 box, both columns, and the third street line, which DigniFi never asks (4c-R9).
+LINE_1_BOXES = (
+    *YOUR_BOXES,
+    *SPOUSE_BOXES,
+    "Employers Street2 Debtor 1",
+    "Employers Street2 Debtor 2",
+    "Employers Street3 Debtor 1",
+    "Employers Street3 Debtor 2",
+)
+
+
+def _line_1(fm):
+    """The line 1 boxes a resolved Schedule I prints, each with its value."""
+    return {b: fm[b] for b in LINE_1_BOXES if b in fm}
+
+
+@pytest.mark.django_db
+class TestScheduleILine1:
+    def test_line_1_prints_your_employment_from_the_record(self, session_with_income):
+        answer_schedule_i(session_with_income, **YOUR_JOB)
+        assert _line_1(_printed(session_with_income)) == YOUR_BOXES
+
+    def test_not_employed_prints_the_unemployed_box_and_the_occupation(self, session_with_income):
+        # "Occupation may include student or homemaker, if it applies."
+        answer_schedule_i(
+            session_with_income, employment_status="not_employed", occupation="Student"
+        )
+        assert _line_1(_printed(session_with_income)) == {
+            "Check emploment status Debtor 1": "/unemployed",
+            "Occupation Debtor 1": "Student",
+        }
+
+    def test_an_employer_kept_under_not_employed_prints_nothing(self, session_with_income):
+        # The step keeps the employer behind a hidden line once the filer answers Not employed;
+        # the form prints only what the step shows (4c-R5, Review Focus 1).
+        answer_schedule_i(session_with_income, **YOUR_JOB)
+        answer_schedule_i(session_with_income, employment_status="not_employed")
+        assert session_with_income.schedule_i_answers.get_answers()["employer_name"] == (
+            "Demo Pharmacy"
+        )
+        assert _line_1(_printed(session_with_income)) == {
+            "Check emploment status Debtor 1": "/unemployed",
+            "Occupation Debtor 1": "Cashier",
+        }
+
+    @pytest.mark.parametrize("answer", ["married_together", "married_separately", "not_married"])
+    def test_the_spouse_column_prints_only_for_a_spouse_at_home(self, session, answer):
+        # Column 2 ("Debtor 2 or non-filing spouse") is the spouse's only for `married_together`,
+        # a spouse at home who isn't filing; the spouse's answers kept after a change of answer
+        # print nothing (D5).
+        answer_income_step(
+            session, answer, SPOUSE_WAGES_ONLY, monthly_gross_wages=Decimal("12000.00")
+        )
+        answer_schedule_i(session, **YOUR_JOB, **SPOUSE_JOB)
+        printed = _line_1(_printed(session))
+        if answer != "married_together":
+            assert printed == YOUR_BOXES
+            return
+        assert printed == {**YOUR_BOXES, **SPOUSE_BOXES}
+        # A spouse answered Not employed keeps their occupation and drops the employer.
+        answer_schedule_i(session, spouse_employment_status="not_employed")
+        assert _line_1(_printed(session)) == {
+            **YOUR_BOXES,
+            "Check emploment status Debtor 2": "/unemployed",
+            "Occupation Debtor 2": "Tutor",
+        }
+
+    def test_street_2_prints_and_street_3_stays_blank(self, session):
+        answer_income_step(
+            session, "married_together", SPOUSE_WAGES_ONLY, monthly_gross_wages=Decimal("12000.00")
+        )
+        answer_schedule_i(
+            session,
+            **YOUR_JOB,
+            **SPOUSE_JOB,
+            employer_street_2="Suite 5",
+            spouse_employer_street_2="Floor 2",
+        )
+        assert _line_1(_printed(session)) == {
+            **YOUR_BOXES,
+            **SPOUSE_BOXES,
+            "Employers Street2 Debtor 1": "Suite 5",
+            "Employers Street2 Debtor 2": "Floor 2",
+        }
+
+    def test_an_occupation_with_no_status_prints_nothing(self, session):
+        # The step shows the occupation only once a status is chosen (4c-R5,
+        # schedule_i_status_answered and schedule_i_spouse_shown).
+        answer_income_step(
+            session, "married_together", SPOUSE_WAGES_ONLY, monthly_gross_wages=Decimal("12000.00")
+        )
+        answer_schedule_i(
+            session,
+            employment_status=None,
+            occupation="Cashier",
+            spouse_employment_status=None,
+            spouse_occupation="Tutor",
+        )
+        assert _line_1(_printed(session)) == {}
+
+    def test_the_pay_stub_name_no_longer_prints_on_schedule_i(self, session):
+        # A scanned pay stub's employer is a hint beside the box, never a value on the form
+        # (4c-R10, D7): with no answer of the filer's own, the box stays blank.
+        _filer(session, monthly_gross_wages=Decimal("2000.00"))
+        answer_household(session, schedule_i=None)
+        IngestedAggregate.objects.create(
+            session=session, ingest_key="paystub.employer_name", value="Demo Stub Employer"
+        )
+        fm = _printed(session)
+        assert "Employers Name Debtor 1" not in fm
+        assert "Demo Stub Employer" not in fm.values()
+
+
+# ---------------------------------------------------------------------------
+# 4c Task 4: lines 11, 12 and 13, Schedule J line 24 and Form 103B line 8 (spec §6.2, §6.4,
+# §13.1; 4c-R3, R5)
+# ---------------------------------------------------------------------------
+
+HOW_MUCH = "Yes How much do you regularly receive as contributions"
+LINE_11_TEXT = "Roommate pays half the rent"
+# Every box 4c adds beside line 1's, by form: none prints while the filer has answered nothing.
+NEW_BOXES = {
+    "schedule_i": ("Assistance 8f@2:T49", "Amount 11", "Check increase", "Increase/Decrease 13"),
+    "schedule_j": ("check24", "Other 24"),
+    "form_103b": ("Check 8", HOW_MUCH),
+}
+
+# 4c-R3's table: line 11's answers → (Amount 11, its Specify box (T49), what line 12 adds).
+LINE_11_STATES = {
+    "unanswered": ({}, None, None, Decimal("0")),
+    "no": ({"line_11_answer": "no"}, "0.00", None, Decimal("0")),
+    "yes_amount": (
+        {"line_11_answer": "yes", "line_11_text": LINE_11_TEXT, "line_11_amount": "250"},
+        "250.00",
+        LINE_11_TEXT,
+        Decimal("250"),
+    ),
+    "yes_zero": (
+        {"line_11_answer": "yes", "line_11_text": LINE_11_TEXT, "line_11_amount": "0"},
+        "0.00",
+        LINE_11_TEXT,
+        Decimal("0"),
+    ),
+    "yes_no_amount": (
+        {"line_11_answer": "yes", "line_11_text": LINE_11_TEXT},
+        None,
+        LINE_11_TEXT,
+        Decimal("0"),
+    ),
+}
+
+
+def _with_wages(session, wages="2000.00", **schedule_i):
+    """A filer not married with these wages, every step answered, and these line 11-24 answers
+    over the builder's defaults (line 1 Not employed; lines 11, 13 and 24 No)."""
+    _filer(session, monthly_gross_wages=Decimal(wages))
+    answer_household(session)
+    answer_schedule_i(session, **schedule_i)
+
+
+@pytest.mark.django_db
+class TestScheduleILines11To13:
+    @pytest.mark.parametrize("line_10", ["blank", "given"])
+    @pytest.mark.parametrize("state", list(LINE_11_STATES))
+    def test_line_12_follows_each_line_11_state(self, session, state, line_10):
+        # Line 12 is line 10 plus line 11 as the form says; a line 11 the filer answered No, left
+        # blank or typed as 0 adds nothing, and line 12 stays blank only while line 10 is blank
+        # and line 11 adds nothing (4c-R3, Review Focus 3).
+        answers, amount_11, specify, adds = LINE_11_STATES[state]
+        if line_10 == "given":
+            _filer(session, monthly_gross_wages=Decimal("2000.00"))
+        answer_schedule_i(session, **answers)
+        fm = _printed(session)
+        assert (fm.get("Amount 11"), fm.get("Assistance 8f@2:T49")) == (amount_11, specify)
+        if line_10 == "blank":
+            assert "Amount 10" not in fm
+            expected = f"{adds:.2f}" if adds else None
+        else:
+            assert fm["Amount 10"] == "2000.00"
+            expected = f"{Decimal('2000.00') + adds:.2f}"
+        assert fm.get("Amount 12") == expected
+
+    def test_a_typed_0_under_yes_prints_0_00_on_schedule_i_and_103b(self, session):
+        # A typed $0 is an answer, not a blank: Schedule I says to write $0, and 103B line 8 copies
+        # line 11's total, so both print 0.00 under Yes (4c-R3).
+        _with_wages(session, line_11_answer="yes", line_11_amount="0")
+        schedule_i = _printed(session)
+        form_103b = _printed(session, "form_103b")
+        assert (schedule_i["Amount 11"], schedule_i["Amount 12"]) == ("0.00", "2000.00")
+        assert (form_103b["Check 8"], form_103b[HOW_MUCH]) == ("/yes", "0.00")
+
+    def test_106sum_4_and_schedule_j_23a_23c_copy_line_12(self, session):
+        # Each form that copies Schedule I line 12 prints line 10 + line 11, and Schedule J 23c
+        # subtracts the month's expenses from that same figure (4c-R3).
+        _with_wages(
+            session, line_11_answer="yes", line_11_text=LINE_11_TEXT, line_11_amount="300.50"
+        )
+        ExpenseInfo.objects.create(session=session, rent_or_mortgage=Decimal("1200.00"))
+        schedule_i = _printed(session)
+        schedule_j = _printed(session, "schedule_j")
+        assert (
+            schedule_i["Amount 12"],
+            _printed(session, "form_106sum")["4"],
+            schedule_j["23a"],
+            schedule_j["23c"],
+        ) == ("2300.50", "2300.50", "2300.50", "1100.50")
+
+    def test_line_10_stays_line_10(self, session):
+        # Line 11 is no income source: line 10, current monthly income and 103B line 2, which
+        # reads line 10, are what they were before the filer answered it (S:274, counsel C-7).
+        _with_wages(session)
+        before = {
+            "Amount 10": _printed(session)["Amount 10"],
+            "filer_cmi": DERIVATIONS["filer_cmi"](session),
+            "undefined_2": _printed(session, "form_103b")["undefined_2"],
+        }
+        answer_schedule_i(
+            session, line_11_answer="yes", line_11_text=LINE_11_TEXT, line_11_amount="300"
+        )
+        fm = _printed(session)
+        assert {
+            "Amount 10": fm["Amount 10"],
+            "filer_cmi": DERIVATIONS["filer_cmi"](session),
+            "undefined_2": _printed(session, "form_103b")["undefined_2"],
+        } == before
+        assert (fm["Amount 10 Debtor 1"], fm["Amount 12"]) == ("2000.00", "2300.00")
+
+    def test_line_11_text_prints_on_line_11_not_line_8f(self, session):
+        # "Assistance 8f" names two widgets: 8f's Specify (T36) and line 11's (T49). Each answer
+        # lands on its own line, never the other's (4c Review Focus 6).
+        _with_wages(session, line_11_answer="yes", line_11_text=LINE_11_TEXT, line_11_amount="250")
+        _resave(
+            session.income_info,
+            assistance_answer="yes",
+            cash_assistance_kind="TANF",
+            cash_assistance_amount=Decimal("200.00"),
+        )
+        fm = _printed(session)
+        assert (fm["Assistance 8f@2:T36"], fm["Assistance 8f@2:T49"]) == ("TANF", LINE_11_TEXT)
+        assert "Assistance 8f" not in fm
+        drawn = {
+            w.tag: w.value
+            for w in read_drawn("schedule_i", PDFFormFiller().fill("schedule_i", fm))
+            if w.full_name == "Assistance 8f"
+        }
+        assert drawn == {"T36": "TANF", "T49": LINE_11_TEXT}
+
+    def test_line_11_text_and_amount_kept_under_no_print_nothing_and_add_nothing(self, session):
+        # The step keeps a text and amount typed under Yes behind a hidden line once the filer
+        # answers No; no form prints them and line 12 doesn't add them (4c-R5, Review Focus 1).
+        _with_wages(session, line_11_answer="yes", line_11_text=LINE_11_TEXT, line_11_amount="300")
+        answer_schedule_i(session, line_11_answer="no")
+        stored = session.schedule_i_answers.get_answers()
+        assert (stored["line_11_text"], stored["line_11_amount"]) == (LINE_11_TEXT, "300")
+        schedule_i = _printed(session)
+        form_103b = _printed(session, "form_103b")
+        assert (schedule_i["Amount 11"], schedule_i["Amount 12"]) == ("0.00", "2000.00")
+        assert "Assistance 8f@2:T49" not in schedule_i
+        assert form_103b["Check 8"] == "/no"
+        assert HOW_MUCH not in form_103b
+        assert _printed(session, "schedule_j")["23a"] == "2000.00"
+
+    @pytest.mark.parametrize("answer", [None, "no", "yes"])
+    def test_line_13_and_line_24_print_their_answer_and_their_text_only_under_yes(
+        self, session, answer
+    ):
+        # Each line ticks only the box the filer chose, none while unanswered, and its words
+        # print only under the Yes that asks for them (§5.3, 4c-R5).
+        _with_wages(
+            session,
+            line_13_answer=answer,
+            line_13_text="A raise in March",
+            schedule_j_line_24_answer=answer,
+            schedule_j_line_24_text="Rent goes up in June",
+        )
+        schedule_i = _printed(session)
+        schedule_j = _printed(session, "schedule_j")
+        tick = None if answer is None else f"/{answer}"
+        assert (schedule_i.get("Check increase"), schedule_j.get("check24")) == (tick, tick)
+        assert (schedule_i.get("Increase/Decrease 13"), schedule_j.get("Other 24")) == (
+            ("A raise in March", "Rent goes up in June") if answer == "yes" else (None, None)
+        )
+
+    def test_a_session_with_no_record_prints_every_new_box_blank(self, session):
+        # Every session saved before 4c has no ScheduleIAnswers row: each new box prints nothing,
+        # nothing raises, and line 12 is line 10 (Review Focus 4).
+        _filer(session, monthly_gross_wages=Decimal("2000.00"))
+        answer_household(session, schedule_i=None)
+        assert not ScheduleIAnswers.objects.filter(session=session).exists()
+        printed = {form_type: _printed(session, form_type) for form_type in NEW_BOXES}
+        assert {
+            (form_type, box): printed[form_type][box]
+            for form_type, boxes in NEW_BOXES.items()
+            for box in boxes
+            if box in printed[form_type]
+        } == {}
+        assert printed["schedule_i"]["Amount 12"] == "2000.00"

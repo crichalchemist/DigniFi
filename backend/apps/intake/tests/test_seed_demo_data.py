@@ -46,6 +46,7 @@ from apps.intake.models import (
     SpouseIncome,
 )
 from apps.intake.petition import STEP_1_GATES, petition_step_gaps
+from apps.intake.schedule_i import DETAIL_EMPLOYER, schedule_i_step_gaps
 from apps.intake.tests.builders import answer_petition, finish_intake
 from apps.users.models import User
 
@@ -684,6 +685,119 @@ def test_every_persona_answers_the_petition_questions():
         assert answers["rents_residence"] == ("yes" if rents else "no"), name
         # Nothing left open, not even a line Form 101 would print blank.
         assert [str(g) for g in petition_step_gaps(session)] == [], name
+
+
+def _employed(occupation, name, street, city, state, zip_code, how_long, prefix=""):
+    return {
+        f"{prefix}employment_status": "employed",
+        f"{prefix}occupation": occupation,
+        f"{prefix}employer_name": name,
+        f"{prefix}employer_street": street,
+        f"{prefix}employer_city": city,
+        f"{prefix}employer_state": state,
+        f"{prefix}employer_zip": zip_code,
+        f"{prefix}time_employed": how_long,
+    }
+
+
+# The owner-approved persona drafts (4c owner copy §4, 2026-11-22): invented "Demo" employers,
+# everyone No on lines 11, 13 and Schedule J line 24.
+NO_CHANGES = {"line_11_answer": "no", "line_13_answer": "no", "schedule_j_line_24_answer": "no"}
+SCHEDULE_I_OF = {
+    "maria": {
+        **_employed(
+            "Cashier", "Demo Pharmacy", "200 Demo Ave", "Chicago", "IL", "60601", "6 years"
+        ),
+        **NO_CHANGES,
+    },
+    "james": {
+        **_employed(
+            "Maintenance technician",
+            "Demo Hotel",
+            "300 Demo Plaza",
+            "Chicago",
+            "IL",
+            "60602",
+            "9 years",
+        ),
+        **NO_CHANGES,
+    },
+    "priya": {
+        **_employed(
+            "Software engineer",
+            "Demo Software LLC",
+            "400 Demo Blvd",
+            "Chicago",
+            "IL",
+            "60606",
+            "4 years",
+        ),
+        **_employed(
+            "Tutor",
+            "Demo Tutoring Center",
+            "410 Demo Blvd",
+            "Chicago",
+            "IL",
+            "60606",
+            "2 years",
+            prefix="spouse_",
+        ),
+        **NO_CHANGES,
+    },
+    "deshawn": {
+        **_employed(
+            "Warehouse supervisor",
+            "Demo Logistics",
+            "500 Demo Rd",
+            "Chicago",
+            "IL",
+            "60609",
+            "11 years",
+        ),
+        **_employed(
+            "Grocery clerk",
+            "Demo Grocery",
+            "510 Demo Rd",
+            "Chicago",
+            "IL",
+            "60609",
+            "3 years",
+            prefix="spouse_",
+        ),
+        **NO_CHANGES,
+    },
+    "sarah": {
+        **_employed(
+            "Bookstore clerk", "Demo Books", "600 Demo St", "Chicago", "IL", "60622", "1 year"
+        ),
+        **NO_CHANGES,
+    },
+    # Self-employed: no employer name (P1), which leaves him one detail and no gate.
+    "andres": {
+        "employment_status": "employed",
+        "occupation": "Rideshare and delivery driver",
+        **NO_CHANGES,
+    },
+}
+
+
+@pytest.mark.django_db
+def test_every_persona_has_its_schedule_i_answers():
+    # The seed, the journeys and the briefs carry the same answers, so a demo's Schedule I prints
+    # what its persona would type, and no gate stands in the way of Generate All.
+    assert set(SCHEDULE_I_OF) == set(PERSONAS)
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", stdout=StringIO())
+
+    sessions = list(IntakeSession.objects.filter(status="completed"))
+    assert len(sessions) == len(PERSONAS)
+    for session in sessions:
+        persona = session.user.username.removeprefix("demo_")
+        record = session.schedule_i_answers
+        assert record.get_answers() == SCHEDULE_I_OF[persona], persona
+        assert record.answered_on == fill_date().isoformat(), persona
+        details = [str(g) for g in schedule_i_step_gaps(session)]
+        assert details == ([DETAIL_EMPLOYER] if persona == "andres" else []), persona
 
 
 @pytest.mark.django_db

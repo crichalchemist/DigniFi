@@ -1,11 +1,18 @@
+import { useState } from 'react';
+import type { ReactElement } from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { ExpenseInfoStep } from '../ExpenseInfoStep';
-import type { ExpenseInfo } from '../../../../types/api';
+import type { ExpenseInfo, ScheduleIAnswers } from '../../../../types/api';
 import { EXPENSE_FIELDS } from '../../../../types/api';
+import { SCHEDULE_I_TEXT_LIMITS } from '../../../../constants/scheduleILimits';
 import {
   EXPENSE_LINE_WORDS,
   EXPENSE_SPECIFY_WORDS,
+  FORM_106J_LINE_24_EXAMPLE,
+  FORM_106J_LINE_24_QUESTION,
+  FORM_106J_LINE_24_YES,
   LINE_3_QUESTION,
   LINE_4_GROUP_HEADING,
   LINE_15_GROUP_HEADING,
@@ -16,11 +23,14 @@ import {
   CLAIM_GAP_LINE_4,
   DOUBLE_COUNT_EXPENSES_NOTE,
   EXPENSES_LINKED_NOTE,
+  HIDDEN_ANSWERS,
   LINE_3_INFO,
   LINE_4_CLEAR,
   LINE_4_HELP,
   LINE_4_PAY_BOTH,
   NOT_SAVED_TRY_AGAIN,
+  SCHEDULE_I_GATE_J24,
+  SHOW_HIDDEN,
 } from '../../../../constants/copy';
 import { fill } from '../claims/claimNames';
 
@@ -34,16 +44,44 @@ interface StepProps {
   onLine4Confirm?: (figure: string) => Promise<void>;
 }
 
-function renderStep(initialData: Partial<ExpenseInfo> = {}, props: StepProps = {}) {
+// The step's Schedule I answers are the wizard's; this holds them as the wizard does
+function Holder({
+  initialAnswers,
+  onAnswers,
+  children,
+}: {
+  initialAnswers: ScheduleIAnswers;
+  onAnswers: (next: ScheduleIAnswers) => void;
+  children: (answers: ScheduleIAnswers, change: (next: ScheduleIAnswers) => void) => ReactElement;
+}) {
+  const [answers, setAnswers] = useState(initialAnswers);
+  return children(answers, (next) => {
+    onAnswers(next);
+    setAnswers(next);
+  });
+}
+
+function renderStep(
+  initialData: Partial<ExpenseInfo> = {},
+  props: StepProps = {},
+  scheduleI: ScheduleIAnswers = {}
+) {
   const onDataChange = vi.fn();
   const onValidationChange = vi.fn();
+  const onAnswers = vi.fn();
   const element = (next: StepProps) => (
-    <ExpenseInfoStep
-      initialData={initialData}
-      onDataChange={onDataChange}
-      onValidationChange={onValidationChange}
-      {...next}
-    />
+    <Holder initialAnswers={scheduleI} onAnswers={onAnswers}>
+      {(answers, change) => (
+        <ExpenseInfoStep
+          initialData={initialData}
+          onDataChange={onDataChange}
+          onValidationChange={onValidationChange}
+          scheduleIAnswers={answers}
+          onScheduleIAnswersChange={change}
+          {...next}
+        />
+      )}
+    </Holder>
   );
   const { container, rerender } = render(element(props));
   const inputNamed = (name: string) =>
@@ -54,7 +92,7 @@ function renderStep(initialData: Partial<ExpenseInfo> = {}, props: StepProps = {
   const canContinue = () =>
     onValidationChange.mock.calls[onValidationChange.mock.calls.length - 1][0] as boolean;
   const withProps = (next: StepProps) => rerender(element(next));
-  return { container, inputNamed, lastEmitted, canContinue, withProps };
+  return { container, inputNamed, lastEmitted, canContinue, withProps, onAnswers };
 }
 
 describe('ExpenseInfoStep', () => {
@@ -323,5 +361,79 @@ describe('ExpenseInfoStep', () => {
     });
 
     expect(canContinue()).toBe(true);
+  });
+
+  // Schedule J line 24 (4c spec §6.2): the filer's own answer, in the form's words
+  describe('Schedule J line 24', () => {
+    const statusLine = () => document.querySelector('.expense-info-step > [role="status"]');
+    const radio = (container: HTMLElement, value: string) =>
+      container.querySelector<HTMLInputElement>(
+        `input[name="schedule_j_line_24_answer"][value="${value}"]`
+      )!;
+
+    it("line 24 asks in Schedule J's words, with its example", async () => {
+      const user = userEvent.setup();
+      const { container, onAnswers } = renderStep();
+
+      const legend = screen.getByText(FORM_106J_LINE_24_QUESTION, { exact: false });
+      expect(legend.closest('fieldset')).toContainElement(
+        screen.getByText(FORM_106J_LINE_24_EXAMPLE)
+      );
+      const radios = Array.from(
+        container.querySelectorAll<HTMLInputElement>('input[name="schedule_j_line_24_answer"]')
+      );
+      // No, then Yes, with nothing checked
+      expect(radios.map((box) => box.value)).toEqual(['no', 'yes']);
+      expect(radios.some((box) => box.checked)).toBe(false);
+      expect(container.querySelector('[name="schedule_j_line_24_text"]')).toBeNull();
+
+      await user.click(radio(container, 'yes'));
+      expect(onAnswers).toHaveBeenLastCalledWith({ schedule_j_line_24_answer: 'yes' });
+      const box = screen.getByLabelText(FORM_106J_LINE_24_YES) as HTMLTextAreaElement;
+      expect(box.name).toBe('schedule_j_line_24_text');
+      expect(box.maxLength).toBe(SCHEDULE_I_TEXT_LIMITS.schedule_j_line_24_text);
+      fireEvent.change(box, { target: { value: 'The car loan ends in May' } });
+      expect(onAnswers).toHaveBeenLastCalledWith({
+        schedule_j_line_24_answer: 'yes',
+        schedule_j_line_24_text: 'The car loan ends in May',
+      });
+    });
+
+    it('the step says why Continue waits for line 24', () => {
+      // Every box valid: line 24 alone holds Continue, so the sentence shows at once (FR-1)
+      renderStep();
+      expect(statusLine()).toHaveTextContent(SCHEDULE_I_GATE_J24);
+    });
+
+    it('while a box holds Continue, the line 24 sentence waits until line 24 is touched', () => {
+      // Mounted throughout, so a screen reader reads what arrives
+      const { container } = renderStep({ utilities: -5 });
+      expect(statusLine()).toBeEmptyDOMElement();
+
+      fireEvent.blur(radio(container, 'no'), {
+        relatedTarget: container.querySelector('input[name="clothing"]'),
+      });
+      expect(statusLine()).toHaveTextContent(SCHEDULE_I_GATE_J24);
+
+      // Answering it clears the sentence
+      fireEvent.click(radio(container, 'no'));
+      expect(statusLine()).toBeEmptyDOMElement();
+    });
+
+    it('a text kept under No hides behind one line', async () => {
+      const user = userEvent.setup();
+      const { container, onAnswers } = renderStep(
+        {},
+        {},
+        { schedule_j_line_24_answer: 'no', schedule_j_line_24_text: 'The car loan ends in May' }
+      );
+      expect(container.querySelector('[name="schedule_j_line_24_text"]')).toBeNull();
+      expect(screen.getAllByText(HIDDEN_ANSWERS)).toHaveLength(1);
+      // Showing the step changed nothing
+      expect(onAnswers).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole('button', { name: SHOW_HIDDEN }));
+      expect(screen.getByLabelText(FORM_106J_LINE_24_YES)).toHaveValue('The car loan ends in May');
+    });
   });
 });

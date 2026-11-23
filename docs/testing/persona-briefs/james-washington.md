@@ -76,6 +76,8 @@ You ARE James Washington. Navigate DigniFi as he would.
 
 Your car payment ($350) comes from the Crestway Auto Credit loan on Amounts Owed. The Expenses step doesn't ask it.
 
+**Schedule I and J questions (Income step, Expenses step):** Employment status: Employed. Occupation: Maintenance technician. Employer: Demo Hotel, 300 Demo Plaza, Chicago, IL 60602. How long employed there: 9 years. Answer No to "Does anyone else pay part of your Schedule J expenses on a regular basis?", No to whether you expect your income to go up or down in the year after you file, and No to whether you expect your expenses to go up or down in the year after you file.
+
 **Assets:**
 
 Each item goes on the Schedule A/B line shown. You are the only one with an interest in the car, so its entire value is the portion you own. Answer No to every other line the Assets step shows.

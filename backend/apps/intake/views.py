@@ -159,8 +159,9 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                 "spouse_income",
                 "claim_answers",
                 "petition_answers",
+                "schedule_i_answers",
             )
-            .prefetch_related("assets", "debts")
+            .prefetch_related("assets", "debts", "ingested_aggregates")
         )
 
     @transaction.atomic

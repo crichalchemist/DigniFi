@@ -31,7 +31,9 @@ def session(answers=None, ssn="", street="", district="Northern District of Illi
         petition_answers=(
             None if answers is None else SimpleNamespace(get_answers=lambda: dict(answers))
         ),
-        debtor_info=SimpleNamespace(ssn=ssn, street_address=street),
+        debtor_info=SimpleNamespace(
+            ssn=ssn, street_address=street, first_name="", middle_name="", last_name=""
+        ),
         district=SimpleNamespace(name=district),
         filing_fee=None if fee is None else SimpleNamespace(payment_choice=fee),
     )

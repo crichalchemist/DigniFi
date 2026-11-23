@@ -16,6 +16,7 @@ import type {
   PersonaAsset,
   PersonaDebt,
   PersonaData,
+  PersonaEmployment,
 } from '../fixtures/personas';
 
 export class WizardPage {
@@ -119,7 +120,10 @@ export class WizardPage {
   }
 
   /** Types one petition address block; its boxes are named `<prefix>street`, `city`, `state`, `zip`. */
-  private async fillPartyAddress(prefix: 'business_', address: PersonaAddress) {
+  private async fillPartyAddress(
+    prefix: 'business_' | 'employer_' | 'spouse_employer_',
+    address: PersonaAddress
+  ) {
     const box = (field: string) => this.page.locator(`[name="${prefix}${field}"]`);
     await box('street').fill(address.street_address);
     await box('city').fill(address.city);
@@ -234,6 +238,36 @@ export class WizardPage {
         income.spouse_assistance
       );
     }
+    // Schedule I line 1: yours, and your spouse's under married_together
+    await this.fillEmployment('', income.schedule_i.you);
+    if (income.schedule_i.spouse) {
+      await this.fillEmployment('spouse_', income.schedule_i.spouse);
+    }
+    // Lines 11 and 13: Continue waits for both. Neither persona answers Yes, so no box is typed.
+    for (const [name, answer] of [
+      ['line_11_answer', income.schedule_i.line_11],
+      ['line_13_answer', income.schedule_i.line_13],
+    ]) {
+      await this.page.locator(`input[name="${name}"][value="${answer}"]`).check();
+    }
+  }
+
+  /** One person's Schedule I line 1; the employer boxes show under Employed, and a persona with no employer skips them. */
+  private async fillEmployment(prefix: '' | 'spouse_', job: PersonaEmployment) {
+    await this.page
+      .locator(`input[name="${prefix}employment_status"][value="${job.status}"]`)
+      .check();
+    await this.page.locator(`input[name="${prefix}occupation"]`).fill(job.occupation);
+    if (job.employer_name === undefined) return;
+    const box = (field: string) => this.page.locator(`input[name="${prefix}${field}"]`);
+    await box('employer_name').fill(job.employer_name);
+    await box('employer_street').fill(job.employer_street ?? '');
+    await box('employer_city').fill(job.employer_city ?? '');
+    await this.page
+      .locator(`select[name="${prefix}employer_state"]`)
+      .selectOption(job.employer_state ?? '');
+    await box('employer_zip').fill(job.employer_zip ?? '');
+    await box('time_employed').fill(job.time_employed ?? '');
   }
 
   private async fillNowAndAssistance(
@@ -302,7 +336,10 @@ export class WizardPage {
   // ── Step 4: Expenses ────────────────────────────────────────────
 
   async fillExpenses(
-    persona: Pick<PersonaData, 'expenses' | 'expenses_include_others' | 'expense_texts'>
+    persona: Pick<
+      PersonaData,
+      'expenses' | 'expenses_include_others' | 'expense_texts' | 'schedule_j_line_24'
+    >
   ) {
     // Line 3 comes first on the page and is never answered for the filer
     await this.page
@@ -316,6 +353,10 @@ export class WizardPage {
     for (const [field, text] of Object.entries(persona.expense_texts ?? {})) {
       await this.page.locator(`input[name="${field}"]`).fill(text);
     }
+    // Line 24: Continue waits for the answer. Neither persona answers Yes, so no box is typed.
+    await this.page
+      .locator(`input[name="schedule_j_line_24_answer"][value="${persona.schedule_j_line_24}"]`)
+      .check();
   }
 
   // ── Step 5: Assets ──────────────────────────────────────────────

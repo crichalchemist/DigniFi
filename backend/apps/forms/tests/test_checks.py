@@ -1023,6 +1023,29 @@ def test_a_petition_binding_that_names_no_stored_cell_is_a_startup_error(
     assert _errors("form_101") == [("forms.E007", error)]
 
 
+@pytest.mark.parametrize(
+    "binding,error",
+    [
+        (
+            "schedule_i.employer_nmae",
+            "schedule_i: 'schedule_i.employer_nmae': not a key ScheduleIAnswers asks",
+        ),
+        (
+            "schedule_i.employer_name[].street",
+            "schedule_i: 'schedule_i.employer_name[].street': ScheduleIAnswers holds no row list",
+        ),
+    ],
+)
+def test_a_schedule_i_binding_naming_no_key_is_refused(schema_copy, binding, error):
+    # A key the record never stores reads blank at resolve time: the filer's employer, typed on
+    # the Income step, would print as an empty box with no sign of why (4c).
+    def rebind(d):
+        _field(d, "Occupation Debtor 1").update(source="asked", rule=None, binding=binding)
+
+    _edit(schema_copy, "schedule_i", rebind)
+    assert _errors("schedule_i") == [("forms.E007", error)]
+
+
 def test_a_petition_sheet_column_that_names_no_stored_cell_is_a_startup_error(schema_copy):
     # The rows past a slot group's boxes print on the sheet: its column is checked like a slot.
     def rename(d):
