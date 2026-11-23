@@ -73,13 +73,15 @@ _SCHEDULE_I = {
     "5f": "payroll_support",
     "5g": "payroll_union_dues",
 }
+# DRAFT: counsel C-47
 _SCHEDULE_J = {
     "7": "food_and_groceries",
     "8": "childcare",
     "9": "clothing",
     "11": "medical_expenses",
     "14": "charitable_contributions",
-    "15c": "vehicle_insurance",
+    "15a": "life_insurance",
+    "15b": "health_insurance",
     "15d": "insurance_not_deducted",
     "16": "taxes_not_deducted",
     "18": "child_support_paid",

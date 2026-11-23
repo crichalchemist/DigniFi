@@ -28,8 +28,10 @@ function information(over: Partial<MeansInformation> = {}): MeansInformation {
       '9': '60.00',
       '11': '25.00',
       '14': '15.00',
-      '15c': '80.00',
+      '15a': '40.00',
+      '15b': '25.00',
       '15d': '20.00',
+      '6c': '90.00',
       '16': '500.00',
       '18': '75.00',
     },
@@ -63,15 +65,21 @@ describe('besideLine', () => {
     ]);
   });
 
-  it('shows life insurance and health insurance figures beside lines 18 and 25', () => {
-    const insurance = [
+  it('shows life insurance beside line 18', () => {
+    expect(besideLine('18', information(), true)).toEqual([
       'You entered $30.00 on Schedule I line 5e.',
       'You entered $12.00 for your spouse on Schedule I line 5e.',
-      'You entered $80.00 on Schedule J line 15c.',
+      'You entered $40.00 on Schedule J line 15a.',
+    ]);
+  });
+
+  it('shows health and other insurance beside line 25', () => {
+    expect(besideLine('25', information(), true)).toEqual([
+      'You entered $30.00 on Schedule I line 5e.',
+      'You entered $12.00 for your spouse on Schedule I line 5e.',
+      'You entered $25.00 on Schedule J line 15b.',
       'You entered $20.00 on Schedule J line 15d.',
-    ];
-    expect(besideLine('18', information(), true)).toEqual(insurance);
-    expect(besideLine('25', information(), true)).toEqual(insurance);
+    ]);
   });
 
   it('shows Schedule J figures beside lines 19, 21, 22 and 31', () => {

@@ -308,7 +308,7 @@ def test_the_figures_beside_lines_follow_the_map(filer, monkeypatch):
     finish_intake(
         filer.session,
         childcare=Decimal("1200.00"),
-        vehicle_insurance=Decimal("0"),
+        life_insurance=Decimal("0"),
     )
 
     info = _get(filer).json()["information"]
@@ -318,7 +318,7 @@ def test_the_figures_beside_lines_follow_the_map(filer, monkeypatch):
     assert "5f" not in info["schedule_i"]["you"]
     assert info["schedule_i"]["spouse"] is None
     assert info["schedule_j"]["8"] == "1200.00"
-    assert "15c" not in info["schedule_j"]
+    assert "15a" not in info["schedule_j"]
     assert info["line_30_people"] == 1
     assert info["line_30_cap"] == "30.00"
 
@@ -333,7 +333,7 @@ def test_the_figures_beside_lines_follow_the_map(filer, monkeypatch):
 
 
 @pytest.mark.django_db
-def test_every_information_figure_comes_from_the_column_the_sentence_names(filer):
+def test_the_page_is_sent_the_split_insurance_lines_and_not_vehicle_insurance(filer):
     # One distinct value in every mapped column, so a swapped key or column changes the dict.
     from apps.districts.dated_tables import fill_date
     from apps.districts.means_standards import section_104_in_force
@@ -379,6 +379,9 @@ def test_every_information_figure_comes_from_the_column_the_sentence_names(filer
         insurance_not_deducted=Decimal("107.01"),
         taxes_not_deducted=Decimal("108.01"),
         child_support_paid=Decimal("109.01"),
+        life_insurance=Decimal("110.01"),
+        health_insurance=Decimal("111.01"),
+        phone_internet_cable=Decimal("112.01"),
     )
 
     answer_means_test(filer.session)
@@ -410,11 +413,13 @@ def test_every_information_figure_comes_from_the_column_the_sentence_names(filer
         "9": "103.01",
         "11": "104.01",
         "14": "105.01",
-        "15c": "106.01",
+        "15a": "110.01",
+        "15b": "111.01",
         "15d": "107.01",
         "16": "108.01",
         "18": "109.01",
     }
+    assert "6c" not in info["schedule_j"]
     assert info["limits"]["unsecured"] == str(
         limits.chapter_13_unsecured_limit.quantize(Decimal("0.01"))
     )

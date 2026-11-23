@@ -23,13 +23,14 @@ const SCHEDULE_I: Partial<Record<MeansAskedLine, string[]>> = {
   '25': ['5e'],
 };
 
+// DRAFT: counsel C-47
 const SCHEDULE_J: Partial<Record<MeansAskedLine, string[]>> = {
   '16': ['16'],
-  '18': ['15c', '15d'],
+  '18': ['15a'],
   '19': ['18'],
   '21': ['8'],
   '22': ['11'],
-  '25': ['15c', '15d'],
+  '25': ['15b', '15d'],
   '30': ['7', '9'],
   '31': ['14'],
 };
