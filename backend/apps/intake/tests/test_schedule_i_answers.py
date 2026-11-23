@@ -77,6 +77,31 @@ def test_an_amount_that_is_not_a_plain_decimal_at_or_above_zero_is_refused(filer
     assert _patch(client, session, {"line_11_amount": "9999999999.99"}).status_code == 200
 
 
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("employment_status", "unemployed"),
+        ("spouse_employment_status", "self_employed"),
+        ("line_13_answer", "maybe"),
+        ("line_11_answer", True),
+        ("occupation", 12),
+        ("employer_name", {"a": 1}),
+        ("line_13_text", "\ud800"),
+    ],
+)
+def test_an_answer_no_box_can_print_is_refused_and_nothing_is_saved(filer, key, value):
+    # Stored, a stranger choice or yes/no would make its box raise UnmappedChoice at Generate, a
+    # text that isn't a string can't be measured or printed, and half of a surrogate pair can't
+    # be written as UTF-8, so every later read of the session would fail. The body goes as JSON
+    # text, which can carry the lone surrogate a test renderer can't encode.
+    client, session = filer
+    text = json.dumps({"schedule_i_answers": {key: value}})
+    refused = client.patch(_url(session), data=text, content_type="application/json")
+    assert refused.status_code == 400
+    assert refused.json() == {"schedule_i_answers": [f"Check the answer for {key}."]}
+    assert not ScheduleIAnswers.objects.filter(session=session).exists()
+
+
 def test_a_text_over_its_cap_is_stored(filer):
     # The cap is the box's width, not a refusal: the gap list names the text (B47).
     client, session = filer
