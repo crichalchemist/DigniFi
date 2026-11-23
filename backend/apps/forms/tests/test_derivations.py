@@ -3,6 +3,7 @@
 import json
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -78,6 +79,16 @@ def test_family_size_refuses_until_the_household_list_is_answered(session):
     with pytest.raises(IncomeStepGap) as refused:
         DERIVATIONS["family_size"](session)
     assert (str(refused.value), refused.value.step) == (HOUSEHOLD_LIST, "income_info")
+
+
+def test_the_fixed_combined_label_is_gone():
+    # 6d and 15d print the filer's own Specify text; no rule prints words the filer didn't type.
+    from apps.forms.services import derivations
+
+    assert not hasattr(derivations, "_expense_label")
+    source = Path(derivations.__file__).read_text(encoding="utf-8")
+    assert "Utilities (combined)" not in source
+    assert "Insurance (combined)" not in source
 
 
 def test_chapter_constant(session):

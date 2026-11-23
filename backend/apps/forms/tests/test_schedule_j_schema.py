@@ -14,8 +14,9 @@ from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.tests.pdf_readback import read_sheets
+from apps.intake.completion import completion_gaps
 from apps.intake.models import DebtorInfo, ExpenseInfo, Household, IncomeInfo, IntakeSession
-from apps.intake.tests.builders import answer_household
+from apps.intake.tests.builders import answer_household, finish_intake
 
 User = get_user_model()
 
@@ -49,6 +50,8 @@ EXPENSES = {
 }
 # The three "Specify" texts, which print beside their amounts.
 TEXTS = {
+    "utilities_specify": "Demo heating oil",
+    "insurance_specify": "Demo disability policy",
     "taxes_specify": "2026 estimated income tax",
     "support_others_specify": "My mother",
     "other_expenses_specify": "School supplies and fees",
@@ -57,16 +60,16 @@ TEXTS = {
 LINE_BY_EXPENSE = {
     "4": "1.00",  # rent or mortgage
     "4c": "4.00",  # home maintenance, repair and upkeep
-    "6d": "2.00",  # utilities, combined on "Other"
-    "Other 6d": "Utilities (combined)",
+    "6d": "2.00",  # utilities, line 6d's "Other" amount
+    "Other 6d": TEXTS["utilities_specify"],
     "7": "64.00",  # food and housekeeping supplies
     "8": "512.00",  # childcare
     "9": "128.00",  # clothing
     "11": "256.00",  # medical and dental
     "12": "32.00",  # transportation, never car payments
     "15c": "16.00",  # vehicle insurance
-    "15d": "2048.00",  # insurance not deducted from pay, combined on "Other"
-    "Other 15d": "Insurance (combined)",
+    "15d": "2048.00",  # insurance not deducted from pay, line 15d's "Other" amount
+    "Other 15d": TEXTS["insurance_specify"],
     "18": "1024.00",  # support paid
     "21": "4096.00",  # other expenses only
     "4a": "8192.00",
@@ -155,15 +158,15 @@ def test_each_expense_prints_on_the_line_that_asks_for_it(session):
 )
 def test_expense_line_prints_only_above_zero(session, amount, prints):
     # An expense left empty is stored as $0, so $0 can't be told from "left blank": a line
-    # prints only above $0, and so do 6d's and 15d's labels (step 2 spec §6.1, Q4).
+    # prints only above $0, and so do 6d's and 15d's Specify texts (S:614, B60).
     if amount is not None:
         ExpenseInfo.objects.create(session=session, **dict.fromkeys(EXPENSES, amount), **TEXTS)
 
     printed = resolve(load_schema("schedule_j"), session)
 
     labels = {
-        "Other 6d": "Utilities (combined)",
-        "Other 15d": "Insurance (combined)",
+        "Other 6d": TEXTS["utilities_specify"],
+        "Other 15d": TEXTS["insurance_specify"],
         "Other 16": TEXTS["taxes_specify"],
         "Other 19": TEXTS["support_others_specify"],
         "Other 21": TEXTS["other_expenses_specify"],
@@ -360,6 +363,8 @@ def test_line_3_prints_the_filers_answer_and_never_answers_for_them(session, ans
 @pytest.mark.parametrize(
     "amount_field,text_field,box",
     [
+        ("utilities", "utilities_specify", "Other 6d"),
+        ("insurance_not_deducted", "insurance_specify", "Other 15d"),
         ("taxes_not_deducted", "taxes_specify", "Other 16"),
         ("support_others", "support_others_specify", "Other 19"),
         ("other_expenses", "other_expenses_specify", "Other 21"),
@@ -373,6 +378,57 @@ def test_a_specify_text_prints_only_with_its_amount(session, amount_field, text_
     ExpenseInfo.objects.filter(session=session).update(**{amount_field: Decimal("10.00")})
     session = IntakeSession.objects.get(pk=session.pk)
     assert resolve(load_schema("schedule_j"), session)[box] == "X"
+
+
+@pytest.mark.parametrize(
+    "amount_field,text_field,line,box,words",
+    [
+        ("utilities", "utilities_specify", "6d", "Other 6d", "Utilities (combined)"),
+        ("insurance_not_deducted", "insurance_specify", "15d", "Other 15d", "Insurance (combined)"),
+    ],
+)
+def test_a_figure_saved_before_the_split_prints_on_6d_with_its_old_words(
+    session, amount_field, text_field, line, box, words
+):
+    # 0047 stores the old words as the filer's own text, so the form prints what it always did.
+    ExpenseInfo.objects.create(
+        session=session, **{amount_field: Decimal("180.00"), text_field: words}
+    )
+
+    printed = resolve(load_schema("schedule_j"), session)
+
+    assert (printed[line], printed[box]) == ("180.00", words)
+
+
+def _gaps_of(session):
+    # Gap has no value equality, so compare what it says. A fresh session, since finish_intake
+    # never refreshes a reverse one-to-one the builders may have cached as a miss.
+    fresh = IntakeSession.objects.get(pk=session.pk)
+    return [(g.message, g.step, g.kind, g.forms) for g in completion_gaps(fresh)]
+
+
+def test_a_6d_or_15d_amount_with_no_words_prints_the_amount_alone_and_no_gap(session):
+    # S:614: a rule that printed words beside a blank box would reprint what the filer deleted.
+    IncomeInfo.objects.create(
+        session=session, marital_status="not_married", monthly_gross_wages=Decimal("9000.00")
+    )
+    answer_household(session)
+    finish_intake(session)
+    before = _gaps_of(session)
+
+    ExpenseInfo.objects.filter(session=session).update(
+        utilities=Decimal("75.00"),
+        utilities_specify="",
+        insurance_not_deducted=Decimal("75.00"),
+        insurance_specify="",
+    )
+    session = IntakeSession.objects.get(pk=session.pk)
+    printed = resolve(load_schema("schedule_j"), session)
+
+    assert (printed["6d"], printed["15d"]) == ("75.00", "75.00")
+    assert "Other 6d" not in printed
+    assert "Other 15d" not in printed
+    assert _gaps_of(session) == before
 
 
 def test_a_specify_text_of_only_spaces_prints_blank_and_padding_is_trimmed(session):

@@ -1055,3 +1055,102 @@ def test_debts_saved_before_3d_start_with_the_priority_question_unanswered(migra
             None,
             None,
         )
+
+
+SPLIT_COLUMNS = [("intake", "0046_expenseinfo_split_utilities_and_insurance")]
+COMBINED_LABELLED = [("intake", "0047_label_combined_expense_figures")]
+
+
+def _combined_round_trip(migrate):
+    """Six expense rows saved before the split, read after 0047 and again after undoing it.
+
+    A: both figures, no words. B: both $0. C: a typed utilities text. D: insurance whose typed
+    text equals the migration's words. E: unreadable utilities (the encrypted empty text copied
+    into the amount column, which reads back as None; any other text would raise). F: a utilities figure beside a rent column nothing
+    here can read (another key's ciphertext), which the migration must not load.
+    """
+    apps = migrate(SPLIT_COLUMNS)
+    user = User.objects.create_user(username="filer", password="pw")
+    district = District.objects.create(
+        code="ILND",
+        name="Illinois Northern",
+        state="IL",
+        court_name="U.S. Bankruptcy Court ILND",
+        filing_fee_chapter_7=Decimal("338.00"),
+    )
+    IntakeSession = apps.get_model("intake", "IntakeSession")
+    ExpenseInfo = apps.get_model("intake", "ExpenseInfo")
+    rows = {}
+    for name, fields in {
+        "A": {"utilities": Decimal("180.00"), "insurance_not_deducted": Decimal("120.00")},
+        "B": {},
+        "C": {"utilities": Decimal("50.00"), "utilities_specify": "Propane"},
+        "D": {
+            "insurance_not_deducted": Decimal("30.00"),
+            "insurance_specify": "Insurance (combined)",
+        },
+        "E": {"insurance_specify": "Demo words"},
+        "F": {"utilities": Decimal("40.00")},
+    }.items():
+        session = IntakeSession.objects.create(user_id=user.pk, district_id=district.pk)
+        rows[name] = ExpenseInfo.objects.create(session_id=session.pk, **fields).pk
+    foreign = Fernet(Fernet.generate_key()).encrypt(b"3000.00").decode()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "UPDATE expense_info SET utilities = utilities_specify WHERE id = %s", [rows["E"]]
+        )
+        cursor.execute(
+            "UPDATE expense_info SET rent_or_mortgage = %s WHERE id = %s", [foreign, rows["F"]]
+        )
+
+    def read(apps):
+        model = apps.get_model("intake", "ExpenseInfo")
+        out = {}
+        for name, pk in rows.items():
+            row = model.objects.only(
+                "utilities", "insurance_not_deducted", "utilities_specify", "insurance_specify"
+            ).get(pk=pk)
+            out[name] = (
+                row.utilities,
+                row.insurance_not_deducted,
+                row.utilities_specify,
+                row.insurance_specify,
+            )
+        return out
+
+    after = read(migrate(COMBINED_LABELLED))
+    undone = read(migrate(SPLIT_COLUMNS))
+    return after, undone
+
+
+def _check_combined_round_trip(after, undone):
+    zero = Decimal("0.00")
+    # Forward: a figure above $0 with no words gets its old words; nothing else moves.
+    assert after["A"] == (
+        Decimal("180.00"),
+        Decimal("120.00"),
+        "Utilities (combined)",
+        "Insurance (combined)",
+    )
+    assert after["B"] == (zero, zero, "", "")
+    assert after["C"] == (Decimal("50.00"), zero, "Propane", "")
+    assert after["D"] == (zero, Decimal("30.00"), "", "Insurance (combined)")
+    assert after["E"] == (None, zero, "", "Demo words")
+    assert after["F"] == (Decimal("40.00"), zero, "Utilities (combined)", "")
+    # Reverse: only a text equal to the migration's words is blanked.
+    assert undone["A"] == (Decimal("180.00"), Decimal("120.00"), "", "")
+    assert undone["C"] == (Decimal("50.00"), zero, "Propane", "")
+    assert undone["D"] == (zero, Decimal("30.00"), "", "")
+    assert undone["E"] == (None, zero, "", "Demo words")
+    assert undone["F"] == (Decimal("40.00"), zero, "", "")
+
+
+@pytest.mark.slow
+def test_a_figure_saved_before_the_split_keeps_its_line_and_its_words(migrate):
+    _check_combined_round_trip(*_combined_round_trip(migrate))
+
+
+@pytest.mark.postgres
+@ON_POSTGRES
+def test_a_figure_saved_before_the_split_keeps_its_line_and_its_words_on_postgres(migrate):
+    _check_combined_round_trip(*_combined_round_trip(migrate))

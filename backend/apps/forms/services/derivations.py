@@ -876,11 +876,6 @@ def _schedule_j_installment_words(session: IntakeSession, line: str) -> str:
     return linked.j17_words[line] if linked.j17[line] > 0 else ""
 
 
-def _expense_label(session: IntakeSession, field: str, label: str) -> str:
-    """An "Other. Specify:" line's text, printed only when its amount prints (Q4)."""
-    return label if _expense_amount(session, field) > 0 else ""
-
-
 def _expense_text(session: IntakeSession, field: str, text_field: str) -> str:
     """A "Specify" box's text, the filer's own, printed only when its amount prints."""
     if _expense_amount(session, field) <= 0:
@@ -1453,7 +1448,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
         linked_payments(s).additional_mortgage
     ),
     "schedule_j_utilities": lambda s: _expense_line(s, "utilities"),
-    "schedule_j_utilities_label": lambda s: _expense_label(s, "utilities", "Utilities (combined)"),
+    "schedule_j_utilities_label": lambda s: _expense_text(s, "utilities", "utilities_specify"),
     "schedule_j_home_maintenance": lambda s: _expense_line(s, "home_maintenance"),
     "schedule_j_food_and_groceries": lambda s: _expense_line(s, "food_and_groceries"),
     "schedule_j_childcare": lambda s: _expense_line(s, "childcare"),
@@ -1468,8 +1463,8 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_j_installment_d_words": lambda s: _schedule_j_installment_words(s, "17d"),
     "schedule_j_vehicle_insurance": lambda s: _expense_line(s, "vehicle_insurance"),
     "schedule_j_insurance_not_deducted": lambda s: _expense_line(s, "insurance_not_deducted"),
-    "schedule_j_insurance_label": lambda s: _expense_label(
-        s, "insurance_not_deducted", "Insurance (combined)"
+    "schedule_j_insurance_label": lambda s: _expense_text(
+        s, "insurance_not_deducted", "insurance_specify"
     ),
     "schedule_j_support_paid": lambda s: _expense_line(s, "child_support_paid"),
     "schedule_j_other_expenses": lambda s: _expense_line(s, "other_expenses"),

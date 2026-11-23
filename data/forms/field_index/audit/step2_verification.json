@@ -2627,7 +2627,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "6d",
-    "evidence": "Field index: 6d p2 line 6d, column 'Your expenses', 'Utilities: Other. Specify: (amount)' (adjudicated). Owner Q4 (step 2 spec §3, DIG-52): utilities go on 6d with 'Utilities (combined)', insurance not deducted from pay on 15d with 'Insurance (combined)'; each label prints only above $0. The Expenses step stores one utilities figure, which 6a-6c can't take without a split. Step 2 spec Appendix A.8 and Appendix B chain a (12 -> 6d); §6.1 and §6.2 (blank at $0, 6c option A). The audit's verified row on 12 names 6a for this rule; Q4 overrides it."
+    "evidence": "Field index: 6d p2 line 6d, column 'Your expenses', 'Utilities: Other. Specify: (amount)' (adjudicated). Step 4 spec §12.1 (S:607-614), owner Q3 'b', B60: `utilities` (`insurance_not_deducted`) keeps its name and holds line 6d's (15d's) 'Other' amount; 6a–6c (15a–15b) have their own columns. Step 2 spec Appendix A.8 and Appendix B chain a (12 -> 6d); §6.1 and §6.2 (blank at $0, 6c option A). The audit's verified row on 12 names 6a for this rule; B60 overrides it."
   },
   {
     "schema": "schedule_j",
@@ -2637,7 +2637,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Other 6d",
-    "evidence": "Field index: Other 6d p2 line 6d, tooltip 'Specify', 'Utilities: Other. Specify:' (adjudicated): the text naming 6d's amount. Owner Q4 (step 2 spec §3, DIG-52): utilities go on 6d with 'Utilities (combined)', insurance not deducted from pay on 15d with 'Insurance (combined)'; each label prints only above $0. Step 2 spec Appendix A.8, §6.2 (schedule_j_utilities_label). The audit has no row for this box."
+    "evidence": "Field index: Other 6d p2 line 6d, tooltip 'Specify', 'Utilities: Other. Specify:' (adjudicated): the text naming 6d's amount. Step 4 spec §12.1 (S:607-614), owner Q3 'b', B60: `utilities` (`insurance_not_deducted`) keeps its name and holds line 6d's (15d's) 'Other' amount; 6a–6c (15a–15b) have their own columns. It prints the filer's Specify text above $0; a figure saved before the split carries 'Utilities (combined)' ('Insurance (combined)') as stored text (0047). Step 2 spec Appendix A.8, §6.2 (schedule_j_utilities_label). The audit has no row for this box."
   },
   {
     "schema": "schedule_j",
@@ -2647,7 +2647,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "15d",
-    "evidence": "Field index: 15d p2 line 15d, column 'Your expenses', 'Other insurance. Specify: (amount)' (adjudicated). Owner Q4 (step 2 spec §3, DIG-52): utilities go on 6d with 'Utilities (combined)', insurance not deducted from pay on 15d with 'Insurance (combined)'; each label prints only above $0. The Expenses step stores one figure for health, life or disability insurance not deducted from pay, which 15a and 15b can't take without a split. Step 2 spec Appendix A.8 (20a -> 15d); §6.1 and §6.2 (blank at $0, 6c option A). The audit's verified row on 20a names 15b for this rule; Q4 overrides it."
+    "evidence": "Field index: 15d p2 line 15d, column 'Your expenses', 'Other insurance. Specify: (amount)' (adjudicated). Step 4 spec §12.1 (S:607-614), owner Q3 'b', B60: `utilities` (`insurance_not_deducted`) keeps its name and holds line 6d's (15d's) 'Other' amount; 6a–6c (15a–15b) have their own columns. Step 2 spec Appendix A.8 (20a -> 15d); §6.1 and §6.2 (blank at $0, 6c option A). The audit's verified row on 20a names 15b for this rule; B60 overrides it."
   },
   {
     "schema": "schedule_j",
@@ -2657,7 +2657,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Other 15d",
-    "evidence": "Field index: Other 15d p2 line 15d, tooltip 'Specify', 'Other insurance. Specify:' (adjudicated): the text naming 15d's amount. Owner Q4 (step 2 spec §3, DIG-52): utilities go on 6d with 'Utilities (combined)', insurance not deducted from pay on 15d with 'Insurance (combined)'; each label prints only above $0. Step 2 spec Appendix A.8, §6.2 (schedule_j_insurance_label). The audit has no row for this box."
+    "evidence": "Field index: Other 15d p2 line 15d, tooltip 'Specify', 'Other insurance. Specify:' (adjudicated): the text naming 15d's amount. Step 4 spec §12.1 (S:607-614), owner Q3 'b', B60: `utilities` (`insurance_not_deducted`) keeps its name and holds line 6d's (15d's) 'Other' amount; 6a–6c (15a–15b) have their own columns. It prints the filer's Specify text above $0; a figure saved before the split carries 'Utilities (combined)' ('Insurance (combined)') as stored text (0047). Step 2 spec Appendix A.8, §6.2 (schedule_j_insurance_label). The audit has no row for this box."
   },
   {
     "schema": "schedule_j",
