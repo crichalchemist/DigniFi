@@ -215,7 +215,6 @@ def test_a_precondition_is_read_by_its_name_or_as_an_attribute(source, raises):
         ("fee_waiver_others_covered_who", {"page": "/filing-fee"}),
         ("district_name", {}),  # the district list is DigniFi's
         ("line13a_median_income", {}),  # the median table is DigniFi's
-        ("schedule_i_occupation_debtor1", {}),  # reads a field no model has: always blank
         *[
             (f"schedule_i_{n}_{c}", {"step": "take_home_pay"})
             for n in (

@@ -93,6 +93,28 @@ def _spouse_column_2(wages, payroll_tax):
     }
 
 
+def _employed(column, occupation, name, street, zip_code):
+    """Schedule I line 1 for one column (1 or 2) of a person employed in Chicago, IL (owner copy
+    §4), the second and third street lines blank. "Time employed Debtor 1" is left out: the
+    template draws your tenure and the spouse's under that one name (T28 and T29), so a box read
+    by its name can't hold either; tier 1's tenure twin test reads each widget alone."""
+    return {
+        f"Check emploment status Debtor {column}": "/employed",
+        f"Occupation Debtor {column}": occupation,
+        f"Employers Name Debtor {column}": name,
+        f"Employers Street1 Debtor {column}": street,
+        f"Employers Street2 Debtor {column}": "",
+        f"Employers Street3 Debtor {column}": "",
+        f"Employers City Debtor {column}": "Chicago",
+        f"Employers State Debtor {column}": "IL",
+        f"Employers Zip debtor {column}": zip_code,
+    }
+
+
+# Line 1's column 2 for a filer not married and filing together: every box blank.
+NO_SPOUSE_LINE_1 = dict.fromkeys(_employed(2, "", "", "", ""), "")
+
+
 def _deductions(**amounts):
     """Schedule I 5a-5h (`a`..`h`), 6 and 7 for Debtor 1; a letter not named prints 0.00."""
     boxes = {f"Amount 5{x} Debtor 1": amounts.pop(x, "0.00") for x in "abcdefgh"}
@@ -333,6 +355,8 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
+            **_employed(1, "Cashier", "Demo Pharmacy", "200 Demo Ave", "60601"),
+            **NO_SPOUSE_LINE_1,
             **_deductions(a="400.00", total="400.00", pay="2800.00"),
             "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
@@ -508,6 +532,8 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
+            **_employed(1, "Maintenance technician", "Demo Hotel", "300 Demo Plaza", "60602"),
+            **NO_SPOUSE_LINE_1,
             **_deductions(a="1288.00", g="45.00", total="1333.00", pay="4500.00"),
             "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
@@ -847,6 +873,8 @@ EXPECTED = {
             "Debtor2.Date signed": "",
         },
         "schedule_i": {
+            **_employed(1, "Software engineer", "Demo Software LLC", "400 Demo Blvd", "60606"),
+            **_employed(2, "Tutor", "Demo Tutoring Center", "410 Demo Blvd", "60606"),
             **_deductions(a="2450.00", c="600.00", e="620.00", total="3670.00", pay="8330.00"),
             "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
@@ -1057,6 +1085,8 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
+            **_employed(1, "Warehouse supervisor", "Demo Logistics", "500 Demo Rd", "60609"),
+            **_employed(2, "Grocery clerk", "Demo Grocery", "510 Demo Rd", "60609"),
             **_deductions(a="450.00", total="450.00", pay="3050.00"),
             "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
@@ -1201,6 +1231,8 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
+            **_employed(1, "Bookstore clerk", "Demo Books", "600 Demo St", "60622"),
+            **NO_SPOUSE_LINE_1,
             **_deductions(a="250.00", total="250.00", pay="1750.00"),
             "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
@@ -1417,6 +1449,12 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
+            # Self-employed: Employed with no employer, his one standing detail (owner P1).
+            **_employed(1, "Rideshare and delivery driver", "", "", ""),
+            "Employers City Debtor 1": "",
+            "Employers State Debtor 1": "",
+            "Time employed Debtor 1": "",  # both widgets: no tenure, no spouse
+            **NO_SPOUSE_LINE_1,
             **_deductions(total="0.00", pay="0.00"),
             "Amount 8b Debtor 1": "0.00",
             "Amount 8a Debtor 1": "3370.00",

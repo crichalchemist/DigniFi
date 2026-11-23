@@ -47,6 +47,7 @@ from apps.intake.income import (
     uses_current,
 )
 from apps.intake.models import IntakeSession
+from apps.intake.schedule_i import married_together
 
 _ZERO = Decimal("0.00")
 _TWO_PLACES = Decimal("0.01")
@@ -57,12 +58,11 @@ _TWO_PLACES = Decimal("0.01")
 # ---------------------------------------------------------------------------
 
 
-def _safe_debtor_attr(session: IntakeSession, attr: str, default: str = "") -> str:
-    try:
-        val = getattr(session.debtor_info, attr)
-        return str(val) if val is not None else default
-    except Exception:
-        return default
+def _debtor_text(session: IntakeSession, attr: str) -> str:
+    """A DebtorInfo column as text, "" for None. A session with no DebtorInfo raises: Complete
+    refuses one, so a form reaching it is DigniFi's defect, never a blank identity (4c-R11)."""
+    value = getattr(session.debtor_info, attr)
+    return "" if value is None else str(value)
 
 
 def _full_name(session: IntakeSession) -> str:
@@ -687,14 +687,6 @@ def _fee_text(name: str, under: str | None = None) -> Callable[[IntakeSession], 
 # ---------------------------------------------------------------------------
 
 
-def _schedule_i_occupation_debtor1(session: IntakeSession) -> str:
-    return _safe_debtor_attr(session, "occupation", "")
-
-
-def _schedule_i_employer_debtor1(session: IntakeSession) -> str:
-    return _safe_debtor_attr(session, "employer_name", "")
-
-
 def _on_row(session: IntakeSession, spouse: bool, rule: Callable) -> str:
     """One Schedule I figure for one column: blank with no row, else the row rule's."""
     row = _column(session, spouse)
@@ -952,6 +944,11 @@ def _petition(session: IntakeSession, key: str) -> str:
     return record_value(session, f"petition.{key}")
 
 
+def _schedule_i(session: IntakeSession, key: str) -> str:
+    """A ScheduleIAnswers key as text; "" when unanswered or the session has no record (4c)."""
+    return record_value(session, f"schedule_i.{key}")
+
+
 def _valid_itin(session: IntakeSession) -> str:
     """The stored ITIN only when it is nine digits starting with 9, else blank (PF2-U2)."""
     value = _petition(session, "itin")
@@ -1054,9 +1051,7 @@ def _register_digits(prefix: str, reader, start: int, count: int, fix: dict[str,
         )
 
 
-_register_digits(
-    "ssn_last4_digit", lambda s: _safe_debtor_attr(s, "ssn"), 5, 4, {"step": "debtor_info"}
-)
+_register_digits("ssn_last4_digit", lambda s: _debtor_text(s, "ssn"), 5, 4, {"step": "debtor_info"})
 _register_digits("itin_last4_digit", _valid_itin, 5, 4, _step_of("itin"))
 
 
@@ -1090,7 +1085,7 @@ _register("court_state", lambda s: split_district_name(s.district.name)[1], {})
 
 # Each street splits into Number and Street; the three detail addresses print under their Yes.
 for _prefix, _reader, _fix in (
-    ("home", lambda s: _safe_debtor_attr(s, "street_address"), {"step": "debtor_info"}),
+    ("home", lambda s: _debtor_text(s, "street_address"), {"step": "debtor_info"}),
     (
         "mailing",
         _under("mailing_answer", _asked("mailing_street")),
@@ -1207,7 +1202,7 @@ def _header_part(session: IntakeSession, part: str) -> str:
     from apps.forms.services.text_fit import fit
     from apps.forms.services.widgets import template_widgets
 
-    text = _safe_debtor_attr(session, f"{part}_name")
+    text = _debtor_text(session, f"{part}_name")
     boxes = [w for w in template_widgets(_HEADER_TEMPLATE) if w.full_name in _HEADER_BOXES[part]]
     missing = set(_HEADER_BOXES[part]) - {w.full_name for w in boxes}
     if missing:
@@ -1254,6 +1249,33 @@ _PETITION_PREDICATES: dict[str, Callable[..., bool]] = {
     )
 }
 
+# Schedule I's and Schedule J line 24's boxes print only what the step shows (4c-R5): your
+# occupation once your status is chosen, your employer under Employed, the spouse's column only
+# while married and filing together, and each line's text under its own Yes.
+_SCHEDULE_I_PREDICATES: dict[str, Callable[..., bool]] = {
+    "schedule_i_status_answered": lambda s, answer_cache=None: (
+        _schedule_i(s, "employment_status") != ""
+    ),
+    "schedule_i_employed": lambda s, answer_cache=None: (
+        _schedule_i(s, "employment_status") == "employed"
+    ),
+    "schedule_i_spouse_shown": lambda s, answer_cache=None: (
+        married_together(s) and _schedule_i(s, "spouse_employment_status") != ""
+    ),
+    "schedule_i_spouse_employed": lambda s, answer_cache=None: (
+        married_together(s) and _schedule_i(s, "spouse_employment_status") == "employed"
+    ),
+    "schedule_i_line_11_yes": lambda s, answer_cache=None: (
+        _schedule_i(s, "line_11_answer") == "yes"
+    ),
+    "schedule_i_line_13_yes": lambda s, answer_cache=None: (
+        _schedule_i(s, "line_13_answer") == "yes"
+    ),
+    "schedule_j_line_24_yes": lambda s, answer_cache=None: (
+        _schedule_i(s, "schedule_j_line_24_answer") == "yes"
+    ),
+}
+
 
 # ---------------------------------------------------------------------------
 # DERIVATIONS dict (all referenced functions must be defined above)
@@ -1262,15 +1284,15 @@ _PETITION_PREDICATES: dict[str, Callable[..., bool]] = {
 DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "full_name": _full_name,
     "family_size": _family_size,
-    "first_name": lambda s: _safe_debtor_attr(s, "first_name"),
-    "middle_name": lambda s: _safe_debtor_attr(s, "middle_name"),
-    "last_name": lambda s: _safe_debtor_attr(s, "last_name"),
-    "city": lambda s: _safe_debtor_attr(s, "city"),
-    "state": lambda s: _safe_debtor_attr(s, "state"),
-    "zip_code": lambda s: _safe_debtor_attr(s, "zip_code"),
+    "first_name": lambda s: _debtor_text(s, "first_name"),
+    "middle_name": lambda s: _debtor_text(s, "middle_name"),
+    "last_name": lambda s: _debtor_text(s, "last_name"),
+    "city": lambda s: _debtor_text(s, "city"),
+    "state": lambda s: _debtor_text(s, "state"),
+    "zip_code": lambda s: _debtor_text(s, "zip_code"),
     "county": _county,
-    "phone": lambda s: _safe_debtor_attr(s, "phone"),
-    "email": lambda s: _safe_debtor_attr(s, "email"),
+    "phone": lambda s: _debtor_text(s, "phone"),
+    "email": lambda s: _debtor_text(s, "email"),
     "chapter": lambda s: "7",
     "debtor_type": lambda s: "Individual",
     "district_name": lambda s: s.district.name,
@@ -1376,12 +1398,6 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     # Line 6 is Schedule J line 22c: one figure on both forms
     "fee_waiver_monthly_expenses": _total_monthly_expenses,
     # Schedule I income line item derivations
-    "schedule_i_occupation_debtor1": _schedule_i_occupation_debtor1,
-    "schedule_i_employer_debtor1": _schedule_i_employer_debtor1,
-    "schedule_i_employer_street_debtor1": lambda s: _safe_debtor_attr(s, "employer_street", ""),
-    "schedule_i_employer_city_debtor1": lambda s: _safe_debtor_attr(s, "employer_city", ""),
-    "schedule_i_employer_state_debtor1": lambda s: _safe_debtor_attr(s, "employer_state", ""),
-    "schedule_i_employer_zip_debtor1": lambda s: _safe_debtor_attr(s, "employer_zip", ""),
     **_schedule_i_twins(),
     "schedule_i_income_total": _schedule_i_income_total,
     "schedule_i_payroll_other_specify": _payroll_other_specify,
@@ -1645,15 +1661,8 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "fee_waiver_others_covered_who": {"page": "/filing-fee"},
     "fee_waiver_expense_change_explanation": {"page": "/filing-fee"},
     # No link. The district and its median income table come from DigniFi's own data.
-    # The Schedule I occupation and employer address read fields no model has, so they
-    # always print blank.
     "district_name": {},
     "line13a_median_income": {},
-    "schedule_i_occupation_debtor1": {},
-    "schedule_i_employer_street_debtor1": {},
-    "schedule_i_employer_city_debtor1": {},
-    "schedule_i_employer_state_debtor1": {},
-    "schedule_i_employer_zip_debtor1": {},
     # Schedule H line 2: the spouse's name and address are entered on the Codebtors step
     "schedule_h_community_state": {"step": "codebtors"},
     "schedule_h_spouse_name": {"step": "codebtors"},
@@ -1739,4 +1748,5 @@ PREDICATES: dict[str, Callable[[IntakeSession], bool]] = {
         s, "address_history_gate", answer_cache
     ),
     **_PETITION_PREDICATES,
+    **_SCHEDULE_I_PREDICATES,
 }

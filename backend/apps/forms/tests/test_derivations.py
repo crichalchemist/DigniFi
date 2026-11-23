@@ -315,3 +315,49 @@ def test_the_rental_rules_are_gone():
         "line3_real_property_income_spouse",
     }
     assert gone & (DERIVATIONS.keys() | RULE_FIXES.keys()) == set()
+
+
+# Each rule that reads the filer's own identity from DebtorInfo, one per way it is read (4c-R11):
+# a column as it is, a digit of the SSN, a street's Street box and a header's name part.
+IDENTITY_RULES = (
+    "first_name",
+    "middle_name",
+    "last_name",
+    "city",
+    "state",
+    "zip_code",
+    "phone",
+    "email",
+    "ssn_last4_digit_1",
+    "home_street",
+    "header_last_name",
+)
+IDENTITY_COLUMNS = (
+    "first_name",
+    "middle_name",
+    "last_name",
+    "city",
+    "state",
+    "zip_code",
+    "phone",
+    "email",
+    "ssn",
+    "street_address",
+)
+
+
+@pytest.mark.parametrize("rule", IDENTITY_RULES)
+def test_an_identity_box_with_no_value_prints_blank_not_none(session, rule):
+    # A box the filer left empty prints nothing, never the word "None" (4c-R11).
+    for column in IDENTITY_COLUMNS:
+        setattr(session.debtor_info, column, None)
+    assert DERIVATIONS[rule](session) == ""
+
+
+@pytest.mark.parametrize("rule", IDENTITY_RULES)
+def test_an_identity_rule_on_a_session_without_debtor_info_raises(session, rule):
+    # Complete refuses a session with no name and address, so a form reaching one is DigniFi's
+    # defect: it fails loudly instead of printing a blank identity (4c-R11).
+    bare = IntakeSession.objects.create(user=session.user, district=session.district)
+    with pytest.raises(DebtorInfo.DoesNotExist):
+        DERIVATIONS[rule](bare)
