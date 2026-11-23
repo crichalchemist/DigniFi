@@ -23,6 +23,10 @@ export interface LineBox {
   long?: boolean;
   /** Why the box is held: it then stays shown, so nothing holds the step out of sight */
   error?: string;
+  /** Held with its reason not shown yet (FR-2): the box stays shown all the same */
+  held?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 interface LineQuestionProps {
@@ -48,7 +52,7 @@ export function LineQuestion({
   const value = answers[name];
   const answer = value === 'yes' || value === 'no' ? value : null;
   const kept = boxes.some((box) => (answers[box.key] ?? '').trim() !== '');
-  const open = answer === 'yes' || shown || boxes.some((box) => box.error);
+  const open = answer === 'yes' || shown || boxes.some((box) => box.error || box.held);
 
   const field = (box: LineBox) => {
     const common = {
@@ -68,6 +72,8 @@ export function LineQuestion({
           autoComplete="off"
           placeholder="0.00"
           onChange={(e) => set({ [box.key]: e.target.value })}
+          onFocus={box.onFocus}
+          onBlur={box.onBlur}
         />
       );
     }

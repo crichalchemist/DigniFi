@@ -1290,7 +1290,8 @@ _PETITION_PREDICATES: dict[str, Callable[..., bool]] = {
 
 # Schedule I's and Schedule J line 24's boxes print only what the step shows (4c-R5): your
 # occupation once your status is chosen, your employer under Employed, the spouse's column only
-# while married and filing together, and each line's text under its own Yes.
+# while married with the spouse at home (`married_together`: the spouse isn't filing), and each
+# line's text under its own Yes.
 _SCHEDULE_I_PREDICATES: dict[str, Callable[..., bool]] = {
     "schedule_i_status_answered": lambda s, answer_cache=None: (
         _schedule_i(s, "employment_status") != ""

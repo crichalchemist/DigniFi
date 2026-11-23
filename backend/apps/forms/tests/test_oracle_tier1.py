@@ -892,7 +892,7 @@ def _schedule_i_choice_cases():
 
 @pytest.fixture
 def married_together_session(db):
-    """A filer married and filing together, with a spouse at home: both columns print."""
+    """A filer married with the spouse at home, not filing: both columns print."""
     user = get_user_model().objects.create_user(username="tier1schedulei", password="pass")
     district = District.objects.create(
         code="ilnd",

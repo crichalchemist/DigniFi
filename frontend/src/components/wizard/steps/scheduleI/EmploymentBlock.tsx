@@ -95,10 +95,12 @@ export function EmploymentBlock({ answers, onChange, spouse, payStubName }: Empl
 
   const stateKey = keyOf('employer_state');
   const zipKey = keyOf('employer_zip');
-  // Only your own block, only under Employed, and only when a stub gave a name (4c-R10, D7)
+  // Only your own block, only under Employed, and only when a stub gave a name (4c-R10, D7). A
+  // function replacer, so a "$" the scan read prints as read, never as a replacement pattern
+  const stubName = (payStubName ?? '').trim();
   const hint =
-    !spouse && status === 'employed' && (payStubName ?? '').trim() !== ''
-      ? PAYSTUB_EMPLOYER_HINT.replace('{name}', (payStubName ?? '').trim())
+    !spouse && status === 'employed' && stubName !== ''
+      ? PAYSTUB_EMPLOYER_HINT.replace('{name}', () => stubName)
       : undefined;
 
   return (

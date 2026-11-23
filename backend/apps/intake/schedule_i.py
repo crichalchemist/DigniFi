@@ -58,8 +58,8 @@ _TEXT_UNDER_YES = {
 
 
 def married_together(session) -> bool:
-    """Whether the filer is married and filing with the spouse: the one read of the marriage
-    answer for Schedule I's spouse column."""
+    """Whether the filer is married with the spouse at home, not filing (`married_together`): the
+    one read of the marriage answer for Schedule I's spouse column."""
     income_info = getattr(session, "income_info", None)
     return getattr(income_info, "marital_status", None) == "married_together"
 
@@ -76,7 +76,7 @@ def _no_amount(value) -> bool:
 def text_shows(answers: dict, key: str, together: bool) -> bool:
     """Whether the key's box prints (4c-R5): an occupation once its status is answered, an
     employer's name, address and tenure under Employed, the spouse's only for a filer married
-    and filing together, and each line's text under its own Yes."""
+    with the spouse at home (not filing), and each line's text under its own Yes."""
     if key in _TEXT_UNDER_YES:
         return answers.get(_TEXT_UNDER_YES[key]) == "yes"
     prefix = _SPOUSE if key.startswith(_SPOUSE) else ""

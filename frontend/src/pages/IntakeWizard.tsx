@@ -213,8 +213,9 @@ function hydratePetition(answers: PetitionAnswers | undefined): PetitionAnswers 
 /**
  * Step 2's `schedule_i_answers` (4c-R7): Schedule I lines 1, 11 and 13, every key null when
  * unanswered, built the same way from loaded and edited answers. The nine spouse keys go only for a
- * spouse filing together, as `spouse_income` does, so a hidden block neither saves nor clears. The
- * line 11 amount goes as typed, and a blank box as null (PF-4c-C). `answered_on` is never sent.
+ * spouse at home, not filing (`married_together`), as `spouse_income` does, so a hidden block
+ * neither saves nor clears. The line 11 amount goes as typed, and a blank box as null (PF-4c-C).
+ * `answered_on` is never sent.
  */
 function step2ScheduleIBody(
   answers: ScheduleIAnswers,

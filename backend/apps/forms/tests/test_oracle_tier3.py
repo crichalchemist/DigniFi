@@ -112,7 +112,7 @@ def _employed(column, occupation, name, street, zip_code, how_long):
     }
 
 
-# Line 1's column 2 for a filer not married and filing together: every box blank.
+# Line 1's column 2 for a filer with no spouse at home (not `married_together`): every box blank.
 NO_SPOUSE_LINE_1 = dict.fromkeys(_employed(2, "", "", "", "", ""), "")
 
 

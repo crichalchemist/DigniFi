@@ -55,6 +55,17 @@ vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ user: { email: 'jane@example.com' } }),
 }));
 
+// The real layout, unless a test sets `forceContinue` to press Continue while the wizard holds it,
+// so handleNext's own refusal is tested apart from the disabled button (4c-R4)
+const layoutOverride = vi.hoisted(() => ({ forceContinue: false }));
+vi.mock('../../components/wizard/WizardLayout', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../components/wizard/WizardLayout')>();
+  const Layout = (props: Parameters<typeof actual.WizardLayout>[0]) => (
+    <actual.WizardLayout {...props} canGoNext={layoutOverride.forceContinue || props.canGoNext} />
+  );
+  return { ...actual, WizardLayout: Layout, default: Layout };
+});
+
 // ---------------------------------------------------------------------------
 // Shared fixtures
 // ---------------------------------------------------------------------------
@@ -2629,7 +2640,7 @@ const SCHEDULE_I_STEP_2_NULL = {
   line_13_answer: null,
   line_13_text: null,
 };
-// The spouse's line 1, sent only for a spouse filing together
+// The spouse's line 1, sent only for a spouse at home (married_together, not filing)
 const SCHEDULE_I_SPOUSE_NULL = {
   spouse_employment_status: null,
   spouse_occupation: null,
@@ -3345,7 +3356,7 @@ describe('IntakeWizard Schedule I on the Income step', { timeout: 30_000 }, () =
   });
 
   // A hidden spouse block neither saves nor clears what the server holds (D5)
-  it('the spouse keys are sent only for married filing together', async () => {
+  it('the spouse keys are sent only for a spouse at home', async () => {
     const { bodies } = serveSessionSaves(onIncome);
     renderWizard();
     await openIncome();
@@ -3379,8 +3390,9 @@ describe('IntakeWizard Schedule I on the Income step', { timeout: 30_000 }, () =
     const { bodies } = serveSessionSaves(onIncome);
     renderWizard();
     await openIncome();
-    // Nothing touched yet: the status line says nothing
-    expect(statusLine()).toBeEmptyDOMElement();
+    // Every box on the step is valid, so the gate alone holds Continue: the status line names it
+    // before the lines are touched, for a filer a gap link brought to the top of the step (FR-1)
+    expect(statusLine()).toHaveTextContent(SCHEDULE_I_GATE_LINE_11);
     expect(continueButton()).toBeDisabled();
 
     vi.useFakeTimers();
@@ -3409,10 +3421,40 @@ describe('IntakeWizard Schedule I on the Income step', { timeout: 30_000 }, () =
     await waitFor(() => expect(stepUpdates).toEqual([3]));
   });
 
-  it('the status line names line 11 first, once focus leaves the two lines', async () => {
+  // The disabled button is not the only guard: Continue's own handler refuses while a gate is
+  // open, so no other way of pressing it moves the filer past an unanswered line (4c-R4)
+  it('Continue pressed while line 11 is unanswered neither saves nor moves on', async () => {
+    layoutOverride.forceContinue = true;
+    try {
+      const { bodies } = serveSessionSaves(onIncome);
+      renderWizard();
+      await openIncome();
+      expect(continueButton()).toBeEnabled();
+
+      await userEvent.click(continueButton());
+      await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+      expect(bodies).toHaveLength(0);
+      expect(stepUpdates).toEqual([]);
+
+      // With both lines answered the same press saves and moves on
+      pick('line_11_answer', 'no');
+      pick('line_13_answer', 'no');
+      await userEvent.click(continueButton());
+      await waitFor(() => expect(stepUpdates).toEqual([3]));
+      expect(bodies.length).toBeGreaterThan(0);
+    } finally {
+      layoutOverride.forceContinue = false;
+    }
+  });
+
+  // While a box says why Continue is held, the gate waits its turn: it names line 11 first once
+  // focus leaves the two lines
+  it('the status line waits while a box holds Continue, until focus leaves the two lines', async () => {
     serveSessionSaves(onIncome);
     renderWizard();
     await openIncome();
+    fireEvent.change(field('monthly_gross_wages'), { target: { value: '-5' } });
+    expect(screen.getByText(AMOUNT_NEGATIVE)).toBeInTheDocument();
     expect(statusLine()).toBeEmptyDOMElement();
     fireEvent.blur(field('line_13_answer'), { relatedTarget: field('monthly_gross_wages') });
     expect(statusLine()).toHaveTextContent(SCHEDULE_I_GATE_LINE_11);
@@ -3511,6 +3553,44 @@ describe('IntakeWizard Schedule I on the Income step', { timeout: 30_000 }, () =
     expect(bodies).toHaveLength(2);
     expect(scheduleI(bodies[1])?.line_11_amount).toBeNull();
     expect(continueButton()).toBeEnabled();
+  });
+
+  // FR-2: "250." is on its way to "250.50", so no alert interrupts a screen reader while the box
+  // has focus; the amount still holds autosave and Continue, and the reason shows once focus leaves
+  it('a lone trailing point holds quietly while the line 11 box has focus', async () => {
+    const { bodies } = serveSessionSaves({
+      ...onIncome,
+      schedule_i_answers: { line_11_answer: 'yes', line_13_answer: 'no' },
+    });
+    renderWizard();
+    await openIncome();
+    const box = field('line_11_amount') as HTMLInputElement;
+
+    vi.useFakeTimers();
+    try {
+      act(() => box.focus());
+      fireEvent.change(box, { target: { value: '250.' } });
+      await waitSeconds(3);
+      expect(screen.queryByText(AMOUNT_DECIMALS)).not.toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(bodies).toHaveLength(0);
+      expect(continueButton()).toBeDisabled();
+
+      // Only a point on an amount that is otherwise good waits: anything else says why at once
+      fireEvent.change(box, { target: { value: '-5.' } });
+      expect(screen.getByText(AMOUNT_NEGATIVE)).toBeInTheDocument();
+      fireEvent.change(box, { target: { value: '250.' } });
+      expect(screen.queryByText(AMOUNT_NEGATIVE)).not.toBeInTheDocument();
+
+      act(() => box.blur());
+      expect(screen.getByText(AMOUNT_DECIMALS)).toBeInTheDocument();
+      expect(field('line_11_amount')).toHaveValue('250.');
+      await waitSeconds(3);
+      expect(bodies).toHaveLength(0);
+      expect(continueButton()).toBeDisabled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -4247,7 +4327,9 @@ describe('IntakeWizard Schedule J line 24 on the Expenses step', { timeout: 30_0
     const { bodies, stepUpdates } = serve({});
     renderWizard();
     await openExpenses();
-    expect(statusLine()).toBeEmptyDOMElement();
+    // Every box on the step is valid, so the gate alone holds Continue: the status line names it
+    // before line 24 is touched, though the line is the step's last block (FR-1)
+    expect(statusLine()).toHaveTextContent(SCHEDULE_I_GATE_J24);
     expect(continueButton()).toBeDisabled();
 
     vi.useFakeTimers();
@@ -4256,12 +4338,6 @@ describe('IntakeWizard Schedule J line 24 on the Expenses step', { timeout: 30_0
       await waitSeconds(3);
       expect(bodies).toHaveLength(1);
       expect((bodies[0].expense_info as Record<string, unknown>).utilities).toBe(90);
-      expect(continueButton()).toBeDisabled();
-
-      // Focus leaves line 24 unanswered: the status line says why
-      fireEvent.blur(field('schedule_j_line_24_answer'), {
-        relatedTarget: field('clothing'),
-      });
       expect(statusLine()).toHaveTextContent(SCHEDULE_I_GATE_J24);
       expect(continueButton()).toBeDisabled();
 
@@ -4275,6 +4351,21 @@ describe('IntakeWizard Schedule J line 24 on the Expenses step', { timeout: 30_0
     expect(continueButton()).toBeEnabled();
     await userEvent.click(continueButton());
     await waitFor(() => expect(stepUpdates).toEqual([5]));
+  });
+
+  // While a box says why Continue is held, the gate waits its turn: it shows once focus leaves
+  // line 24 unanswered
+  it('the status line waits while a box holds Continue, until focus leaves line 24', async () => {
+    serve({});
+    renderWizard();
+    await openExpenses();
+    fireEvent.change(field('utilities'), { target: { value: '-5' } });
+    expect(screen.getByText(AMOUNT_NEGATIVE)).toBeInTheDocument();
+    expect(statusLine()).toBeEmptyDOMElement();
+    expect(continueButton()).toBeDisabled();
+
+    fireEvent.blur(field('schedule_j_line_24_answer'), { relatedTarget: field('clothing') });
+    expect(statusLine()).toHaveTextContent(SCHEDULE_I_GATE_J24);
   });
 
   it('showing step 4 again sends nothing', async () => {

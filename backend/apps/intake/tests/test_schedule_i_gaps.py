@@ -17,7 +17,7 @@ from rest_framework.test import APIClient
 from apps.districts.models import District
 from apps.eligibility.cmi import income_step_gaps
 from apps.eligibility.services import MeansTestCalculator
-from apps.forms.services.fee_waiver import fee_waiver_family
+from apps.forms.services.fee_waiver import fee_waiver_family, fee_waiver_income
 from apps.intake import schedule_i
 from apps.intake.completion import (
     EXPENSES_INCLUDE_OTHERS_UNANSWERED,
@@ -26,6 +26,7 @@ from apps.intake.completion import (
     Gap,
     completion_gaps,
 )
+from apps.intake.filing_fee import filing_fee_information
 from apps.intake.models import (
     DebtorInfo,
     ExpenseInfo,
@@ -231,6 +232,28 @@ def test_the_gaps_come_in_one_fixed_order(married):
     assert messages[at + 6] == TAKE_HOME_PAY_NOT_ENTERED
 
 
+def test_the_filers_employment_details_come_before_the_spouses(married):
+    # 4c-R2's pairs side by side: your status before the spouse's, then your employer before the
+    # spouse's. A status unanswered and a missing employer exclude each other, so two states.
+    _clear(married, "employment_status", "spouse_employment_status")
+    assert [str(g) for g in schedule_i_step_gaps(married)] == [
+        DETAIL_EMPLOYMENT,
+        DETAIL_SPOUSE_EMPLOYMENT,
+    ]
+
+    answer_schedule_i(
+        married,
+        employment_status="employed",
+        employer_name="  ",
+        spouse_employment_status="employed",
+        spouse_employer_name="",
+    )
+    assert [str(g) for g in schedule_i_step_gaps(married)] == [
+        DETAIL_EMPLOYER,
+        DETAIL_SPOUSE_EMPLOYER,
+    ]
+
+
 def test_each_gap_has_its_kind_from_the_one_table(finished, monkeypatch):
     # The three Yes/No questions are the only gates (D1); the rest let Complete through.
     _clear(finished, *ScheduleIAnswers.KEYS)
@@ -245,7 +268,7 @@ def test_each_gap_has_its_kind_from_the_one_table(finished, monkeypatch):
     assert (employment.kind, employment.forms) == (Gap.GATE, ())
 
 
-def test_the_spouse_gaps_show_only_for_married_filing_together(filer, district):
+def test_the_spouse_gaps_show_only_for_a_spouse_at_home(filer, district):
     _, user = filer
     alone = _session(user, district)
     answer_schedule_i(alone, spouse_employment_status="employed")
@@ -352,7 +375,7 @@ def test_a_text_over_its_cap_kept_under_a_no_is_not_measured(filer, district):
         employer_name=_over("employer_name"),
         time_employed=_over("time_employed"),
         spouse_employment_status="employed",
-        spouse_occupation=_over("spouse_occupation"),  # not married filing together
+        spouse_occupation=_over("spouse_occupation"),  # no spouse at home
         line_11_answer="no",
         line_11_text=_over("line_11_text"),
         line_13_answer="no",
@@ -441,20 +464,38 @@ def test_line_24s_gaps_sit_after_the_expenses_steps(finished):
 
 
 def test_an_unanswered_schedule_i_leaves_the_means_test_and_household_reads_alone(filer, married):
-    # Review Focus 2: no 4c answer reaches CMI, the means test, 103B line 1 or the household's
-    # family size (S:274), so taking every answer away changes none of them.
+    # Review Focus 2: no 4c answer reaches CMI, the means test, 103B lines 1 and 2, the filing-fee
+    # page's income figure or the household's family size (S:274), so taking every answer away
+    # changes none of them. The answers taken away are ones that would move those reads if they
+    # leaked: $5,000 a month from others would lift this household of 3 above the median.
     client, _ = filer
+    answer_schedule_i(
+        married,
+        employment_status="employed",
+        occupation="Demo clerk",
+        employer_name="Demo Employer Inc",
+        spouse_employment_status="employed",
+        spouse_employer_name="Demo Spouse Employer LLC",
+        line_11_answer="yes",
+        line_11_text="Demo relative pays the rent",
+        line_11_amount="5000.00",
+        line_13_answer="yes",
+        line_13_text="Demo raise expected next spring",
+    )
 
     def reads():
         session = _fresh(married)
         result = MeansTestCalculator(session).calculate()
         household = client.get(f"/api/intake/sessions/{married.pk}/").data["household"]
+        information, _ = filing_fee_information(session)
         return {
             "outcome": result["outcome"],
             "cmi": result["cmi"],
             "family_size": household["family_size"],
             "fee_waiver_household_size": household["fee_waiver_household_size"],
             "103b_line_1": fee_waiver_family(session).total,
+            "103b_line_2": fee_waiver_income(session).total,
+            "family_income_monthly": information["family_income_monthly"],
             "income_step_gaps": _messages(income_step_gaps(session)),
         }
 
@@ -466,6 +507,8 @@ def test_an_unanswered_schedule_i_leaves_the_means_test_and_household_reads_alon
     assert before == after
     assert before["family_size"] == 3
     assert before["103b_line_1"] == 3
+    assert before["103b_line_2"] == Decimal("4500.00")
+    assert before["family_income_monthly"] == "4500.00"
     assert before["outcome"] == "at_or_below_median"
     assert before["income_step_gaps"] == []
 

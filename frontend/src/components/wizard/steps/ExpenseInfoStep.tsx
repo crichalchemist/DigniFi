@@ -170,10 +170,13 @@ export function ExpenseInfoStep({
   };
 
   // Continue waits for line 24 (4c-R4); the status line says why once it is answered or focus has
-  // left it. Autosave reads the step's own checks alone, so typed amounts save meanwhile.
+  // left it, or as soon as every box on the step is valid, when the gate alone holds Continue
+  // (FR-1, step 1's F8). Autosave reads the step's own checks alone, so typed amounts save
+  // meanwhile.
   const [line24Left, setLine24Left] = useState(false);
   const line24Gate = lineTwentyFourGate(scheduleIAnswers);
   const line24Touched = line24Left || scheduleIAnswers.schedule_j_line_24_answer != null;
+  const gateAloneHolds = Object.keys(errors).length === 0;
 
   const line3Answer = formData.expenses_include_others;
   const line3NoteId = 'expenses_include_others-unanswered';
@@ -386,7 +389,7 @@ export function ExpenseInfoStep({
       {/* A status, not an alert, and mounted throughout, because a screen reader may not read a
           status region that arrives with its text. */}
       <div role="status">
-        {line24Touched && line24Gate !== null && (
+        {(line24Touched || gateAloneHolds) && line24Gate !== null && (
           <div className="info-box">
             <p className="info-message">{line24Gate}</p>
           </div>

@@ -226,7 +226,7 @@ def test_a_constant_the_audit_placed_elsewhere_proves_nothing_here():
             "ingested",
             "ingest_key:paystub.employer_name",
             {"ingest_key": "paystub.employer_name"},
-        ),  # Schedule I
+        ),  # Schedule I before 4c
         ("signature", "signature", {}),  # Form 101: a signature line has no producer
         ("presume", "presume", {}),  # Form 106Dec
     ],

@@ -1127,6 +1127,9 @@ def _read_schedule_i_limits() -> dict:
         for key in read[part]:
             if key not in ScheduleIAnswers.TEXT_KEYS:
                 raise ImproperlyConfigured(f"{key} in schedule_i.limits.json is no Schedule I text")
+        for key in ScheduleIAnswers.TEXT_KEYS:
+            if key not in read[part]:
+                raise ImproperlyConfigured(f"{key} has no {part[:-1]} in schedule_i.limits.json")
     return read
 
 

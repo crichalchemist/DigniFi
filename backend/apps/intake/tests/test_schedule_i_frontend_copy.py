@@ -194,8 +194,8 @@ ANSWERS = [
     ),
 ]
 
-WHOLE_BEFORE = re.compile(r"(?:^|[.?:-_])$")
-WHOLE_AFTER = re.compile(r"^(?:$|[A-Z(-_])")
+WHOLE_BEFORE = re.compile(r"(?:^|[.?:\uf000-\uf8ff_])$")
+WHOLE_AFTER = re.compile(r"^(?:$|[A-Z(\uf000-\uf8ff_])")
 
 
 def _assert_whole(name: str, text: str, page_text: str, template: str, page: int):
@@ -242,6 +242,6 @@ def test_the_yes_and_no_answers_follow_their_question_on_the_page(
     # "No." alone is on many pages; it is the form's own only as the question's first answer
     page_text = _squeezed(template, page)
     # The check boxes the template draws from a private-use font sit between the words
-    glyphs = "[-]*"
+    glyphs = "[\uf000-\uf8ff]*"
     pattern = glyphs.join(re.escape(_quote(name)) for name in (question, no, yes))
     assert re.search(pattern, page_text), f"{no} and {yes} don't follow {question} on {template}"

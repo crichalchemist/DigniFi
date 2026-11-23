@@ -306,6 +306,7 @@ export function IncomeInfoStep({
   const [followedKey, setFollowedKey] = useState<string | null>(null);
   // Focus has left lines 11 and 13: the status line may then name the one still unanswered
   const [linesLeft, setLinesLeft] = useState(false);
+  const [line11AmountFocused, setLine11AmountFocused] = useState(false);
 
   const livingTogether = formData.marital_status === 'married_together';
 
@@ -411,10 +412,21 @@ export function IncomeInfoStep({
   ]);
 
   // Continue waits for lines 11 and 13 (4c-R4); the status line names the first one left once
-  // either is answered or focus has left them
+  // either is answered or focus has left them, or as soon as every box on the step is valid, when
+  // the gate alone holds Continue (FR-1, step 1's F8)
   const linesGate = scheduleIGate(scheduleIAnswers);
   const linesTouched =
     linesLeft || scheduleIAnswers.line_11_answer != null || scheduleIAnswers.line_13_answer != null;
+  const gateAloneHolds = Object.keys(errors).length === 0;
+
+  // "250." on its way to "250.50" (FR-2): while the box has focus, an amount that is good but for
+  // a lone trailing point shows no alert, so none interrupts a screen reader mid-entry. It still
+  // holds autosave and Continue, and its reason shows once focus leaves the box.
+  const line11Amount = scheduleIAnswers.line_11_amount ?? '';
+  const line11Typing =
+    line11AmountFocused &&
+    /^\d+\.$/.test(line11Amount) &&
+    line11AmountError(line11Amount.slice(0, -1)) === undefined;
 
   // Update parent when form data changes
   useEffect(() => {
@@ -861,7 +873,10 @@ export function IncomeInfoStep({
               key: 'line_11_amount',
               label: SCHEDULE_I_LINE_11_AMOUNT_LABEL,
               amount: true,
-              error: errors.line_11_amount,
+              error: line11Typing ? undefined : errors.line_11_amount,
+              held: line11Typing,
+              onFocus: () => setLine11AmountFocused(true),
+              onBlur: () => setLine11AmountFocused(false),
             },
           ]}
         />
@@ -898,7 +913,7 @@ export function IncomeInfoStep({
       {/* A status, not an alert, as on Contracts & Leases. It stays mounted because a screen reader
           may not read a status region that arrives with its text. */}
       <div role="status">
-        {linesTouched && linesGate !== null && (
+        {(linesTouched || gateAloneHolds) && linesGate !== null && (
           <div className="info-box">
             <p className="info-message">{linesGate}</p>
           </div>

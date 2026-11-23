@@ -256,6 +256,21 @@ describe('EmploymentBlock', () => {
     expect(screen.queryByText(/Your pay stub says/)).not.toBeInTheDocument();
   });
 
+  it('a pay stub name of spaces alone shows no hint', () => {
+    render(<Harness initial={{ employment_status: 'employed' }} payStubName={'  \t '} />);
+    expect(screen.queryByText(/Your pay stub says/)).not.toBeInTheDocument();
+  });
+
+  // The name is what a scan read: a "$" in it prints as it was read, never as a pattern
+  it('the hint shows a pay stub name with a dollar sign exactly as read', () => {
+    render(
+      <Harness initial={{ employment_status: 'employed' }} payStubName="Dollar$'s Diner $& Co" />
+    );
+    expect(screen.getByLabelText(FORM_106I_EMPLOYER_NAME)).toHaveAccessibleDescription(
+      "Your pay stub says: Dollar$'s Diner $& Co"
+    );
+  });
+
   it('the hint never fills the box', async () => {
     const user = userEvent.setup();
     const changes: ScheduleIAnswers[] = [];
@@ -297,5 +312,19 @@ describe('EmploymentBlock', () => {
     const zip = screen.getByLabelText(AB_ZIP_LABEL);
     await user.type(zip, '60601-1234-99');
     expect(zip).toHaveValue('606011234');
+  });
+
+  it("each of the spouse's boxes stops at its cap", () => {
+    render(<Harness spouse initial={{ spouse_employment_status: 'employed' }} />);
+    for (const key of [
+      'spouse_occupation',
+      'spouse_employer_name',
+      'spouse_employer_street',
+      'spouse_employer_street_2',
+      'spouse_employer_city',
+      'spouse_time_employed',
+    ] as const) {
+      expect(box(key), key).toHaveAttribute('maxLength', String(SCHEDULE_I_TEXT_LIMITS[key]));
+    }
   });
 });

@@ -41,7 +41,7 @@ from apps.intake.schedule_i import married_together
 
 # Schedule I's and Schedule J line 24's answers that leave no gap (4c-R13): not employed, and No
 # on lines 11, 13 and 24. answer_household adds the spouse's "not employed" for a filer married
-# and filing together.
+# with the spouse at home (`married_together`).
 SCHEDULE_I_DEFAULTS = MappingProxyType(
     {
         "employment_status": "not_employed",

@@ -617,9 +617,10 @@ class TestScheduleILine1:
         }
 
     @pytest.mark.parametrize("answer", ["married_together", "married_separately", "not_married"])
-    def test_the_spouse_column_prints_only_for_married_filing_together(self, session, answer):
-        # Column 2 is the spouse's only when they file together or live together as one
-        # household; the spouse's answers kept after a change of answer print nothing (D5).
+    def test_the_spouse_column_prints_only_for_a_spouse_at_home(self, session, answer):
+        # Column 2 ("Debtor 2 or non-filing spouse") is the spouse's only for `married_together`,
+        # a spouse at home who isn't filing; the spouse's answers kept after a change of answer
+        # print nothing (D5).
         answer_income_step(
             session, answer, SPOUSE_WAGES_ONLY, monthly_gross_wages=Decimal("12000.00")
         )

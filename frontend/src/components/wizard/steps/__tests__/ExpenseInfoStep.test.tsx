@@ -400,8 +400,14 @@ describe('ExpenseInfoStep', () => {
     });
 
     it('the step says why Continue waits for line 24', () => {
-      const { container } = renderStep();
-      // Mounted throughout, so a screen reader reads what arrives; silent until line 24 is touched
+      // Every box valid: line 24 alone holds Continue, so the sentence shows at once (FR-1)
+      renderStep();
+      expect(statusLine()).toHaveTextContent(SCHEDULE_I_GATE_J24);
+    });
+
+    it('while a box holds Continue, the line 24 sentence waits until line 24 is touched', () => {
+      // Mounted throughout, so a screen reader reads what arrives
+      const { container } = renderStep({ utilities: -5 });
       expect(statusLine()).toBeEmptyDOMElement();
 
       fireEvent.blur(radio(container, 'no'), {

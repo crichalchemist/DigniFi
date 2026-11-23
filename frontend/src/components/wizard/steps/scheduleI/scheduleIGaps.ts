@@ -14,7 +14,8 @@ import type { ScheduleIAnswers } from '../../../../types/api';
 
 // The keys each step's block asks and its body sends, in ScheduleIAnswers.KEYS' order (4c-R7):
 // step 2 asks lines 1, 11 and 13, step 4 asks Schedule J's line 24. The nine spouse_ keys go only
-// while the filer is married and filing together, which the wizard decides.
+// while the filer is married with the spouse at home, not filing (`married_together`), which the
+// wizard decides.
 export const STEP_2_SCHEDULE_I_KEYS = [
   'employment_status',
   'occupation',

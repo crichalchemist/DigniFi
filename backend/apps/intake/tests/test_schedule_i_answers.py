@@ -254,3 +254,17 @@ def test_a_limits_key_the_record_does_not_ask_is_improperly_configured(settings,
     settings.FORM_SCHEMAS_DIRECTORY = tmp_path
     with pytest.raises(ImproperlyConfigured):
         _read_schedule_i_limits()
+
+
+@pytest.mark.parametrize("part", ["limits", "labels"])
+def test_a_text_the_limits_file_leaves_out_is_improperly_configured(settings, tmp_path, part):
+    # A text with no cap would drop out of the too-long check, and nothing would say so until
+    # the suite ran: the server refuses to start instead.
+    shutil.copy(LIMITS_DIR / "schedule_i.limits.json", tmp_path)
+    path = tmp_path / "schedule_i.limits.json"
+    data = json.loads(path.read_text())
+    del data[part]["line_13_text"]
+    path.write_text(json.dumps(data))
+    settings.FORM_SCHEMAS_DIRECTORY = tmp_path
+    with pytest.raises(ImproperlyConfigured, match="line_13_text"):
+        _read_schedule_i_limits()
