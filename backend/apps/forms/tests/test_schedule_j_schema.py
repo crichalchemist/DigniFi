@@ -20,10 +20,15 @@ from apps.intake.tests.builders import answer_household, finish_intake
 
 User = get_user_model()
 
-# Each of the Expenses step's 24 amounts gets a distinct power of two, so a line that reads
+# Each of the Expenses step's 29 amounts gets a distinct power of two (the five of lines 6a-6c, 15a and 15b, a distinct cent), so a line that reads
 # the wrong amount, or adds one too many, prints a different figure.
 EXPENSES = {
     "rent_or_mortgage": Decimal("1.00"),
+    "electricity_heat_gas": Decimal("0.01"),
+    "water_sewer_garbage": Decimal("0.02"),
+    "phone_internet_cable": Decimal("0.04"),
+    "life_insurance": Decimal("0.08"),
+    "health_insurance": Decimal("0.16"),
     "utilities": Decimal("2.00"),
     "home_maintenance": Decimal("4.00"),
     "vehicle_insurance": Decimal("16.00"),
@@ -60,6 +65,11 @@ TEXTS = {
 LINE_BY_EXPENSE = {
     "4": "1.00",  # rent or mortgage
     "4c": "4.00",  # home maintenance, repair and upkeep
+    "6a": "0.01",
+    "6b": "0.02",
+    "6c": "0.04",
+    "15a": "0.08",
+    "15b": "0.16",
     "6d": "2.00",  # utilities, line 6d's "Other" amount
     "Other 6d": TEXTS["utilities_specify"],
     "7": "64.00",  # food and housekeeping supplies
@@ -89,9 +99,9 @@ LINE_BY_EXPENSE = {
     "Other 21": "School supplies and fees",
 }
 # Lines no expense belongs on, which the old bindings filled.
-VACATED = {"15a", "15b", "22b", "24"}
-# The 24 amounts above, added.
-EXPENSE_TOTAL = "65011703.00"
+VACATED = {"22b", "24"}
+# The 29 amounts above, added.
+EXPENSE_TOTAL = "65011703.31"
 
 
 def _household(session, members):
@@ -190,7 +200,7 @@ def test_monthly_net_income_is_income_less_expenses(session):
     assert {box: printed.get(box) for box in ("23a", "23b", "23c")} == {
         "23a": "9200.00",
         "23b": EXPENSE_TOTAL,
-        "23c": "-65002503.00",
+        "23c": "-65002503.31",
     }
 
 

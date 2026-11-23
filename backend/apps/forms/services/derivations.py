@@ -1447,6 +1447,11 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_j_additional_mortgage": lambda s: _linked_amount(
         linked_payments(s).additional_mortgage
     ),
+    "schedule_j_electricity_heat_gas": lambda s: _expense_line(s, "electricity_heat_gas"),
+    "schedule_j_water_sewer_garbage": lambda s: _expense_line(s, "water_sewer_garbage"),
+    "schedule_j_phone_internet_cable": lambda s: _expense_line(s, "phone_internet_cable"),
+    "schedule_j_life_insurance": lambda s: _expense_line(s, "life_insurance"),
+    "schedule_j_health_insurance": lambda s: _expense_line(s, "health_insurance"),
     "schedule_j_utilities": lambda s: _expense_line(s, "utilities"),
     "schedule_j_utilities_label": lambda s: _expense_text(s, "utilities", "utilities_specify"),
     "schedule_j_home_maintenance": lambda s: _expense_line(s, "home_maintenance"),
@@ -1624,6 +1629,11 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "schedule_j_rent_or_mortgage": {"step": "debts"},
     "schedule_j_additional_mortgage": {"step": "debts"},
     "schedule_j_utilities": {"step": "expense_info"},
+    "schedule_j_electricity_heat_gas": {"step": "expense_info"},
+    "schedule_j_water_sewer_garbage": {"step": "expense_info"},
+    "schedule_j_phone_internet_cable": {"step": "expense_info"},
+    "schedule_j_life_insurance": {"step": "expense_info"},
+    "schedule_j_health_insurance": {"step": "expense_info"},
     "schedule_j_utilities_label": {"step": "expense_info"},
     "schedule_j_home_maintenance": {"step": "expense_info"},
     "schedule_j_food_and_groceries": {"step": "expense_info"},

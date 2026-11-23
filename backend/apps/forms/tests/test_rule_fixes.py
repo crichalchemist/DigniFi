@@ -171,6 +171,11 @@ def test_a_precondition_is_read_by_its_name_or_as_an_attribute(source, raises):
         ("schedule_i_income_total_spouse", {"step": "income_info"}),
         ("schedule_j_monthly_net_income", {"step": "income_info"}),  # the earlier of two
         ("schedule_j_utilities_label", {"step": "expense_info"}),
+        ("schedule_j_electricity_heat_gas", {"step": "expense_info"}),
+        ("schedule_j_water_sewer_garbage", {"step": "expense_info"}),
+        ("schedule_j_phone_internet_cable", {"step": "expense_info"}),
+        ("schedule_j_life_insurance", {"step": "expense_info"}),
+        ("schedule_j_health_insurance", {"step": "expense_info"}),
         ("fee_waiver_monthly_expenses", {"step": "expense_info"}),  # 103B line 6 is J 22c
         ("ab_line_28_text", {"step": "assets"}),
         ("ab_line_28_federal", {"step": "assets"}),

@@ -2661,6 +2661,56 @@
   },
   {
     "schema": "schedule_j",
+    "pdf_field": "6a",
+    "producer": "derived:schedule_j_electricity_heat_gas",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "6a",
+    "evidence": "Field index: 6a p2 T4 line 6a, column 'Your expenses', 'Electricity, heat, natural gas' (adjudicated). Step 4 spec §12.1 (S:611, S:615), owner Q3 'b', B60: the Expenses step asks line 6a and stores it in `electricity_heat_gas`; it prints only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "6b",
+    "producer": "derived:schedule_j_water_sewer_garbage",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "6b",
+    "evidence": "Field index: 6b p2 T5 line 6b, column 'Your expenses', 'Water, sewer, garbage collection' (adjudicated). Step 4 spec §12.1 (S:611, S:615), owner Q3 'b', B60: the Expenses step asks line 6b and stores it in `water_sewer_garbage`; it prints only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "6c",
+    "producer": "derived:schedule_j_phone_internet_cable",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "6c",
+    "evidence": "Field index: 6c p2 T6 line 6c, column 'Your expenses', 'Telephone, cell phone, Internet, satellite, and cable services' (adjudicated). Step 4 spec §12.1 (S:611, S:615), owner Q3 'b', B60: the Expenses step asks line 6c and stores it in `phone_internet_cable`; it prints only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "15a",
+    "producer": "derived:schedule_j_life_insurance",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "15a",
+    "evidence": "Field index: 15a p2 T17 line 15a, column 'Your expenses', 'Life insurance' (adjudicated). Step 4 spec §12.1 (S:611, S:615), owner Q3 'b', B60: the Expenses step asks line 15a and stores it in `life_insurance`; it prints only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "15b",
+    "producer": "derived:schedule_j_health_insurance",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "15b",
+    "evidence": "Field index: 15b p2 T18 line 15b, column 'Your expenses', 'Health insurance' (adjudicated). Step 4 spec §12.1 (S:611, S:615), owner Q3 'b', B60: the Expenses step asks line 15b and stores it in `health_insurance`; it prints only above $0."
+  },
+  {
+    "schema": "schedule_j",
     "pdf_field": "18",
     "producer": "derived:schedule_j_support_paid",
     "original_verdicts": [],
