@@ -158,9 +158,11 @@ SWITCHED_RULES = {
     "line7_other_income": ["monthly_other_income"],
     "line7_interest_and_dividends": ["monthly_interest_and_dividends"],
     "line3_alimony": ["monthly_alimony"],
-    # Schedule I line 12 and Schedule J 23a, which copies it: Social Security included (C1)
+    # Schedule I lines 10 and 12 and Schedule J 23a, which copies line 12: Social Security
+    # included (C1). With no line 11 answer, line 12 adds nothing to line 10 (4c-R3).
     "schedule_i_income_total": list(TEN_SOURCES),
     "schedule_i_income_total_debtor1": list(TEN_SOURCES),
+    "schedule_i_line_12": list(TEN_SOURCES),
     "schedule_j_total_income": list(TEN_SOURCES),
 }
 

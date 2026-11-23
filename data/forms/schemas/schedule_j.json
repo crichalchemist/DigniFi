@@ -1112,6 +1112,44 @@
       "repeat_capacity": null,
       "row": null,
       "legal_review": false
+    },
+    {
+      "pdf_field": "check24",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "no": "/no",
+        "yes": "/yes"
+      },
+      "page": 3,
+      "label": "Do you expect an increase or decrease in your expenses within the year after you file this form?",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "schedule_i.schedule_j_line_24_answer",
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Other 24",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 24, Explain",
+      "required": false,
+      "conditional_on": "schedule_j_line_24_yes",
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "schedule_i.schedule_j_line_24_text",
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
     }
   ]
 }

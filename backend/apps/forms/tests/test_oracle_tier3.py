@@ -93,11 +93,11 @@ def _spouse_column_2(wages, payroll_tax):
     }
 
 
-def _employed(column, occupation, name, street, zip_code):
+def _employed(column, occupation, name, street, zip_code, how_long):
     """Schedule I line 1 for one column (1 or 2) of a person employed in Chicago, IL (owner copy
-    §4), the second and third street lines blank. "Time employed Debtor 1" is left out: the
-    template draws your tenure and the spouse's under that one name (T28 and T29), so a box read
-    by its name can't hold either; tier 1's tenure twin test reads each widget alone."""
+    §4), the second and third street lines blank. The template draws your tenure and the
+    spouse's under one name, "Time employed Debtor 1": yours is its widget T28 and the spouse's
+    T29, each read apart under its tagged key (see _printed)."""
     return {
         f"Check emploment status Debtor {column}": "/employed",
         f"Occupation Debtor {column}": occupation,
@@ -108,11 +108,32 @@ def _employed(column, occupation, name, street, zip_code):
         f"Employers City Debtor {column}": "Chicago",
         f"Employers State Debtor {column}": "IL",
         f"Employers Zip debtor {column}": zip_code,
+        f"Time employed Debtor 1@1:T{27 + column}": how_long,
     }
 
 
 # Line 1's column 2 for a filer not married and filing together: every box blank.
-NO_SPOUSE_LINE_1 = dict.fromkeys(_employed(2, "", "", "", ""), "")
+NO_SPOUSE_LINE_1 = dict.fromkeys(_employed(2, "", "", "", "", ""), "")
+
+
+def _lines_11_and_13_no(specify_8f=""):
+    """Schedule I lines 11 and 13 for a filer who answered No to both, as every persona did:
+    line 11's amount prints 0.00 (the form says to write $0), its Specify box (T49) nothing,
+    and line 13 ticks No. specify_8f is what 8f's own Specify box (T36), the same name drawn on
+    line 8f, prints: the kinds of help the persona gets."""
+    return {
+        "Assistance 8f@2:T36": specify_8f,
+        "Assistance 8f@2:T49": "",
+        "Amount 11": "0.00",
+        "Check increase": "/no",
+        "Increase/Decrease 13": "",
+    }
+
+
+# Schedule J line 24 for a filer who expects no change in expenses (every persona).
+LINE_24_NO = {"check24": "/no", "Other 24": ""}
+# Form 103B line 8, from Schedule I line 11's No: its own No box, and no amount.
+LINE_8_NO = {"Check 8": "/no", "Yes How much do you regularly receive as contributions": ""}
 
 
 def _deductions(**amounts):
@@ -232,6 +253,7 @@ EXPECTED = {
             # Line 20 is Form 101 line 9's question: her step 1 No, and no earlier case.
             "check_20": "/no",
             "undefined_37": "",
+            **LINE_8_NO,
         },
         # Her Form 121 line 3: she answered No to having an ITIN, so the box says so and the
         # number's comb prints nothing; she used no other Social Security number.
@@ -355,8 +377,9 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
-            **_employed(1, "Cashier", "Demo Pharmacy", "200 Demo Ave", "60601"),
+            **_employed(1, "Cashier", "Demo Pharmacy", "200 Demo Ave", "60601", "6 years"),
             **NO_SPOUSE_LINE_1,
+            **_lines_11_and_13_no("SNAP (food stamps)"),
             **_deductions(a="400.00", total="400.00", pay="2800.00"),
             "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
@@ -389,6 +412,7 @@ EXPECTED = {
             "23a": "3150.00",
             "23b": "2600.00",
             "23c": "550.00",
+            **LINE_24_NO,
         },
         # Her rows (3c5 spec §9.6). No secured debt: D's last-page total prints 0.00, as 106Sum 2.
         "schedule_d": {"undefined_24": "0.00"},
@@ -532,8 +556,11 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
-            **_employed(1, "Maintenance technician", "Demo Hotel", "300 Demo Plaza", "60602"),
+            **_employed(
+                1, "Maintenance technician", "Demo Hotel", "300 Demo Plaza", "60602", "9 years"
+            ),
             **NO_SPOUSE_LINE_1,
+            **_lines_11_and_13_no(),
             **_deductions(a="1288.00", g="45.00", total="1333.00", pay="4500.00"),
             "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
@@ -560,6 +587,7 @@ EXPECTED = {
             "23a": "4500.00",
             "23b": "3210.00",
             "23c": "1290.00",
+            **LINE_24_NO,
         },
         # His rows (§9.6). The Camry is his alone: B = its 14,000, C = 8,500 less 14,000, floored
         # at 0.00. D's last-page total equals 106Sum 2.
@@ -873,8 +901,11 @@ EXPECTED = {
             "Debtor2.Date signed": "",
         },
         "schedule_i": {
-            **_employed(1, "Software engineer", "Demo Software LLC", "400 Demo Blvd", "60606"),
-            **_employed(2, "Tutor", "Demo Tutoring Center", "410 Demo Blvd", "60606"),
+            **_employed(
+                1, "Software engineer", "Demo Software LLC", "400 Demo Blvd", "60606", "4 years"
+            ),
+            **_employed(2, "Tutor", "Demo Tutoring Center", "410 Demo Blvd", "60606", "2 years"),
+            **_lines_11_and_13_no(),
             **_deductions(a="2450.00", c="600.00", e="620.00", total="3670.00", pay="8330.00"),
             "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
@@ -908,6 +939,7 @@ EXPECTED = {
             "23a": "9880.00",
             "23b": "7050.00",
             "23c": "2830.00",
+            **LINE_24_NO,
         },
         # Her rows (§9.6). The CR-V is hers alone: B = its 20,500, C = 14,900 less 20,500,
         # floored at 0.00. Rohan co-signed Westhaven, so 4.2 owes with another and H cites it.
@@ -1085,8 +1117,11 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
-            **_employed(1, "Warehouse supervisor", "Demo Logistics", "500 Demo Rd", "60609"),
-            **_employed(2, "Grocery clerk", "Demo Grocery", "510 Demo Rd", "60609"),
+            **_employed(
+                1, "Warehouse supervisor", "Demo Logistics", "500 Demo Rd", "60609", "11 years"
+            ),
+            **_employed(2, "Grocery clerk", "Demo Grocery", "510 Demo Rd", "60609", "3 years"),
+            **_lines_11_and_13_no(),
             **_deductions(a="450.00", total="450.00", pay="3050.00"),
             "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
@@ -1115,6 +1150,7 @@ EXPECTED = {
             "23a": "3935.00",
             "23b": "2410.00",
             "23c": "1525.00",
+            **LINE_24_NO,
         },
         # His rows (§9.6). The home is his alone: B = its 180,000, C = 160,000 less 180,000,
         # floored at 0.00. His collectors cite the electric bill (4.1) and the clinic (4.2).
@@ -1177,6 +1213,8 @@ EXPECTED = {
             "3 type": "",
             # Line 20: her step 1 No to an earlier bankruptcy.
             "check_20": "/no",
+            # Line 8: her roommate pays the landlord directly, so her Schedule I line 11 is No.
+            **LINE_8_NO,
         },
         # She walked every line and answered No to each: nothing owned, every total 0.00.
         "schedule_a_b": {
@@ -1231,8 +1269,9 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
-            **_employed(1, "Bookstore clerk", "Demo Books", "600 Demo St", "60622"),
+            **_employed(1, "Bookstore clerk", "Demo Books", "600 Demo St", "60622", "1 year"),
             **NO_SPOUSE_LINE_1,
+            **_lines_11_and_13_no(),
             **_deductions(a="250.00", total="250.00", pay="1750.00"),
             "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
@@ -1259,6 +1298,7 @@ EXPECTED = {
             "23a": "1750.00",
             "23b": "1280.00",
             "23c": "470.00",
+            **LINE_24_NO,
         },
         # Her rows (§9.6). No secured debt: D's last-page total prints 0.00, as 106Sum 2. The
         # hospital's two address lines print joined on E/F's one street line.
@@ -1450,11 +1490,11 @@ EXPECTED = {
         },
         "schedule_i": {
             # Self-employed: Employed with no employer, his one standing detail (owner P1).
-            **_employed(1, "Rideshare and delivery driver", "", "", ""),
+            **_employed(1, "Rideshare and delivery driver", "", "", "", ""),
             "Employers City Debtor 1": "",
             "Employers State Debtor 1": "",
-            "Time employed Debtor 1": "",  # both widgets: no tenure, no spouse
             **NO_SPOUSE_LINE_1,
+            **_lines_11_and_13_no(),
             **_deductions(total="0.00", pay="0.00"),
             "Amount 8b Debtor 1": "0.00",
             "Amount 8a Debtor 1": "3370.00",
@@ -1486,6 +1526,7 @@ EXPECTED = {
             "23a": "3370.00",
             "23b": "3034.00",
             "23c": "336.00",
+            **LINE_24_NO,
         },
         # His rows (§9.6). The Fit is co-owned with his brother, so Columns B and C stay blank.
         # E/F's own pages hold his first six unsecured debts in creditor order (S20); 4.7-4.9
@@ -1583,7 +1624,9 @@ def _printed(persona):
     inside (spec §6, 3a2 spec §8). A text box shows the text printed in each of its
     drawn widgets, "" for one that prints nothing, so every widget of the name must
     print the expected text. Every box of the template has an entry, so an expected
-    blank can't pass on a name that is no box.
+    blank can't pass on a name that is no box. A widget the schema binds by its tag (a name
+    drawn twice, each widget its own box, such as Schedule I's "Assistance 8f" on lines 8f
+    and 11) is its own entry, under the key the engine fills it by, "<name>@<page>:<tag>".
     """
     if not District.objects.filter(code="ilnd").exists():
         call_command("loaddata", "ilnd_2025_data", verbosity=0)
@@ -1592,12 +1635,16 @@ def _printed(persona):
     printed = {}
     for form_type in EXPECTED[persona]:
         values = build_field_values(form_type, session)
-        template = load_schema(form_type).template_filename
-        drawn = {(w.page, w.tag) for w in template_widgets(template) if w.drawn}
+        schema = load_schema(form_type)
+        tagged = {(f.pdf_field, f.page, f.tag) for f in schema.fields if f.tag}
+        drawn = {(w.page, w.tag) for w in template_widgets(schema.template_filename) if w.drawn}
         for w in read_drawn(form_type, PDFFormFiller().fill(form_type, values)):
             if (w.page, w.tag) not in drawn:
                 continue
-            shows = printed.setdefault((form_type, w.full_name), set())
+            box = w.full_name
+            if (w.full_name, w.page, w.tag) in tagged:
+                box = f"{w.full_name}@{w.page}:{w.tag}"
+            shows = printed.setdefault((form_type, box), set())
             if not w.state:
                 shows.add(w.value)
             elif w.state != "/Off":

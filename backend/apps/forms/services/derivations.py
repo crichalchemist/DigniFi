@@ -735,11 +735,10 @@ def _schedule_i_other_income_label(session: IntakeSession) -> str:
 
 def _schedule_i_income_total(session: IntakeSession) -> str:
     """
-    Schedule I lines 10 and 12: both columns, Social Security included (C1), unlike CMI.
+    Schedule I line 10's total: both columns, Social Security included (C1), unlike CMI.
 
     The spouse's column counts only for a filer living with their spouse (3e1 spec §10.2). A
-    blank column counts as zero, and the total is blank only when both are. Line 11 is never
-    asked and counts as zero (step 2 spec §6.1).
+    blank column counts as zero, and the total is blank only when both are.
     """
     columns = (
         _on_row(session, False, _money(_line10)),
@@ -748,6 +747,46 @@ def _schedule_i_income_total(session: IntakeSession) -> str:
     if columns == ("", ""):
         return ""
     return _fmt(sum((Decimal(column or "0") for column in columns), _ZERO))
+
+
+def _line_11_typed(session: IntakeSession) -> str:
+    """Line 11's typed amount while the answer is Yes, stripped; "" otherwise or with none."""
+    if _schedule_i(session, "line_11_answer") != "yes":
+        return ""
+    return _schedule_i(session, "line_11_amount").strip()
+
+
+def _schedule_i_line_11_amount(session: IntakeSession) -> str:
+    """
+    Line 11's amount (4c-R3): 0.00 under No, as the form says to write $0 for a line asked;
+    under Yes the typed amount, a typed 0 as 0.00 and none blank; blank while unanswered.
+    """
+    if _schedule_i(session, "line_11_answer") == "no":
+        return _fmt(_ZERO)
+    typed = _line_11_typed(session)
+    return _fmt(Decimal(typed)) if typed else ""
+
+
+def _fee_waiver_line_8_amount(session: IntakeSession) -> str:
+    """103B line 8's "How much": line 11's typed amount under Yes, as 103B says to copy line 11's
+    total; blank otherwise, since 103B ticks its own No box (4c-R3)."""
+    typed = _line_11_typed(session)
+    return _fmt(Decimal(typed)) if typed else ""
+
+
+def _schedule_i_line_12(session: IntakeSession) -> str:
+    """
+    Line 12: line 10's total plus what line 11 adds, the typed amount under Yes (4c-R3).
+
+    Blank only while line 10 is blank and line 11 adds nothing; otherwise a blank line 10
+    counts as zero.
+    """
+    line_10 = _schedule_i_income_total(session)
+    typed = _line_11_typed(session)
+    adds = Decimal(typed) if typed else _ZERO
+    if line_10 == "" and adds == 0:
+        return ""
+    return _fmt(Decimal(line_10 or "0") + adds)
 
 
 # Each Schedule I line, one column: (rule name, the row's rule). A _debtor1 and a _spouse twin
@@ -861,7 +900,7 @@ def _schedule_j_monthly_net_income(session: IntakeSession) -> str:
 
     23a is Schedule I line 12 and 23b is line 22c, so 23c is computed from those rules.
     """
-    income = _schedule_i_income_total(session)
+    income = _schedule_i_line_12(session)
     if income == "":
         return ""
     return _fmt(Decimal(income) - Decimal(_total_monthly_expenses(session)))
@@ -1397,9 +1436,13 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     ),
     # Line 6 is Schedule J line 22c: one figure on both forms
     "fee_waiver_monthly_expenses": _total_monthly_expenses,
+    # Line 8's amount is Schedule I line 11's (4c-R3)
+    "fee_waiver_line_8_amount": _fee_waiver_line_8_amount,
     # Schedule I income line item derivations
     **_schedule_i_twins(),
     "schedule_i_income_total": _schedule_i_income_total,
+    "schedule_i_line_11_amount": _schedule_i_line_11_amount,
+    "schedule_i_line_12": _schedule_i_line_12,
     "schedule_i_payroll_other_specify": _payroll_other_specify,
     "schedule_i_assistance_specify": _assistance_specify,
     "schedule_i_other_income_label": _schedule_i_other_income_label,
@@ -1454,7 +1497,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     ),
     "schedule_j_total_expenses": _total_monthly_expenses,
     # Line 23a is Schedule I line 12: one figure on both forms
-    "schedule_j_total_income": _schedule_i_income_total,
+    "schedule_j_total_income": _schedule_i_line_12,
     "schedule_j_monthly_net_income": _schedule_j_monthly_net_income,
     "schedule_j_joint_case": _schedule_j_joint_case,
     "schedule_j_has_dependents": _schedule_j_has_dependents,
@@ -1536,6 +1579,8 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "schedule_i_other_income_debtor1": {"step": "income_info"},
     "schedule_i_other_income_total_debtor1": {"step": "income_info"},
     "schedule_i_income_total": {"step": "income_info"},
+    "schedule_i_line_11_amount": {"step": "income_info"},
+    "schedule_i_line_12": {"step": "income_info"},
     "schedule_i_income_total_debtor1": {"step": "income_info"},
     "schedule_i_net_wages_spouse": {"step": "income_info"},
     "schedule_i_overtime_spouse": {"step": "income_info"},
@@ -1556,6 +1601,8 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "fee_waiver_income_noncash": {"step": "income_info"},
     "fee_waiver_income_total": {"step": "income_info"},
     "fee_waiver_noncash_kinds": {"step": "income_info"},
+    # 103B line 8 copies Schedule I line 11, asked on the Income step
+    "fee_waiver_line_8_amount": {"step": "income_info"},
     # Lines that read both the Income step and Take-home pay link to the earlier one (§17 Call 33)
     "schedule_i_take_home_pay_debtor1": {"step": "income_info"},
     "schedule_i_take_home_pay_spouse": {"step": "income_info"},

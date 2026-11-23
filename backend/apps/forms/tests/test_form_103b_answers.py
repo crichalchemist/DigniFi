@@ -30,11 +30,11 @@ from apps.forms.services.fee_waiver import (
     fee_waiver_noncash,
 )
 from apps.forms.services.fill_resolver import resolve
-from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.household import count_fee_waiver_household, fee_waiver_spouse_counted
 from apps.intake.models import DebtInfo, DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
-from apps.intake.tests.builders import answer_household
+from apps.intake.tests.builders import answer_household, answer_schedule_i
 
 User = get_user_model()
 
@@ -361,3 +361,42 @@ def test_pages_2_and_3_are_headed_with_the_filers_name(session):
 def test_part_3_stays_blank_because_schedule_a_b_is_attached(session):
     # The form says to attach Schedule A/B instead, and every packet has it (OQ-17).
     assert _filled(session).get("Amount you owe") == set()
+
+
+HOW_MUCH = "Yes How much do you regularly receive as contributions"
+
+
+@pytest.mark.parametrize(
+    "answer,check_8,how_much,amount_11",
+    [
+        (None, set(), set(), None),  # unanswered: neither box, nothing copied
+        ("no", {"/no"}, set(), "0.00"),  # 103B ticks its own No; Schedule I writes $0
+        ("yes", {"/yes"}, {"275.25"}, "275.25"),
+    ],
+    ids=["absent", "no", "yes"],
+)
+def test_form_103b_line_8_reads_schedule_i_line_11(session, answer, check_8, how_much, amount_11):
+    # One answer, both forms (S:789): 103B line 8 asks what Schedule I line 11 asks and says to
+    # copy line 11's total, so the two sworn forms can't differ, and no box is ticked that the
+    # filer didn't choose (§5.3, 4c-R3).
+    answer_schedule_i(
+        session, line_11_answer=answer, line_11_text="Roommate pays half", line_11_amount="275.25"
+    )
+    filled = _filled(session)
+    assert (filled.get("Check 8"), filled.get(HOW_MUCH)) == (check_8, how_much)
+    assert resolve(load_schema("schedule_i"), session).get("Amount 11") == amount_11
+
+
+def test_a_line_11_amount_too_wide_for_103bs_box_is_refused_naming_the_box(session):
+    # 103B's "How much" box takes ten digits; the widest amount DigniFi stores doesn't fit even at
+    # 6 pt, so Generate refuses it in the box's words and sends the filer to the Income step,
+    # where line 11 is asked (SFm trap D).
+    answer_schedule_i(session, line_11_answer="yes", line_11_amount="9999999999.99")
+    with pytest.raises(ValueTooLong) as refused:
+        PDFFormFiller().check("form_103b", resolve(load_schema("form_103b"), session))
+    label = next(f.label for f in load_schema("form_103b").fields if f.pdf_field == HOW_MUCH)
+    assert (refused.value.label, refused.value.step, refused.value.page) == (
+        label,
+        "income_info",
+        None,
+    )

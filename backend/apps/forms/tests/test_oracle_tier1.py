@@ -835,36 +835,59 @@ def test_every_schedule_i_binding_names_a_key_the_record_asks():
     assert keys - set(ScheduleIAnswers.KEYS) == set()
 
 
-# Schedule I line 1's "How long employed there?" is one name drawn twice: tag → (the binding that
-# fills it, the column the index read beside it).
-_SCHEDULE_I_TENURE = {
-    "T28": ("schedule_i.time_employed", "Debtor 1"),
-    "T29": ("schedule_i.spouse_time_employed", "Debtor 2 or non-filing spouse"),
+# Schedule I's names drawn twice: name → (the index row's attribute that tells the two widgets
+# apart, {tag → (the rule or binding that fills it, that attribute's value)}). Line 1's "How long
+# employed there?" sits in each column; "Assistance 8f" is 8f's Specify and line 11's.
+_SCHEDULE_I_TWINS = {
+    "Time employed Debtor 1": (
+        "column",
+        {
+            "T28": ("schedule_i.time_employed", "Debtor 1"),
+            "T29": ("schedule_i.spouse_time_employed", "Debtor 2 or non-filing spouse"),
+        },
+    ),
+    "Assistance 8f": (
+        "line",
+        {
+            "T36": ("schedule_i_assistance_specify", "8f"),
+            "T49": ("schedule_i.line_11_text", "11"),
+        },
+    ),
 }
 
 
-def test_every_tagged_schedule_i_twin_fills_its_one_widget():
+@pytest.mark.slow
+@pytest.mark.parametrize("name", list(_SCHEDULE_I_TWINS))
+def test_every_tagged_schedule_i_twin_fills_its_one_widget(name):
     # A bare key would fill both widgets, so each binding names one by its tag: your tenure prints
-    # in your column and your spouse's in theirs, never the other way round (4c Review Focus 6).
+    # in your column and your spouse's in theirs, and line 11's words on line 11, never on 8f
+    # (4c Review Focus 6).
     schema = load_schema("schedule_i")
-    name = "Time employed Debtor 1"
+    attribute, twins = _SCHEDULE_I_TWINS[name]
     tagged = {f.tag: f for f in schema.fields if f.pdf_field == name}
-    assert {tag: f.binding for tag, f in tagged.items()} == {
-        tag: binding for tag, (binding, _) in _SCHEDULE_I_TENURE.items()
+    assert {tag: f.binding or f.rule for tag, f in tagged.items()} == {
+        tag: producer for tag, (producer, _) in twins.items()
     }
     index = json.loads(index_path(schema.template_filename).read_text())
-    columns = {r["tag"]: r["column"] for r in index if r["full_name"] == name}
-    assert columns == {tag: column for tag, (_, column) in _SCHEDULE_I_TENURE.items()}
+    beside = {r["tag"]: r[attribute] for r in index if r["full_name"] == name}
+    assert beside == {tag: value for tag, (_, value) in twins.items()}
     sentinels = {_key(f): f"S{tag}" for tag, f in tagged.items()}
     drawn = {w.tag: w.value for w in _drawn("schedule_i", sentinels) if w.full_name == name}
-    assert drawn == {"T28": "ST28", "T29": "ST29"}
+    assert drawn == {tag: f"S{tag}" for tag in twins}
 
 
 def _schedule_i_choice_cases():
-    for f in _fields("schedule_i", ("checkbox", "radio")):
-        if (f.binding or "").startswith("schedule_i."):
-            for answer in (None, *sorted(f.choices or {})):
-                yield pytest.param(f.binding, answer, id=f"{f.pdf_field}:{answer or 'absent'}")
+    # Every box pair a ScheduleIAnswers key ticks, on each form that prints one.
+    for form_type in ("schedule_i", "schedule_j", "form_103b"):
+        for f in _fields(form_type, ("checkbox", "radio")):
+            if (f.binding or "").startswith("schedule_i."):
+                for answer in (None, *sorted(f.choices or {})):
+                    yield pytest.param(
+                        form_type,
+                        f.binding,
+                        answer,
+                        id=f"{form_type}:{f.pdf_field}:{answer or 'absent'}",
+                    )
 
 
 @pytest.fixture
@@ -885,20 +908,21 @@ def married_together_session(db):
     return session
 
 
-@pytest.mark.parametrize("binding,answer", list(_schedule_i_choice_cases()))
+@pytest.mark.slow
+@pytest.mark.parametrize("form_type,binding,answer", list(_schedule_i_choice_cases()))
 def test_every_schedule_i_choice_map_prints_exactly_the_stored_answer(
-    binding, answer, married_together_session
+    form_type, binding, answer, married_together_session
 ):
     # Never a box the filer didn't tick (§5.3): an unanswered question ticks neither box of its
     # pair, and each answer ticks its own box and no other.
     session = married_together_session
     answer_schedule_i(session, **{binding.removeprefix("schedule_i."): answer})
-    schema = load_schema("schedule_i")
+    schema = load_schema(form_type)
     f = next(f for f in schema.fields if f.binding == binding)
     values = {k: v for k, v in resolve(schema, session).items() if k == _key(f)}
     ticks = [
         w.state
-        for w in _drawn("schedule_i", values)
+        for w in _drawn(form_type, values)
         if w.full_name == f.pdf_field and w.state not in ("", "/Off")
     ]
     assert ticks == ([] if answer is None else [f.choices[answer]])
