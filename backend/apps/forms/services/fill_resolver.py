@@ -599,8 +599,9 @@ def binding_fix(binding: str) -> dict[str, str]:
     """
     Where the filer changes what a binding reads, from its namespace; {} for no namespace. Of the
     four answer namespaces, only `petition.` and `affairs.` raise ValueError for a key they don't
-    list (answer_records.record_step); `schedule_i.` and `intentions.` take any key until their
-    PRs add tables.
+    list (answer_records.record_step). `schedule_i.` sends any key to its step by its prefix, and
+    the startup check (forms.E007) refuses a key ScheduleIAnswers doesn't store or a list
+    binding; `intentions.` takes any key until its PR adds a table.
     """
     binding = binding.strip()
     if binding.startswith("answer:"):

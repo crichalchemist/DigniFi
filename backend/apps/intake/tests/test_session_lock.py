@@ -598,6 +598,12 @@ WRITES = {
         {"petition_answers": {"mailing_answer": "no"}},
         200,
     ),
+    "schedule_i_answers PATCH": lambda s, r: (
+        "patch",
+        _session_url(s),
+        {"schedule_i_answers": {"line_13_answer": "no"}},
+        200,
+    ),
     "Continue to step 7": lambda s, r: (
         "post",
         _session_url(s, "update_step/"),

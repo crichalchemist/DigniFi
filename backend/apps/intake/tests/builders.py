@@ -31,6 +31,7 @@ from apps.intake.models import (
     Household,
     MeansTestAnswers,
     PetitionAnswers,
+    ScheduleIAnswers,
     SecuredDebtAnswers,
     SpouseIncome,
 )
@@ -190,6 +191,20 @@ def answer_petition(session, **over) -> PetitionAnswers:
     stored = record.get_answers()
     defaults = {key: value for key, value in PETITION_DEFAULTS.items() if key not in stored}
     record.merge({**defaults, **over})
+    record.save()
+    return record
+
+
+def answer_schedule_i(session, **answers) -> ScheduleIAnswers:
+    """Store Schedule I's and Schedule J line 24's answers (4c), through the session's own
+    relation.
+
+    The record is made if missing. A None removes the key (unanswered), and an unknown key raises
+    KeyError, as the record's own merge does. Never a fresh query, so the session a test holds
+    never reads a stale copy.
+    """
+    record = getattr(session, "schedule_i_answers", None) or ScheduleIAnswers(session=session)
+    record.merge(answers)
     record.save()
     return record
 

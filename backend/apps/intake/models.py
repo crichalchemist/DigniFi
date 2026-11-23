@@ -1004,6 +1004,137 @@ PetitionAnswers.TEXT_LABELS = _LIMITS.get("labels", {})
 PetitionAnswers.CELL_LABELS = _LIMITS["cell_labels"]
 
 
+class ScheduleIAnswers(models.Model):
+    """The filer's own answers to Schedule I lines 1, 11 and 13 and Schedule J line 24 (4c).
+
+    A JSON object of key to answer, encrypted. A key that is absent is unanswered. The spouse's
+    line 1 answers carry the `spouse_` prefix and are asked under `married_together` only.
+    None of them reaches CMI or the means test.
+    """
+
+    CHOICE_KEYS: ClassVar[dict[str, tuple[str, ...]]] = {
+        "employment_status": ("employed", "not_employed"),
+        "spouse_employment_status": ("employed", "not_employed"),
+    }
+    YES_NO_KEYS: ClassVar[tuple[str, ...]] = (
+        "line_11_answer",
+        "line_13_answer",
+        "schedule_j_line_24_answer",
+    )
+    TEXT_KEYS: ClassVar[tuple[str, ...]] = (
+        "occupation",
+        "employer_name",
+        "employer_street",
+        "employer_street_2",
+        "employer_city",
+        "employer_state",
+        "employer_zip",
+        "time_employed",
+        "spouse_occupation",
+        "spouse_employer_name",
+        "spouse_employer_street",
+        "spouse_employer_street_2",
+        "spouse_employer_city",
+        "spouse_employer_state",
+        "spouse_employer_zip",
+        "spouse_time_employed",
+        "line_11_text",
+        "line_13_text",
+        "schedule_j_line_24_text",
+    )
+    # A decimal string at or above 0 with at most two places, bounded for DecimalField(12, 2).
+    AMOUNT_KEYS: ClassVar[tuple[str, ...]] = ("line_11_amount",)
+    # Step 4 spec §7.2's order.
+    KEYS: ClassVar[tuple[str, ...]] = (
+        "employment_status",
+        "occupation",
+        "employer_name",
+        "employer_street",
+        "employer_street_2",
+        "employer_city",
+        "employer_state",
+        "employer_zip",
+        "time_employed",
+        "spouse_employment_status",
+        "spouse_occupation",
+        "spouse_employer_name",
+        "spouse_employer_street",
+        "spouse_employer_street_2",
+        "spouse_employer_city",
+        "spouse_employer_state",
+        "spouse_employer_zip",
+        "spouse_time_employed",
+        "line_11_answer",
+        "line_11_text",
+        "line_11_amount",
+        "line_13_answer",
+        "line_13_text",
+        "schedule_j_line_24_answer",
+        "schedule_j_line_24_text",
+    )
+    TEXT_CEILING: ClassVar[int] = 500
+    # Measured from Schedule I's and J's boxes at 6 pt by build_schedule_i_limits.py, read from
+    # schedule_i.limits.json.
+    TEXT_LIMITS: ClassVar[dict[str, int]]
+    TEXT_LABELS: ClassVar[dict[str, str]]
+
+    session = models.OneToOneField(
+        IntakeSession, on_delete=models.CASCADE, related_name="schedule_i_answers"
+    )
+    answers = EncryptedTextField(default="{}")
+    answered_on = EncryptedCharField(max_length=10, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "schedule_i_answers"
+
+    def __str__(self) -> str:
+        return f"ScheduleIAnswers (Session: {self.session_id})"
+
+    def get_answers(self) -> dict:
+        return json.loads(self.answers)
+
+    def merge(self, sent: Mapping[str, Any]) -> None:
+        """Set each sent answer; a null removes the key, and the fill date is stamped when an
+        answer changed.
+
+        Every key is checked before any is set: an unknown key raises KeyError naming it.
+        Doesn't save.
+        """
+        for key in sent:
+            if key not in self.KEYS:
+                raise KeyError(key)
+        stored = self.get_answers()
+        answers = dict(stored)
+        for key, value in sent.items():
+            if value is None:
+                answers.pop(key, None)
+            else:
+                answers[key] = value
+        if answers != stored:
+            self.answers = json.dumps(answers)
+            self.answered_on = fill_date().isoformat()
+
+
+def _read_schedule_i_limits() -> dict:
+    # Read unconditionally: a missing file fails at import, never as text with no caps.
+    path = Path(settings.FORM_SCHEMAS_DIRECTORY) / "schedule_i.limits.json"
+    read = json.loads(path.read_text())
+    if not read.get("limits") or not read.get("labels"):
+        raise ImproperlyConfigured("schedule_i.limits.json holds no caps or labels")
+    for part in ("limits", "labels"):
+        for key in read[part]:
+            if key not in ScheduleIAnswers.TEXT_KEYS:
+                raise ImproperlyConfigured(f"{key} in schedule_i.limits.json is no Schedule I text")
+    return read
+
+
+_SCHEDULE_I_LIMITS = _read_schedule_i_limits()
+ScheduleIAnswers.TEXT_LIMITS = _SCHEDULE_I_LIMITS["limits"]
+ScheduleIAnswers.TEXT_LABELS = _SCHEDULE_I_LIMITS["labels"]
+
+
 class DebtInfoQuerySet(models.QuerySet):
     def confirmed(self):
         """The debts the filer has confirmed, without the drafts read from scanned documents.
