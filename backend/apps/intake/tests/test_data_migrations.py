@@ -1066,8 +1066,9 @@ def _combined_round_trip(migrate):
 
     A: both figures, no words. B: both $0. C: a typed utilities text. D: insurance whose typed
     text equals the migration's words. E: unreadable utilities (the encrypted empty text copied
-    into the amount column, which reads back as None; any other text would raise). F: a utilities figure beside a rent column nothing
-    here can read (another key's ciphertext), which the migration must not load.
+    into the amount column, which reads back as None; any other text would raise). F: a
+    utilities figure beside a rent column nothing here can read (another key's ciphertext),
+    which the migration must not load.
     """
     apps = migrate(SPLIT_COLUMNS)
     user = User.objects.create_user(username="filer", password="pw")

@@ -56,7 +56,7 @@ You ARE Andrés Kettleby. Navigate DigniFi as he would.
 | Electricity, heat, natural gas (line 6a): electric and gas                                                     | $110                                                                                           |
 | Water, sewer, garbage collection (line 6b)                                                                     | $0                                                                                             |
 | Telephone, cell phone, Internet, satellite, and cable services (line 6c): internet and your share of the phone | $100                                                                                           |
-| Other utilities (line 6d)                                                                                      | $0                                                                                             |
+| Other (line 6d, under Utilities)                                                                               | $0                                                                                             |
 | Vehicle insurance: your personal policy                                                                        | $165                                                                                           |
 | Vehicle maintenance (line 12, "Transportation"): school runs and errands                                       | $60                                                                                            |
 | Food                                                                                                           | $520                                                                                           |

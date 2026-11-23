@@ -7,6 +7,7 @@ every save of the step drop an amount silently (DRF ignores unknown keys).
 
 import json
 import re
+from pathlib import Path
 
 import pypdf
 import pytest
@@ -16,9 +17,8 @@ from apps.intake.tests.test_petition_frontend_copy import FRONTEND, PDFS
 
 INDEX = PDFS.parent / "field_index" / "form_b106j.index.json"
 MIGRATION = (
-    FRONTEND.parent.parent / "backend" / "apps" / "intake" / "migrations"
-    / "0047_label_combined_expense_figures.py"
-)  # fmt: skip
+    Path(__file__).resolve().parents[1] / "migrations" / "0047_label_combined_expense_figures.py"
+)
 LEGACY_TOTAL = FRONTEND / "components" / "wizard" / "steps" / "expenses" / "legacyTotal.ts"
 
 # Each amount's line on Schedule J
@@ -150,6 +150,12 @@ def test_the_step_looks_for_the_words_the_backfill_wrote():
     # The information line shows only for the exact words 0047 stored as the filer's own text
     browser = LEGACY_TOTAL.read_text()
     migration = MIGRATION.read_text()
-    for words in ("Utilities (combined)", "Insurance (combined)"):
-        assert f"'{words}'" in browser
-        assert f'"{words}"' in migration
+    for field, constant, words in (
+        ("utilities_specify", "UTILITIES_WORDS", "Utilities (combined)"),
+        ("insurance_specify", "INSURANCE_WORDS", "Insurance (combined)"),
+    ):
+        # the browser keys the words by the field; the migration defines the words once and
+        # assigns that constant to the field in its forward step
+        assert re.search(rf"^\s*{field}:\s*'{re.escape(words)}',", browser, re.M)
+        assert re.search(rf'^{constant} = "{re.escape(words)}"$', migration, re.M)
+        assert re.search(rf"^\s+row\.{field} = {constant}$", migration, re.M)

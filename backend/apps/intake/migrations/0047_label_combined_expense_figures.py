@@ -7,9 +7,9 @@ figure saved before the split keeps printing exactly what it did.
 Forward: a row whose utilities (insurance_not_deducted) is above $0 and whose Specify text is
 blank gets the words. Reverse: a text equal to the words is blanked; any other text is kept.
 
-The amounts are encrypted, so rows are read in Python, never filtered in SQL. An amount that
-reads as None (unreadable) is treated as $0. Only the columns the migration needs are loaded,
-so a column it never touches can't stop it.
+The amounts are encrypted, so rows are read in Python, never filtered in SQL. An amount stored
+as encrypted empty text reads as None and is treated as $0; an undecryptable or non-numeric
+amount raises, so the migration loads only the columns it needs.
 """
 
 from django.db import migrations

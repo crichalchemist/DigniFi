@@ -20,8 +20,9 @@ from apps.intake.tests.builders import answer_household, finish_intake
 
 User = get_user_model()
 
-# Each of the Expenses step's 29 amounts gets a distinct power of two (the five of lines 6a-6c, 15a and 15b, a distinct cent), so a line that reads
-# the wrong amount, or adds one too many, prints a different figure.
+# Each of the Expenses step's 29 amounts gets a distinct power of two (the five of lines 6a-6c,
+# 15a and 15b, a distinct cent), so a line that reads the wrong amount, or adds one too many,
+# prints a different figure.
 EXPENSES = {
     "rent_or_mortgage": Decimal("1.00"),
     "electricity_heat_gas": Decimal("0.01"),
@@ -53,7 +54,7 @@ EXPENSES = {
     "other_property_upkeep": Decimal("16777216.00"),
     "other_property_hoa_dues": Decimal("33554432.00"),
 }
-# The three "Specify" texts, which print beside their amounts.
+# The five "Specify" texts, which print beside their amounts.
 TEXTS = {
     "utilities_specify": "Demo heating oil",
     "insurance_specify": "Demo disability policy",
@@ -61,7 +62,8 @@ TEXTS = {
     "support_others_specify": "My mother",
     "other_expenses_specify": "School supplies and fees",
 }
-# Box → what it prints with EXPENSES (step 2 spec Appendix A.8, owner Q4).
+# Box → what it prints with EXPENSES (step 2 spec Appendix A.8; Other 6d and Other 15d
+# print the filer's own text (S:614, B60, 4c2-R4)).
 LINE_BY_EXPENSE = {
     "4": "1.00",  # rent or mortgage
     "4c": "4.00",  # home maintenance, repair and upkeep
@@ -200,7 +202,7 @@ def test_monthly_net_income_is_income_less_expenses(session):
     assert {box: printed.get(box) for box in ("23a", "23b", "23c")} == {
         "23a": "9200.00",
         "23b": EXPENSE_TOTAL,
-        "23c": "-65002503.31",
+        "23c": f"{Decimal('9200.00') - Decimal(EXPENSE_TOTAL):.2f}",
     }
 
 

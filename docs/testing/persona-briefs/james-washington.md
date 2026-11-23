@@ -59,7 +59,7 @@ You ARE James Washington. Navigate DigniFi as he would.
 | Electricity, heat, natural gas (line 6a)                                                      | $60                                                 |
 | Water, sewer, garbage collection (line 6b)                                                    | $15                                                 |
 | Telephone, cell phone, Internet, satellite, and cable services (line 6c)                      | $45                                                 |
-| Other utilities (line 6d)                                                                     | $0                                                  |
+| Other (line 6d, under Utilities)                                                              | $0                                                  |
 | Vehicle insurance                                                                             | $110                                                |
 | Vehicle maintenance                                                                           | $50                                                 |
 | Food                                                                                          | $400                                                |
