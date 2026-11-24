@@ -6,10 +6,25 @@ import { DebtsStep } from '../DebtsStep';
 import { fill } from '../claims/claimNames';
 import * as copy from '../../../../constants/copy';
 import { DEBT_TYPE_WORDS } from '../../../../constants/claims';
-import type { AssetInfo, DebtInfo, DebtRow, LegacyField, WizardRow } from '../../../../types/api';
+import type {
+  AssetInfo,
+  DebtInfo,
+  DebtRow,
+  LegacyField,
+  PetitionAnswers,
+  WizardRow,
+} from '../../../../types/api';
 
 // DebtsStep shows and edits the wizard's debt rows, asks every question Schedules D and E/F
 // ask of one, and reports whether the step can continue.
+
+// Form 101 line 16 and the Supp's two military gates answered (consumer, No, No), so a test of the
+// rows' own gaps sees Continue held only by them (4d)
+const LINE_16_ANSWERED: PetitionAnswers = {
+  debt_nature: 'consumer',
+  disabled_veteran: 'no',
+  reservist: 'no',
+};
 
 const baseDebt: WizardRow<DebtInfo> = {
   _key: '1',
@@ -84,6 +99,7 @@ function Harness({
   onValidity = noop,
   legacyGaps,
   onRemoveLegacy,
+  petition: initialPetition = LINE_16_ANSWERED,
 }: {
   initial?: DebtRow[];
   assets?: WizardRow<AssetInfo>[];
@@ -91,9 +107,11 @@ function Harness({
   onValidity?: (valid: boolean) => void;
   legacyGaps?: { field: LegacyField; sentence: string }[];
   onRemoveLegacy?: (field: LegacyField) => Promise<void>;
+  petition?: PetitionAnswers;
 }) {
   const [rows, setRows] = useState<DebtRow[]>(initial);
   const [noDebts, setNoDebts] = useState(false);
+  const [petition, setPetition] = useState<PetitionAnswers>(initialPetition);
   return (
     <DebtsStep
       rows={rows}
@@ -103,6 +121,8 @@ function Harness({
       }}
       noDebts={noDebts}
       onNoDebtsChange={setNoDebts}
+      petition={petition}
+      onPetitionChange={setPetition}
       assets={assets}
       onValidationChange={onValidity}
       legacyGaps={legacyGaps}
@@ -120,7 +140,13 @@ const lastRows = (fn: ReturnType<typeof vi.fn>) => fn.mock.lastCall![0] as DebtR
 const lastValidity = (fn: ReturnType<typeof vi.fn>) => fn.mock.lastCall![0] as boolean;
 
 describe('DebtsStep draft badge', () => {
-  const props = { noDebts: false, onNoDebtsChange: noop, assets: [] };
+  const props = {
+    noDebts: false,
+    onNoDebtsChange: noop,
+    petition: LINE_16_ANSWERED,
+    onPetitionChange: noop,
+    assets: [],
+  };
 
   it('renders "From scan" badge when is_draft is true', () => {
     const draftDebt: WizardRow<DebtInfo> = { ...baseDebt, is_draft: true };
@@ -303,6 +329,16 @@ describe('DebtsStep asks every question', () => {
     expect(lastValidity(third)).toBe(true);
   });
 
+  // T9-R1: a filer held at Continue reads line 16's questions before the sentence naming them,
+  // as on Contracts & Leases
+  it("puts the status after line 16's questions", () => {
+    render(<Harness />);
+    const lineSixteen = document.querySelector('input[name="debt_nature"]')!.closest('fieldset')!;
+    const order = lineSixteen.compareDocumentPosition(status());
+    expect(order & Node.DOCUMENT_POSITION_FOLLOWING).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(order & Node.DOCUMENT_POSITION_CONTAINED_BY).toBe(0);
+  });
+
   it('lets a scanned draft with no other gap press Continue', () => {
     const onValidity = vi.fn();
     render(
@@ -426,7 +462,8 @@ describe('DebtsStep asks every question', () => {
 
     it('starts every radio, select and tick unanswered', async () => {
       const user = userEvent.setup();
-      render(<Harness />);
+      // A new filer: line 16 and the Supp's questions start unanswered too (4d)
+      render(<Harness petition={{}} />);
       expect(all('input[type=radio]:checked')).toHaveLength(0);
       expect(all('input[type=checkbox]:checked')).toHaveLength(0);
       expect(field('debt_type_0').value).toBe('');
@@ -1132,4 +1169,114 @@ describe('the priority question', () => {
       expect(await axe(container)).toHaveNoViolations();
     }
   );
+});
+
+// Form 101 line 16 and Form 122A-1Supp's gates (4d): Complete refuses an unanswered one, so the
+// step holds Continue for it, as Contracts & Leases does for line 11; the details never hold it
+describe('DebtsStep asks Form 101 line 16 and the military questions', () => {
+  it('holds Continue until line 16 is answered', async () => {
+    const user = userEvent.setup();
+    const onValidity = vi.fn();
+    render(<Harness initial={[complete]} petition={{}} onValidity={onValidity} />);
+    expect(lastValidity(onValidity)).toBe(false);
+    expect(status()).toHaveTextContent(copy.PETITION_GATE_DEBT_NATURE);
+
+    // Business debts ask no military question, so line 16 alone frees the step
+    await user.click(box('debt_nature', 'business'));
+    expect(lastValidity(onValidity)).toBe(true);
+    expect(status()).toBeEmptyDOMElement();
+  });
+
+  it('holds Continue for an unanswered military gate under consumer', async () => {
+    const user = userEvent.setup();
+    const onValidity = vi.fn();
+    render(
+      <Harness
+        initial={[complete]}
+        petition={{ debt_nature: 'consumer' }}
+        onValidity={onValidity}
+      />
+    );
+    expect(lastValidity(onValidity)).toBe(false);
+    expect(status()).toHaveTextContent(copy.PETITION_GATE_DISABLED_VETERAN);
+
+    await user.click(box('disabled_veteran', 'no'));
+    expect(lastValidity(onValidity)).toBe(false);
+    expect(status()).toHaveTextContent(copy.PETITION_GATE_RESERVIST);
+
+    await user.click(box('reservist', 'no'));
+    expect(lastValidity(onValidity)).toBe(true);
+    expect(status()).toBeEmptyDOMElement();
+  });
+
+  it('lets Continue through an open military follow-up', () => {
+    const onValidity = vi.fn();
+    // Line 2's and line 3's follow-ups are details: Complete lists them and lets the filer through
+    render(
+      <Harness
+        initial={[complete]}
+        petition={{ debt_nature: 'consumer', disabled_veteran: 'yes', reservist: 'yes' }}
+        onValidity={onValidity}
+      />
+    );
+    expect(field('debts_on_duty')).toBeInTheDocument();
+    expect(field('called_to_duty')).toBeInTheDocument();
+    expect(lastValidity(onValidity)).toBe(true);
+    expect(status()).toBeEmptyDOMElement();
+  });
+
+  it('shows the line 16 gate only once the block is touched or the claims gaps are done', async () => {
+    const user = userEvent.setup();
+    render(<Harness petition={{}} />);
+    // The rows' own gap comes first, and the untouched block says nothing yet
+    expect(status()).toHaveTextContent(copy.DEBT_GAP_NO_ANSWER);
+    expect(status()).not.toHaveTextContent(copy.PETITION_GATE_DEBT_NATURE);
+    expect(screen.queryByText(copy.NOT_ANSWERED_YET)).not.toBeInTheDocument();
+
+    // Focus leaving the block touches it: line 16 says it's unanswered, the rows' gap keeps the
+    // status
+    const consumer = box('debt_nature', 'consumer');
+    fireEvent.focus(consumer);
+    expect(screen.queryByText(copy.NOT_ANSWERED_YET)).not.toBeInTheDocument();
+    fireEvent.blur(consumer, { relatedTarget: document.body });
+    expect(screen.getByText(copy.NOT_ANSWERED_YET)).toBeInTheDocument();
+    expect(status()).toHaveTextContent(copy.DEBT_GAP_NO_ANSWER);
+
+    // An answer in the block touches it: the military gates consumer opens say they're unanswered,
+    // while the rows' gap keeps the status
+    await user.click(box('debt_nature', 'consumer'));
+    expect(screen.getAllByText(copy.NOT_ANSWERED_YET)).toHaveLength(2);
+    expect(status()).toHaveTextContent(copy.DEBT_GAP_NO_ANSWER);
+
+    // Once the rows' gaps are done, the status names the step's next gate
+    await user.click(screen.getByRole('button', { name: copy.NO_DEBTS_BUTTON }));
+    expect(status()).toHaveTextContent(copy.PETITION_GATE_DISABLED_VETERAN);
+  });
+
+  it('marks the military gates unanswered as soon as consumer is picked, before focus leaves', async () => {
+    const user = userEvent.setup();
+    render(<Harness petition={{}} />);
+
+    // The answer alone touches the block: the filer needn't leave it to learn what is still open
+    await user.click(box('debt_nature', 'consumer'));
+    expect(screen.getAllByText(copy.NOT_ANSWERED_YET)).toHaveLength(2);
+    expect(status()).toHaveTextContent(copy.DEBT_GAP_NO_ANSWER);
+  });
+
+  it('asks line 16 after "I have no amounts owed"', async () => {
+    const user = userEvent.setup();
+    const onValidity = vi.fn();
+    render(<Harness petition={{}} onValidity={onValidity} />);
+    await user.click(screen.getByRole('button', { name: copy.NO_DEBTS_BUTTON }));
+
+    // Form 101 prints line 16 for every filer, so the step still asks it and holds Continue
+    expect(screen.getByText(copy.DEBT_NATURE_LIST_EMPTY)).toBeInTheDocument();
+    expect(box('debt_nature', 'consumer')).toBeInTheDocument();
+    expect(status()).toHaveTextContent(copy.PETITION_GATE_DEBT_NATURE);
+    expect(screen.getByText(copy.NOT_ANSWERED_YET)).toBeInTheDocument();
+    expect(lastValidity(onValidity)).toBe(false);
+
+    await user.click(box('debt_nature', 'neither'));
+    expect(lastValidity(onValidity)).toBe(true);
+  });
 });

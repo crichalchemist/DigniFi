@@ -29,20 +29,28 @@ from .means_inputs import read_inputs, read_tables
 from .means_lines import (
     AT_OR_BELOW_MEDIAN,
     CANNOT_WORK_OUT,
+    MILITARY_EXCLUSION,
     NO_PRESUMPTION,
+    NOT_CONSUMER,
     PRESUMPTION,
+    VETERAN_EXEMPTION,
+    route_outcome,
     work_out,
 )
 
 # The means test's dated table, by the name its refusals log and calculation_details records.
 MEDIAN_TABLE = "Census median income"
 
-# passes_means_test by outcome, kept one release; empty while the result can't be worked out.
+# passes_means_test by outcome, kept one release; empty while the result can't be worked out,
+# and under a line 3 exclusion, whose box 3 says the test doesn't apply now but could later.
 PASSES = {
     AT_OR_BELOW_MEDIAN: True,
     NO_PRESUMPTION: True,
     PRESUMPTION: False,
     CANNOT_WORK_OUT: None,
+    NOT_CONSUMER: True,
+    VETERAN_EXEMPTION: True,
+    MILITARY_EXCLUSION: None,
 }
 
 
@@ -66,9 +74,11 @@ class MeansTest(models.Model):
     passes_means_test = models.BooleanField(
         null=True,
         help_text=(
-            "Kept one release; nothing reads it for a decision. True at or below the median "
-            "or with no presumption, False under a presumption, empty while the result "
-            "can't be worked out (DIG-226)."
+            "Kept one release; nothing reads it for a decision. True at or below the median, "
+            "with no presumption, with debts not primarily consumer debts or under the disabled "
+            "veteran's exemption, False under a presumption, empty while the result can't be "
+            "worked out or while the means test doesn't apply now (a line 3 exclusion) "
+            "(DIG-226)."
         ),
     )
     outcome = EncryptedCharField(
@@ -76,8 +86,8 @@ class MeansTest(models.Model):
         null=True,
         blank=True,
         help_text=(
-            "at_or_below_median, cannot_work_out, no_presumption or presumption; "
-            "empty until worked out after 3h1."
+            "at_or_below_median, cannot_work_out, no_presumption, presumption, not_consumer, "
+            "veteran_exemption or military_exclusion; empty until worked out after 3h1."
         ),
     )
 
@@ -144,8 +154,10 @@ class MeansTest(models.Model):
         Calculate means test using 11 U.S.C. § 707(b) methodology.
 
         Returns:
-            str: the outcome, one of at_or_below_median, cannot_work_out, no_presumption or
-            presumption. It is Form 122A-2's arithmetic, never a verdict.
+            str: the outcome, one of at_or_below_median, cannot_work_out, no_presumption,
+            presumption, not_consumer, veteran_exemption or military_exclusion. It is Form
+            122A-1Supp's route in the form's order, then Form 122A-2's arithmetic, never a
+            verdict.
 
         Raises:
             IncomeStepGap: The first gap the Income step leaves (3e1 spec §9.1), before any
@@ -181,12 +193,21 @@ class MeansTest(models.Model):
         # CMI is monthly; the Census median is annual, so annualize per 11 U.S.C. § 707(b)(7).
         annualized_cmi = cmi * Decimal("12")
 
-        # The median comes first. Only above it are the 122A-2 tables read, so a filer at or
-        # below the median is never refused for a lapsed 122A-2 table. Every caller has raised
-        # the Income step's gaps above, before read_inputs counts the household (C-ORDER).
+        # The median is looked up first; Form 122A-1Supp's route then decides, in the form's order,
+        # before the median comparison (4d-R2). Only a filer the route leaves above the median has
+        # the 122A-2 tables read, so a filer at or below it is never refused for a lapsed 122A-2
+        # table. Every caller has raised the Income
+        # step's gaps above, before read_inputs counts the household (C-ORDER). The record is read
+        # here, not through forms.registry's reader: eligibility importing forms would be a cycle.
+        record = getattr(self.session, "petition_answers", None)
+        answers = record.get_answers() if record is not None else {}
+        routed = route_outcome(answers, is_above_median(cmi, median_income_threshold))
         details: dict = {}
-        if not is_above_median(cmi, median_income_threshold):
-            outcome = AT_OR_BELOW_MEDIAN
+        if routed == CANNOT_WORK_OUT:
+            # Line 16 or a military question is still open on Amounts Owed (4d-R27)
+            details["open_on"] = "debts"
+        if routed is not None:
+            outcome = routed
         else:
             try:
                 tables, used = read_tables()
@@ -198,6 +219,7 @@ class MeansTest(models.Model):
                 details["tables"] = used
         details.setdefault("tables", [])
         details.setdefault("tables_gap", None)
+        details.setdefault("open_on", None)
         passes_test = PASSES[outcome]
 
         # Store calculation details (encrypted). JSON has no Decimal, and an empty box stays empty.

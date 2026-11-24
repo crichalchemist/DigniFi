@@ -417,24 +417,45 @@
     },
     {
       "pdf_field": "check6",
+      "tag": "T6",
       "type": "checkbox",
-      "source": "asked",
+      "source": "derived",
       "choices": {
-        "yes": "/yes",
-        "no": "/no"
+        "true": "/yes"
       },
       "page": 3,
-      "label": "Are either Debtor 1’s or Debtor 2’s debts primarily consumer debts?",
+      "label": "Line 6: Yes. Debtor 1 or Debtor 2 or both have primarily consumer debts.",
       "required": false,
       "conditional_on": null,
       "value": null,
-      "rule": null,
+      "rule": "debt_nature_consumer",
       "ingest_key": null,
-      "binding": "answer:form_101.primarily_consumer_debts",
+      "binding": null,
       "repeat": null,
       "repeat_capacity": null,
       "row": null,
       "legal_review": true
+    },
+    {
+      "pdf_field": "check6",
+      "tag": "T3",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "true": "/no"
+      },
+      "page": 3,
+      "label": "Line 6: No. Neither Debtor 1 nor Debtor 2 has primarily consumer debts.",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "debt_nature_not_consumer",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
     },
     {
       "pdf_field": "check mortgage 1",

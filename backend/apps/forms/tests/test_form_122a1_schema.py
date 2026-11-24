@@ -7,6 +7,7 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District, MedianIncome
+from apps.eligibility.means_lines import SUPP_OUTCOMES
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import packet
 from apps.forms.schema import load_schema
@@ -82,6 +83,12 @@ def answer_income_step(session, marital_status, spouse_income=None, **amounts):
     answer_household(
         session, marital_status=marital_status, members=members, spouse_income=spouse_income
     )
+
+
+def _box(choice):
+    """CheckBox1's export state for a choice of the box rule, read from the schema."""
+    (field,) = [f for f in load_schema("form_122a1").fields if f.pdf_field == "CheckBox1"]
+    return field.choices[choice]
 
 
 def _household_list(session, rows):
@@ -208,8 +215,8 @@ class TestForm122A1Schema:
         "monthly_wages,line_14,page_1,form_122a2_applies",
         [
             # Exactly the median ($71,304 a year) is below it (DIG-136).
-            ("5942.00", "/12b less or equal to 13", "/No Abuse", False),
-            ("5942.01", "/12b more than 13", "/Presumption of abuse applies", True),
+            ("5942.00", "/12b less or equal to 13", "box_1", False),
+            ("5942.01", "/12b more than 13", "box_2", True),
         ],
         ids=["at_the_median", "one_cent_over"],
     )
@@ -225,11 +232,57 @@ class TestForm122A1Schema:
         )
         answer_household(session)
         MeansTestCalculator(session).calculate()
+        session = IntakeSession.objects.get(pk=session.pk)
 
         field_map = resolve(load_schema("form_122a1"), session)
 
-        assert (field_map.get("14a"), field_map.get("CheckBox1")) == (line_14, page_1)
+        assert (field_map.get("14a"), field_map.get("CheckBox1")) == (line_14, _box(page_1))
         assert ("form_122a2" in packet(session)) is form_122a2_applies
+
+    @pytest.mark.parametrize(
+        "monthly_wages,petition,box",
+        [
+            ("9000.00", {"debt_nature": "business"}, "box_1"),
+            ("2000.00", {"debt_nature": "neither", "debt_nature_text": "Demo"}, "box_1"),
+            (
+                "9000.00",
+                {"debt_nature": "consumer", "disabled_veteran": "yes", "debts_on_duty": "yes"},
+                "box_1",
+            ),
+            (
+                "9000.00",
+                {
+                    "debt_nature": "consumer",
+                    "disabled_veteran": "no",
+                    "reservist": "yes",
+                    "called_to_duty": "yes",
+                    "duty_category": "3",
+                },
+                "box_3",
+            ),
+        ],
+        ids=["business_above", "neither_below", "veteran_above", "line_3_exclusion_above"],
+    )
+    def test_a_supp_outcome_prints_only_the_header_and_its_box(
+        self, session, median_income, monthly_wages, petition, box
+    ):
+        # Form 122A-1Supp sends the filer to box 1 (debts not primarily consumer debts, the
+        # disabled veteran's exemption) or box 3 (a line 3 exclusion) and says to leave the rest
+        # of 122A-1 blank (D1, 4d-R6): no income line, no median and no line 14 tick.
+        IncomeInfo.objects.create(
+            session=session,
+            monthly_gross_wages=Decimal(monthly_wages),
+            marital_status="not_married",
+        )
+        answer_household(session, debt_nature=petition)
+        MeansTestCalculator(session).calculate()
+        session = IntakeSession.objects.get(pk=session.pk)
+        assert session.means_test.outcome in SUPP_OUTCOMES
+
+        field_map = resolve(load_schema("form_122a1"), session)
+
+        assert set(field_map) == {"Debtor1.Name", "Bankruptcy District Information", "CheckBox1"}
+        assert field_map["CheckBox1"] == _box(box)
 
     @pytest.mark.parametrize(
         "answer,line_1,spouse_box",

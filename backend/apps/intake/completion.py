@@ -63,10 +63,11 @@ def completion_gaps(session) -> list[Gap]:
     the means test.
 
     Form 101's own questions (petition_step_gaps, both kinds) go where their steps ask them: step
-    1's after the county, the hazard after the Assets step's gaps, and the rent and eviction after
-    the Contracts gaps, before Codebtors' (4b-R4). Schedule I's (schedule_i_step_gaps, both
-    kinds) go right after the Income step's, and Schedule J line 24's right after the Expenses
-    step's (4c-R2).
+    1's after the county, the hazard after the Assets step's gaps, line 16 and Form
+    122A-1Supp's military questions after the claims Debts gaps, before Contracts' (4d), and the
+    rent and eviction after the Contracts gaps, before Codebtors' (4b-R4). Schedule I's
+    (schedule_i_step_gaps, both kinds) go right after the Income step's, and Schedule J line
+    24's right after the Expenses step's (4c-R2).
     """
     # Imported here: petition.py imports Gap from this module, so a top-level import is a cycle.
     # schedule_i.py imports Gap inside its function, and is imported here the same way (4c-R2).
@@ -124,6 +125,12 @@ def completion_gaps(session) -> list[Gap]:
     # out of wizard order on purpose (3c4), the legacy gaps and the line 4 question.
     head, tail = claim_gap_parts(session)
     claims = [Gap(str(gap), gap.step, GATE) for gap in head]
+    # Amounts Owed's line 16 block: before the first Contracts or Codebtors gap; with none, at the
+    # end, since the head's Debts gaps come before both (4d)
+    at_debts = next(
+        (i for i, g in enumerate(claims) if g.step in ("contracts", "codebtors")), len(claims)
+    )
+    claims[at_debts:at_debts] = [g for g in petition if g.step == "debts"]
     # Before Codebtors' first gap; with none, at the end, since the head ends with Codebtors'
     at = next((i for i, g in enumerate(claims) if g.step == "codebtors"), len(claims))
     claims[at:at] = [g for g in petition if g.step == "contracts"]

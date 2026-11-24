@@ -28,14 +28,18 @@ import {
   FORM_103A_LINK,
   FORM_103A_URL,
   INSTALLMENTS_NOTICE,
+  MEANS_DEBTS_STEP_PHRASE,
   MEANS_FILED_BEFORE_122A1,
   MEANS_FILED_BEFORE_122A2,
+  MEANS_FILED_BOX_2_NOW_SUPP,
   MEANS_FILED_MISMATCH,
   MEANS_LINE_43_LINK,
+  MEANS_OUTCOME_ANSWER_DEBTS,
   MEANS_OUTCOME_ANSWER_PAGE,
   MEANS_PAGE_PHRASE,
   MEANS_PAIR_NOTICE,
   MEANS_STALE_ANSWERS,
+  MEANS_SUPP_PAIR_NOTICE,
   MEANS_TEST_PREVIEW_TITLE,
   TABLE_NOTICE_MEDIAN,
   TABLE_NOTICE_NEW_FIGURES,
@@ -155,8 +159,16 @@ function tableNotice(table: DatedTableUsed): string | null {
   return `${first} ${TABLE_NOTICE_NEW_FIGURES.replace('{date}', formatIsoDate(table.valid_through))}`;
 }
 
-/** Form 122A-1 and Form 122A-2 are prepared and filed together (3h1): they refuse together */
-const MEANS_PAIR: FormType[] = ['form_122a1', 'form_122a2'];
+/**
+ * The form Form 122A-1 is prepared and filed with: Form 122A-2 (3h1) or, under the three routes
+ * Form 122A-1Supp gives, the Supp (4d, D4). The server puts at most one of them in the packet;
+ * null when it holds neither (at or below the median)
+ */
+function meansPartnerOf(packet: FormType[]): 'form_122a2' | 'form_122a1_supp' | null {
+  if (packet.includes('form_122a2')) return 'form_122a2';
+  if (packet.includes('form_122a1_supp')) return 'form_122a1_supp';
+  return null;
+}
 
 /**
  * The form of the pair a refusal names (its `form_type`), which may be the pair's other form
@@ -165,7 +177,9 @@ const MEANS_PAIR: FormType[] = ['form_122a1', 'form_122a2'];
 function formTypeOf(err: unknown): FormType | undefined {
   if (!(err instanceof APIClientError)) return undefined;
   const named = err.body?.form_type;
-  return named === 'form_122a1' || named === 'form_122a2' ? named : undefined;
+  return named === 'form_122a1' || named === 'form_122a2' || named === 'form_122a1_supp'
+    ? named
+    : undefined;
 }
 
 export function FormDashboard() {
@@ -185,6 +199,8 @@ export function FormDashboard() {
   const [outcome, setOutcome] = useState<MeansOutcome | null>(null);
   const [familySize, setFamilySize] = useState<number | null>(null);
   const [tablesGap, setTablesGap] = useState<string | null>(null);
+  // The step the result waits on ("debts": an answer on Amounts Owed is open, 4d-R27)
+  const [openOn, setOpenOn] = useState<'debts' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Refusal | null>(null);
   const [showSurvey, setShowSurvey] = useState(false);
@@ -221,6 +237,7 @@ export function FormDashboard() {
       setOutcome(loadedPacket.outcome);
       setFamilySize(loadedPacket.family_size);
       setTablesGap(loadedPacket.tables_gap);
+      setOpenOn(loadedPacket.open_on);
       setError(null);
     } catch (err) {
       setIncomePeriod(null);
@@ -229,6 +246,7 @@ export function FormDashboard() {
       setOutcome(null);
       setFamilySize(null);
       setTablesGap(null);
+      setOpenOn(null);
       setError(refusalOf(err, DASHBOARD_ERROR));
     } finally {
       setIsLoading(false);
@@ -258,6 +276,10 @@ export function FormDashboard() {
         setGaps([]);
       });
   }, [session]);
+
+  // Form 122A-1 and its partner are prepared and filed together: they refuse together (3h1, D4)
+  const partner = meansPartnerOf(packet);
+  const meansPair: FormType[] = partner === null ? [] : ['form_122a1', partner];
 
   // Map form_type → GeneratedForm for quick lookup
   const formsByType = new Map(forms.map((f) => [f.form_type, f]));
@@ -309,6 +331,7 @@ export function FormDashboard() {
       setOutcome(reloaded.outcome);
       setFamilySize(reloaded.family_size);
       setTablesGap(reloaded.tables_gap);
+      setOpenOn(reloaded.open_on);
       setError(null);
     } catch (err) {
       setIncomePeriod(null);
@@ -317,6 +340,7 @@ export function FormDashboard() {
       setOutcome(null);
       setFamilySize(null);
       setTablesGap(null);
+      setOpenOn(null);
       setError(refusalOf(err, DASHBOARD_ERROR));
     }
   };
@@ -349,7 +373,7 @@ export function FormDashboard() {
     await loadForms();
   };
 
-  // Marks Form 122A-1 and Form 122A-2 filed together. A refusal lands on the form it names, which
+  // Marks Form 122A-1 and its partner filed together. A refusal lands on the form it names, which
   // is the partner of the card pressed when the gap is the partner's, and on the pressed card when
   // it names none (a whole-call refusal).
   const handleMarkPairFiled = async (pressed: FormType) => {
@@ -360,11 +384,11 @@ export function FormDashboard() {
         await api.forms.markPairFiled(session.id);
       } catch (err) {
         // The answer replaces what either card showed before: only the form it names refuses now
-        for (const formType of MEANS_PAIR) setFormRefusal(formType, undefined);
+        for (const formType of meansPair) setFormRefusal(formType, undefined);
         setFormRefusal(formTypeOf(err) ?? pressed, refusalOf(err, ERROR_GENERIC));
         return;
       }
-      for (const formType of MEANS_PAIR) setFormRefusal(formType, undefined);
+      for (const formType of meansPair) setFormRefusal(formType, undefined);
       await loadForms();
     } finally {
       // Released only after the list is reloaded, so a press during the reload sends nothing
@@ -417,13 +441,19 @@ export function FormDashboard() {
     generateAllRefusal && !noticeListsRefusedStep ? linkTo(generateAllRefusal) : undefined;
   // The pair's refusals are information (a gap, a table or a line the calculator can't work out, §6), so they show apart from the others, which
   // are errors; the others' links come first, as they sit first on the page
-  const isPair = (e: GenerateAllError) => MEANS_PAIR.includes(e.form_type as FormType);
+  const isPair = (e: GenerateAllError) => meansPair.includes(e.form_type as FormType);
   const otherErrors = generationErrors.filter((e) => !isPair(e));
   const pairErrors = generationErrors.filter(isPair);
   const otherErrorLinks = otherErrors.map((e) => linkTo(e));
   const pairErrorLinks = pairErrors.map((e) => linkTo(e));
-  const outcomeSentences = meansOutcomeSentences(outcome, familySize, tablesGap, 'dashboard');
-  const hasMeansPair = packet.includes('form_122a2');
+  const outcomeSentences = meansOutcomeSentences(
+    outcome,
+    familySize,
+    tablesGap,
+    openOn,
+    'dashboard'
+  );
+  const has122a2 = packet.includes('form_122a2');
   // The answers about the filer's secured debts are from an earlier month than today
   const staleAnswers =
     meansDebtsAnswered !== null &&
@@ -431,17 +461,22 @@ export function FormDashboard() {
   const meansLink = fixLink({ page: '/means-test' });
   // Form 122A-2's questions are on the page; Form 122A-1's only while that form is in the packet
   // Form 101A's questions are Contracts & Leases' landlord block: it has no `/ask` page (4b2)
+  // Form 122A-1Supp's questions are on the Amounts Owed step: it has no `/ask` page (4d)
   const answerPathOf = (formType: FormType): string | undefined => {
     if (formType === 'form_101a') return '/intake?step=contracts';
-    return formType === 'form_122a2' || (formType === 'form_122a1' && hasMeansPair)
+    if (formType === 'form_122a1_supp') return '/intake?step=debts';
+    return formType === 'form_122a2' || (formType === 'form_122a1' && has122a2)
       ? '/means-test'
       : undefined;
   };
   // The sentence that points to the page, with the page's name as the link
   const [answerBefore, answerAfter] = MEANS_OUTCOME_ANSWER_PAGE.split(MEANS_PAGE_PHRASE);
+  // The sentence that points to Amounts Owed, with the step's name as the link (4d-R27)
+  const [debtsBefore, debtsAfter] = MEANS_OUTCOME_ANSWER_DEBTS.split(MEANS_DEBTS_STEP_PHRASE);
   // A card's notice is information about the form, never a refusal: a form filed before 3h
   // first, then a filed Form 122A-1 that doesn't say its result is worked out on Form 122A-2
-  // (its box 1 stored) while Form 122A-2 now applies
+  // (its box 1 stored) while Form 122A-2 now applies, then a filed Form 122A-1 with box 2 checked
+  // while its partner is now the Supp (D11)
   const noticeOf = (form?: GeneratedForm): string | undefined => {
     if (!form) return undefined;
     if (form.filed_before_means_test) {
@@ -453,9 +488,17 @@ export function FormDashboard() {
       form.form_type === 'form_122a1' &&
       form.status === 'filed' &&
       form.stored_box_2 === false &&
-      hasMeansPair
+      has122a2
     ) {
       return MEANS_FILED_MISMATCH;
+    }
+    if (
+      form.form_type === 'form_122a1' &&
+      form.status === 'filed' &&
+      form.stored_box_2 === true &&
+      partner === 'form_122a1_supp'
+    ) {
+      return MEANS_FILED_BOX_2_NOW_SUPP;
     }
     return undefined;
   };
@@ -463,13 +506,17 @@ export function FormDashboard() {
   // the partner is already filed. A filed partner with a notice (it disagrees with this form) is
   // shown before the card marks alone; one with none marks alone at once.
   const pairOf = (formType: FormType): FormCardPair | undefined => {
-    if (!hasMeansPair || !MEANS_PAIR.includes(formType)) return undefined;
-    const partnerType = formType === MEANS_PAIR[0] ? MEANS_PAIR[1] : MEANS_PAIR[0];
-    const partner = formsByType.get(partnerType);
-    if (!partner || partner.status !== 'filed') return { kind: 'both' };
-    const partnerNotice = noticeOf(partner);
+    if (partner === null || !meansPair.includes(formType)) return undefined;
+    const partnerType = formType === meansPair[0] ? meansPair[1] : meansPair[0];
+    const partnerForm = formsByType.get(partnerType);
+    if (!partnerForm || partnerForm.status !== 'filed') return { kind: 'both' };
+    const partnerNotice = noticeOf(partnerForm);
     return partnerNotice
-      ? { kind: 'alone', partnerLabel: FORM_TYPE_METADATA[partner.form_type].label, partnerNotice }
+      ? {
+          kind: 'alone',
+          partnerLabel: FORM_TYPE_METADATA[partnerForm.form_type].label,
+          partnerNotice,
+        }
       : undefined;
   };
   // A detail shows on the card of each form it concerns, unless the form is filed: it prints what
@@ -635,26 +682,36 @@ export function FormDashboard() {
       })}
 
       {/* The result is shown only from the outcome (a row saved before 3h1 has none); the pair
-          notice shows whenever Form 122A-2 is in the packet, first, so the closing sentence is
-          the block's last (H21) */}
-      {hasMeansPair && (
+          notice shows whenever Form 122A-2 or Form 122A-1Supp is in the packet, first, so the
+          closing sentence is the block's last (H21, 4d-R13) */}
+      {partner !== null && (
         <section
           className="form-dashboard-notice"
           role="status"
           aria-label={MEANS_TEST_PREVIEW_TITLE}
         >
-          <p>{MEANS_PAIR_NOTICE}</p>
-          {outcomeSentences.map((sentence) =>
-            sentence === MEANS_OUTCOME_ANSWER_PAGE ? (
-              <p key={sentence}>
-                {answerBefore}
-                <Link to="/means-test">{MEANS_PAGE_PHRASE}</Link>
-                {answerAfter}
-              </p>
-            ) : (
-              <p key={sentence}>{sentence}</p>
-            )
-          )}
+          <p>{partner === 'form_122a1_supp' ? MEANS_SUPP_PAIR_NOTICE : MEANS_PAIR_NOTICE}</p>
+          {outcomeSentences.map((sentence) => {
+            if (sentence === MEANS_OUTCOME_ANSWER_PAGE) {
+              return (
+                <p key={sentence}>
+                  {answerBefore}
+                  <Link to="/means-test">{MEANS_PAGE_PHRASE}</Link>
+                  {answerAfter}
+                </p>
+              );
+            }
+            if (sentence === MEANS_OUTCOME_ANSWER_DEBTS) {
+              return (
+                <p key={sentence}>
+                  {debtsBefore}
+                  <Link to="/intake?step=debts">{MEANS_DEBTS_STEP_PHRASE}</Link>
+                  {debtsAfter}
+                </p>
+              );
+            }
+            return <p key={sentence}>{sentence}</p>;
+          })}
           {outcome === 'presumption' && outcomeSentences.length > 0 && (
             <p>
               <Link to="/means-test#line-43">{MEANS_LINE_43_LINK}</Link>

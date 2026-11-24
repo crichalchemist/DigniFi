@@ -20,7 +20,10 @@ import {
   MEANS_LINE_36_OTHER_RULES,
   MEANS_LINE_36_PRODUCT,
   MEANS_LINE_43_LINK,
+  MEANS_DEBTS_STEP_PHRASE,
+  MEANS_MILITARY_OPEN,
   MEANS_NOT_A_COUNTED_DEBT,
+  MEANS_OUTCOME_ANSWER_DEBTS,
   MEANS_OUTCOME_ANSWER_PAGE,
   MEANS_OUTCOME_NO_PRESUMPTION,
   MEANS_OUTCOME_PRESUMPTION,
@@ -603,6 +606,21 @@ describe('MeansTestPage', () => {
     await ready();
     expect(within(result()).getByText(MEANS_OUTCOME_ANSWER_PAGE)).toBeInTheDocument();
     expect(within(result()).queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  // 4d-R27: an open military question on Amounts Owed holds the result, and this page can't fix
+  // it, so the sentence names that step and links there, never to this page
+  it('sends a result that waits on Amounts Owed to that step', async () => {
+    serve(priyaPage({ outcome: 'cannot_work_out', open_on: 'debts', gap: MEANS_MILITARY_OPEN }));
+    renderPage();
+    await ready();
+
+    const link = within(result()).getByRole('link', { name: MEANS_DEBTS_STEP_PHRASE });
+    expect(link).toHaveAttribute('href', '/intake?step=debts');
+    // The link is a part of the sentence, which reads whole
+    expect(link.parentElement!.textContent).toBe(MEANS_OUTCOME_ANSWER_DEBTS);
+    expect(within(result()).queryByText(MEANS_OUTCOME_ANSWER_PAGE)).not.toBeInTheDocument();
+    expect(within(result()).getAllByRole('link')).toHaveLength(1);
   });
 
   it('the link to line 43 shows only with a presumption, and #line-43 focuses its legend', async () => {

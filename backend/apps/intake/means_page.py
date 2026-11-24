@@ -23,6 +23,7 @@ from apps.eligibility.means_inputs import (
     vehicle_rows,
 )
 from apps.eligibility.means_lines import (
+    SUPP_OUTCOMES,
     MeansTableKeyMissing,
     debt_lines,
     line_30_cap,
@@ -238,8 +239,12 @@ def means_page(session) -> dict:
         except NoTableInForce as refusal:
             applies_gap = str(refusal)
         else:
-            # F12: from this calculation, never a re-read another request may have rewritten
-            applies = is_above_median(result["cmi"], result["median_income_threshold"])
+            # F12: from this calculation, never a re-read another request may have rewritten. A
+            # Supp outcome puts Form 122A-1Supp in 122A-2's place, so the page asks nothing (D1).
+            applies = (
+                is_above_median(result["cmi"], result["median_income_threshold"])
+                and result["outcome"] not in SUPP_OUTCOMES
+            )
     session = IntakeSession.objects.get(pk=session.pk)
     income = getattr(session, "income_info", None)
     answers = _answers_for_page(session)
@@ -253,6 +258,16 @@ def means_page(session) -> dict:
         if information_gap is None:
             tables, _ = read_tables(fill_date())
             gap = next(iter(means_test_gaps(inputs, tables, page_answers(session))), None)
+    if result is not None and result["open_on"] == "debts":
+        # The result waits on Amounts Owed (4d-R27): Continue holds with that step's reason, in
+        # place of the page's own first gap, whatever information_gap says (Ruling P).
+        # Imported here: apps.intake.petition imports forms.registry, which imports intake modules.
+        from apps.forms.registry import FORM_122A2_MILITARY_OPEN
+        from apps.intake.petition import GATE_DEBT_NATURE
+
+        record = getattr(session, "petition_answers", None)
+        answered = record is not None and "debt_nature" in record.get_answers()
+        gap = FORM_122A2_MILITARY_OPEN if answered else GATE_DEBT_NATURE
     if result is not None:
         outcome, details = result["outcome"], result["details"]
     else:
@@ -283,6 +298,7 @@ def means_page(session) -> dict:
         "outcome": outcome,
         "family_size": details.get("family_size"),
         "tables_gap": details.get("tables_gap"),
+        "open_on": details.get("open_on"),
         "gap": gap,
         "polish_available": polish.configured(),
     }

@@ -175,16 +175,19 @@ def _exempt(position: str, law: str, amount=None, short: str | None = None) -> d
 
 
 def _petition(rents_residence: str, **more) -> dict:
-    """Form 101's asked answers (4b-ii): every step 1 question No, filing here because the
-    persona lived here, no hazardous property, and the rent answer (with no eviction judgment
-    under a Yes). Nothing for 4d's or 4i's keys, which no step asks yet; `more` adds a persona's
-    own answers.
+    """Form 101's asked answers (4b-ii, 4d): every step 1 question No, filing here because the
+    persona lived here, no hazardous property, the rent answer (with no eviction judgment under a
+    Yes), and debts mainly consumer debts with No to both of Form 122A-1Supp's military questions
+    (D18). Nothing for 4i's keys, which no step asks yet; `more` adds a persona's own answers.
     """
     answers = {
         **dict.fromkeys(STEP_1_GATES, "no"),
         "venue_choice": "lived_here",
         "hazard_answer": "no",
         "rents_residence": rents_residence,
+        "debt_nature": "consumer",
+        "disabled_veteran": "no",
+        "reservist": "no",
     }
     if rents_residence == "yes":
         answers["eviction_judgment"] = "no"

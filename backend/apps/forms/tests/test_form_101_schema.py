@@ -598,7 +598,9 @@ def test_the_radios_this_file_pins_are_form_101s_own_radios_and_the_radio_keys()
         and set(field.choices or {}) != {"true"}
     }
     assert {key for key, *_ in RADIOS} == bound
-    assert {key for key, *_ in RADIOS} == set(PetitionAnswers.RADIO_KEYS)
+    # Form 122A-1Supp's four military radios are in RADIO_KEYS too (4d-R26), so Form 101's are a
+    # subset; test_petition_radio_keys.py pins the whole set (Ruling A).
+    assert {key for key, *_ in RADIOS} <= set(PetitionAnswers.RADIO_KEYS)
 
 
 @pytest.mark.parametrize("key,label,no,yes", RADIOS)
@@ -1127,15 +1129,25 @@ def test_lines_15_and_16a_carry_legal_review():
     assert marked == LEGAL_REVIEW
 
 
-def test_only_line_15s_and_16as_own_answer_boxes_pass_the_upl_guard():
+def test_only_the_filers_own_answer_boxes_pass_the_upl_guard_on_any_form():
     # Ruling T4-legalreview: a derived legal_review box prints only when its rule ticks exactly
-    # the filer's own stored choice. The guard's list is these eight rules and no other, so a
-    # rule joins it only by a change here.
+    # the filer's own stored choice. The guard's list is ten rules and no other, so a rule
+    # joins it only by a change here: Form 101 line 15's seven boxes and 16a's Yes,
+    # debt_nature_consumer, the consumer box of 106Sum line 7, Form 107 line 6 and Form
+    # 122A-1Supp line 1 (4d-R7), and supp_duty_category, the Supp's line 3 category (4d-R26).
+    from apps.forms.registry import FORM_REGISTRY
     from apps.forms.services.derivations import ANSWER_BOX_RULES
 
-    reviewed = [f for f in load_schema("form_101").fields if f.legal_review]
-    assert {f.source for f in reviewed} == {"derived"}
-    assert {f.rule for f in reviewed} == ANSWER_BOX_RULES
+    form_101_reviewed = [f for f in load_schema("form_101").fields if f.legal_review]
+    assert {f.source for f in form_101_reviewed} == {"derived"}
+    rules = {
+        f.rule
+        for form_type in FORM_REGISTRY
+        for f in load_schema(form_type).fields
+        if f.legal_review and f.source == "derived"
+    }
+    assert rules == ANSWER_BOX_RULES
+    assert len(ANSWER_BOX_RULES) == 10
 
 
 def test_the_revision_mark_on_the_template_is_11_26():

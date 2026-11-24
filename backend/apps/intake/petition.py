@@ -15,6 +15,9 @@ second. The sentences are DigniFi's own; the browser's copy is
 `test_petition_frontend_copy.py` pins its sentences to these.
 """
 
+from collections.abc import Mapping
+
+from apps.eligibility.means_lines import supp_line_3_reached
 from apps.forms.registry import FORM_101A_LANDLORD
 from apps.forms.services import petition_fit
 from apps.forms.services.answer_records import (
@@ -50,6 +53,14 @@ GATE_SOLE_PROPRIETOR = "Say whether you are a sole proprietor of a business."
 GATE_HAZARD = "Say whether any property you own poses a hazard or needs attention right away."
 GATE_RENTS = "Say whether you rent your residence."
 GATE_EVICTION = "Say whether your landlord has an eviction judgment against you."
+# Amounts Owed's Form 101 line 16 and Form 122A-1Supp's two military questions (4d, owner
+# approved 2026-11-23 as drafted).
+# DRAFT: counsel C-39
+GATE_DEBT_NATURE = "Say whether your debts are primarily consumer debts, on the Amounts Owed step."
+# DRAFT: counsel C-39
+GATE_DISABLED_VETERAN = "Say whether you are a disabled veteran."
+# DRAFT: counsel C-39
+GATE_RESERVIST = "Say whether you are or have been a Reservist or member of the National Guard."
 DETAIL_VENUE = "Choose why you are filing in this district."
 # Wording approved by the owner on 2026-11-21; still in counsel's C-40 review.
 # DRAFT: counsel C-40
@@ -67,6 +78,40 @@ DETAIL_PENDING_DATE = "A date is written as MM/DD/YYYY. Check the date of the pe
 DETAIL_PENDING_CASE = "Each pending case needs the name of the person who filed it."
 DETAIL_BUSINESS = "Add your business's name, or change your answer to No."
 DETAIL_HAZARD = "Say what the hazard is, or change your answer to No."
+# Amounts Owed's details (4d): line 16c's words, then the Supp's follow-ups and dates.
+# DRAFT: counsel C-39
+DETAIL_DEBT_NATURE_TEXT = "Say what type of debts you owe."
+# DRAFT: counsel C-39
+DETAIL_DEBTS_ON_DUTY = (
+    "Say whether most of your debts began while you were on active duty. "
+    "Time doing a homeland defense activity counts too."
+)
+# DRAFT: counsel C-39
+DETAIL_CALLED_TO_DUTY = (
+    "Say whether you were called to active duty. Doing a homeland defense activity counts too."
+)
+# "none" ("None of these categories applies to me") is an answer (D9).
+# DRAFT: counsel C-39
+DETAIL_DUTY_CATEGORY = "Choose a category, or say that none applies."
+# DRAFT: counsel C-39
+DETAIL_DUTY_RELEASED = (
+    "A date is written as MM/DD/YYYY. Type the date you were released from active duty."
+)
+# DRAFT: counsel C-39
+DETAIL_DUTY_ENDED = (
+    "A date is written as MM/DD/YYYY. Type the date your homeland defense activity ended."
+)
+# The five military details: each prints on Form 122A-1Supp alone, which a follow-up left open
+# keeps out of the packet or refuses whole, so none leaves a blank box (4d-R10).
+SUPP_DETAILS = frozenset(
+    {
+        DETAIL_DEBTS_ON_DUTY,
+        DETAIL_CALLED_TO_DUTY,
+        DETAIL_DUTY_CATEGORY,
+        DETAIL_DUTY_RELEASED,
+        DETAIL_DUTY_ENDED,
+    }
+)
 # A one-off text's template: {label} is the box's index label in plain words (TEXT_LABELS).
 DETAIL_TOO_LONG = "Your answer for {label} is too long for its box on Form 101."
 # The landlord's twin (owner-approved 2026-11-22, 4b2-R3), same {label}: on Form 101A's box.
@@ -117,13 +162,23 @@ _GATE_SENTENCE = {
 # except the landlord keys, whose detail refuses Form 101A whole (4b2).
 # Form 101 prints the ITIN's last four but has no box for the other Social Security number, so
 # `itin` names both forms and `other_ssn` names Form 121 alone (PF2-T7-7). Form 103B line 20
-# prints Form 101 line 9's earlier cases (PF2-T10-3).
+# prints Form 101 line 9's earlier cases (PF2-T10-3). A gate's key (such as `disabled_veteran` or
+# `reservist`, the Supp's two gates) keeps the Form 101 default, which nothing reads: a gate's
+# Gap carries forms=().
 FORMS_OF_KEY: dict[str, tuple[str, ...]] = {key: ("form_101",) for key in PetitionAnswers.KEYS}
 FORMS_OF_KEY["itin"] = ("form_101", "form_121")
 FORMS_OF_KEY["other_ssn"] = ("form_121",)
 FORMS_OF_KEY["prior_cases"] = ("form_101", "form_103b")
 # The landlord block prints on Form 101A alone.
 FORMS_OF_KEY.update(dict.fromkeys(LANDLORD_KEYS, ("form_101a",)))
+# The Supp's military follow-ups print on Form 122A-1Supp alone; line 16c's words stay Form
+# 101's (4d-R10).
+FORMS_OF_KEY.update(
+    dict.fromkeys(
+        ("debts_on_duty", "called_to_duty", "duty_category", "duty_released_on", "duty_ended_on"),
+        ("form_122a1_supp",),
+    )
+)
 _MAILING_KEYS = (
     "mailing_street",
     "mailing_po_box",
@@ -201,9 +256,41 @@ def _debtor_info_details(answers: dict) -> list[Gap]:
     return gaps
 
 
-def text_shows(answers: dict, key: str) -> bool:
+def _consumer(answers: Mapping) -> bool:
+    return answers.get("debt_nature") == "consumer"
+
+
+def _line_3_follow_up(answers: Mapping) -> bool:
+    return supp_line_3_reached(answers) and answers.get("reservist") == "yes"
+
+
+def _categories_shown(answers: Mapping) -> bool:
+    return _line_3_follow_up(answers) and answers.get("called_to_duty") == "yes"
+
+
+# Where Form 122A-1Supp reaches each military question (R-D2), under consumer debts only: line
+# 2's follow-up under its Yes, line 3 unless line 2 is Yes to both, its follow-up under the
+# Reservist Yes, the categories under "called to duty" Yes and each date under its category.
+_SUPP_SHOWN = {
+    "disabled_veteran": _consumer,
+    "debts_on_duty": lambda a: _consumer(a) and a.get("disabled_veteran") == "yes",
+    "reservist": supp_line_3_reached,
+    "called_to_duty": _line_3_follow_up,
+    "duty_category": _categories_shown,
+    "duty_released_on": lambda a: _categories_shown(a) and a.get("duty_category") == "2",
+    "duty_ended_on": lambda a: _categories_shown(a) and a.get("duty_category") == "4",
+}
+
+
+def text_shows(answers: Mapping, key: str) -> bool:
     """Whether the key's box prints: a text under a No is hidden, so its length is no gap. A row
     list's cells print only under its line's Yes."""
+    # Line 16c's words print only under "neither"; each Supp question only where the form
+    # reaches it (4d).
+    if key == "debt_nature_text":
+        return answers.get("debt_nature") == "neither"
+    if key in _SUPP_SHOWN:
+        return _SUPP_SHOWN[key](answers)
     if key in ROW_LIST_GATES:
         return answers.get(ROW_LIST_GATES[key]) == "yes"
     # The landlord's boxes print only under the pair; a stale eviction Yes under a rent No is none.
@@ -262,21 +349,64 @@ def _cells_too_long(answers: dict, too_wide: dict) -> list[Gap]:
     return gaps
 
 
-def petition_step_gaps(session) -> list[Gap]:
-    """Every question of Form 101 and Form 101A still open on steps 1, 5 and 7, in step order.
+def debt_nature_gaps(answers: Mapping) -> list[Gap]:
+    """Amounts Owed's Form 101 line 16 and Form 122A-1Supp questions still open (4d): the gates
+    (line 16, then line 2 under consumer, then line 3 where the Supp reaches it), then the
+    details, each only where its question shows. Pure: no measure, no read."""
+    step = "debts"
+    gaps = []
+    if answers.get("debt_nature") is None:
+        gaps.append(Gap(GATE_DEBT_NATURE, step, Gap.GATE))
+    for key, sentence in (
+        ("disabled_veteran", GATE_DISABLED_VETERAN),
+        ("reservist", GATE_RESERVIST),
+    ):
+        if text_shows(answers, key) and answers.get(key) is None:
+            gaps.append(Gap(sentence, step, Gap.GATE))
 
-    A session with no record has every key unanswered. Nothing for 4d's or 4i's keys. Under a
-    rent Yes and an eviction Yes the landlord block ends step 7's list: Form 101A is refused
-    whole while it is missing (a detail, which Complete lets through), never printed blank.
+    if text_shows(answers, "debt_nature_text") and _blank(answers.get("debt_nature_text")):
+        gaps.append(_detail(DETAIL_DEBT_NATURE_TEXT, step, "debt_nature_text"))
+    for key, sentence in (
+        ("debts_on_duty", DETAIL_DEBTS_ON_DUTY),
+        ("called_to_duty", DETAIL_CALLED_TO_DUTY),
+        ("duty_category", DETAIL_DUTY_CATEGORY),
+    ):
+        if text_shows(answers, key) and answers.get(key) is None:
+            gaps.append(_detail(sentence, step, key))
+    # A date is blank or not MM/DD/YYYY only under its own category's whole chain (Ruling J).
+    for key, sentence in (
+        ("duty_released_on", DETAIL_DUTY_RELEASED),
+        ("duty_ended_on", DETAIL_DUTY_ENDED),
+    ):
+        if text_shows(answers, key) and not is_mm_dd_yyyy(answers.get(key)):
+            gaps.append(_detail(sentence, step, key))
+    return gaps
+
+
+def petition_step_gaps(session) -> list[Gap]:
+    """Every question of Form 101, Form 101A and Form 122A-1Supp still open on steps 1, 5, 6 and
+    7, in step order.
+
+    A session with no record has every key unanswered. Nothing for 4i's keys. Step 6's block
+    (debt_nature_gaps, then line 16c's too-long text) sits between the hazard and the rent.
+    Under a rent Yes and an eviction Yes the landlord block ends step 7's list: Form 101A is
+    refused whole while it is missing (a detail, which Complete lets through), never printed
+    blank.
     """
     record = getattr(session, "petition_answers", None)
     answers = record.get_answers() if record else {}
-    # Only the keys steps 1, 5 and 7 ask; 4d's and 4i's are other steps'.
+    # Only the keys steps 1, 5, 6 and 7 ask; 4i's are other steps'.
     limited = list(PetitionAnswers.TEXT_LIMITS)
     step_1_keys = [k for k in limited if PETITION_STEP_OF_KEY.get(k) == "debtor_info"]
     hazard_keys = [k for k in limited if PETITION_STEP_OF_KEY.get(k) == "assets"]
     landlord_keys = [k for k in limited if PETITION_STEP_OF_KEY.get(k) == "contracts"]
-    measured = [*step_1_keys, *hazard_keys, *landlord_keys, *ROW_LIST_GATES]
+    measured = [
+        *step_1_keys,
+        *hazard_keys,
+        "debt_nature_text",
+        *landlord_keys,
+        *ROW_LIST_GATES,
+    ]
     too_wide = petition_fit.too_long(session, [k for k in measured if text_shows(answers, k)])
 
     gaps = [
@@ -293,6 +423,9 @@ def petition_step_gaps(session) -> list[Gap]:
     elif answers["hazard_answer"] == "yes" and _blank(answers.get("hazard_what")):
         gaps.append(_detail(DETAIL_HAZARD, "assets", "hazard_what"))
     gaps += _too_long(answers, "assets", hazard_keys, too_wide)
+
+    gaps += debt_nature_gaps(answers)
+    gaps += _too_long(answers, "debts", ["debt_nature_text"], too_wide)
 
     if "rents_residence" not in answers:
         gaps.append(Gap(GATE_RENTS, "contracts", Gap.GATE))

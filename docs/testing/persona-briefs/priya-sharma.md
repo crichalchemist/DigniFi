@@ -112,6 +112,8 @@ Each item goes on the Schedule A/B line shown. You are the only one with an inte
 - Silverpine Card Services credit card — $22,000, paying $500/mo. Address: P.O. Box 9313, El Paso, TX 79998. Account ends 3313. Since 2024–2025. No one else is contacting you. None of the status choices applies; not subject to offset.
 - Westhaven University Medical Center — $35,000, paying $0 (in collections). Address: 1653 W Congress Pkwy, Chicago, IL 60612. Account ends 3323. Since 02/2025. Someone else is contacting you: Lakeshore Medical Recovery LLC, P.O. Box 9333, Chicago, IL 60690, account ends 7310. None of the status choices applies; not subject to offset.
 
+Amounts Owed: debts primarily consumer; not a disabled veteran; not a Reservist or Guard member.
+
 **Contracts and leases:** Yes. Fullerton Parkway Apartments LLC, 456 W Fullerton Pkwy, Management Office, Chicago, IL 60614. Kind: lease, residential. For: Residential lease, 456 W Fullerton Pkwy, to 07/31/2027, $2,800 a month. You do not owe money on it now.
 
 **Form 101 rent question (Contracts & Leases step):** Answer Yes to "Do you rent your residence?" and No to "Has your landlord obtained an eviction judgment against you?"

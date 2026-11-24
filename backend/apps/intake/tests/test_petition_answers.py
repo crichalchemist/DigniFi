@@ -117,6 +117,18 @@ def test_an_enumerated_key_takes_only_its_set(filer):
     assert _patch(client, session, {"venue_choice": "other"}).status_code == 200
 
 
+def test_none_applies_saves_as_a_category_answer(filer):
+    # D9: "None of these categories applies to me" is Form 122A-1Supp line 3's fifth answer, so a
+    # filer called to duty can answer it without claiming an exclusion.
+    client, session = filer
+    assert _patch(client, session, {"duty_category": "none"}).status_code == 200
+    assert _stored(session) == {"duty_category": "none"}
+    refused = _patch(client, session, {"duty_category": "5"})
+    assert refused.status_code == 400
+    assert refused.json() == {"petition_answers": ["Check the answer for duty_category."]}
+    assert _stored(session) == {"duty_category": "none"}
+
+
 def test_a_third_other_name_is_refused(filer):
     client, session = filer
     row = {"first": "Demo", "last": "Name"}

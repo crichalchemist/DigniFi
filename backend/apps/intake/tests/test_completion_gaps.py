@@ -22,7 +22,9 @@ from apps.intake.claims import claim_step_gaps
 from apps.intake.completion import WIZARD_STEP_COUNT, Gap, completion_gaps
 from apps.intake.models import DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
 from apps.intake.petition import (
+    DETAIL_DEBTS_ON_DUTY,
     DETAIL_VENUE,
+    GATE_DEBT_NATURE,
     GATE_HAZARD,
     GATE_ITIN,
     GATE_MAILING,
@@ -222,6 +224,71 @@ def test_the_rent_gate_stays_before_the_claims_tail_when_the_claims_steps_have_n
 
     assert [step for step, _ in gaps] == ["contracts", "debts"]
     assert gaps[0][1] == GATE_RENTS
+
+
+def test_the_debts_petition_gaps_sit_after_the_claims_debts_gaps_and_before_contracts(
+    filer, unfinished
+):
+    # Line 16 and the Supp's questions are asked on Amounts Owed, so they follow that step's own
+    # gaps (here the scanned debt) and come before anything Contracts & Leases asks (4d).
+    claim_messages = [(g.step, str(g)) for g in claim_step_gaps(unfinished)]
+    last_debts = [c for c in claim_messages if c[0] == "debts"][-1]
+    first_contracts = next(c for c in claim_messages if c[0] == "contracts")
+
+    gaps = completion_gaps(unfinished)
+    at = [str(g) for g in gaps].index(GATE_DEBT_NATURE)
+
+    assert (gaps[at].step, gaps[at].kind) == ("debts", Gap.GATE)
+    assert (gaps[at - 1].step, str(gaps[at - 1])) == last_debts
+    assert (gaps[at + 1].step, str(gaps[at + 1])) == first_contracts
+
+
+def test_the_debts_petition_gaps_list_on_a_session_with_no_later_claims_gap(filer, completed):
+    # With Contracts and Codebtors finished there is no later claims gap to sit before: line 16's
+    # gate still ends the wizard-order part, before the rent question and the claims tail.
+    completed.status = "in_progress"
+    completed.save(update_fields=["status"])
+    answer_petition(completed, debt_nature=None, rents_residence=None)
+    ExpenseInfo.objects.filter(session=completed).update(vehicle_payment=Decimal("350.00"))
+    completed.refresh_from_db()
+
+    gaps = [(g.step, str(g)) for g in completion_gaps(completed)]
+
+    assert [step for step, _ in gaps] == ["debts", "contracts", "debts"]
+    assert gaps[0][1] == GATE_DEBT_NATURE
+    assert gaps[1][1] == GATE_RENTS
+
+
+def test_complete_refuses_an_unanswered_line_16_and_lets_an_open_follow_up_through(
+    filer, completed
+):
+    # Line 16 is a gate; a military follow-up is a detail that prints only on Form 122A-1Supp.
+    client, _ = filer
+    completed.status = "in_progress"
+    completed.save(update_fields=["status"])
+    answer_petition(completed, debt_nature=None)
+
+    refused = client.post(_session_url(completed, "complete/"))
+
+    assert refused.status_code == 400
+    assert refused.data["errors"] == [{"step": "debts", "message": GATE_DEBT_NATURE}]
+
+    answer_petition(completed, debt_nature="consumer", disabled_veteran="yes")
+    listed = client.get(_session_url(completed, "gaps/"))
+    finished = client.post(_session_url(completed, "complete/"))
+
+    assert listed.data == {
+        "gaps": [
+            {
+                "kind": "detail",
+                "message": DETAIL_DEBTS_ON_DUTY,
+                "step": "debts",
+                "forms": ["form_122a1_supp"],
+            }
+        ]
+    }
+    assert finished.status_code == 200
+    assert finished.data["session"]["status"] == "completed"
 
 
 def test_a_case_on_the_sheet_before_the_name_is_entered_still_lists_every_gap(filer, district):

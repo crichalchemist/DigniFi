@@ -12,6 +12,8 @@ from rest_framework.test import APIClient
 
 from apps.districts.means_standards import NoMeansTestTable
 from apps.eligibility.cmi import income_step_gaps
+from apps.eligibility.means_lines import SUPP_OUTCOMES
+from apps.forms import registry
 from apps.forms.tests.test_means_hold import (  # noqa: F401, F811
     above,
     district,
@@ -39,9 +41,11 @@ from apps.intake.models import (
     MeansTestAnswers,
     SecuredDebtAnswers,
 )
+from apps.intake.petition import GATE_DEBT_NATURE
 from apps.intake.tests.builders import (
     answer_household,
     answer_means_test,
+    answer_petition,
     complete_debt,
     finish_intake,
     linked_loan,
@@ -281,6 +285,57 @@ def test_a_below_median_filer_reads_applies_false(filer):
     assert page["applies_gap"] is None
     assert page["debt_lines"] is None
     assert page["information"] is None
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "answers",
+    [
+        {"debt_nature": "business"},
+        {"debt_nature": "consumer", "disabled_veteran": "yes", "debts_on_duty": "yes"},
+        {
+            "debt_nature": "consumer",
+            "disabled_veteran": "no",
+            "reservist": "yes",
+            "called_to_duty": "yes",
+            "duty_category": "1",
+        },
+    ],
+    ids=["not_consumer", "veteran_exemption", "military_exclusion"],
+)
+def test_the_page_doesnt_ask_a_non_consumer_or_excluded_filer(filer, answers):
+    # Form 122A-1Supp takes Form 122A-2's place (D1), so the page has no question to ask and
+    # replaces itself with the next page (4d-R12), above the median too.
+    answer_petition(filer.session, **answers)
+
+    page = _get(filer).json()
+
+    assert page["outcome"] in SUPP_OUTCOMES
+    assert page["applies"] is False
+    assert page["gap"] is None
+    assert page["open_on"] is None
+
+
+@pytest.mark.django_db
+def test_the_page_holds_continue_on_the_amounts_owed_question(filer):
+    # While line 16 or a military question is open, the result waits on Amounts Owed (4d-R27):
+    # the page's gap says so in the server's words and names that step, so Continue holds with
+    # the real reason, never the page's own first question.
+    answer_petition(filer.session, debt_nature=None, disabled_veteran=None, reservist=None)
+    assert "debt_nature" not in filer.session.petition_answers.get_answers()
+    unanswered = _get(filer).json()
+    assert (unanswered["outcome"], unanswered["open_on"]) == ("cannot_work_out", "debts")
+    assert unanswered["gap"] == GATE_DEBT_NATURE
+
+    answer_petition(filer.session, debt_nature="consumer", disabled_veteran="yes", reservist="no")
+    military = _get(filer).json()
+    assert (military["outcome"], military["open_on"]) == ("cannot_work_out", "debts")
+    assert military["gap"] == registry.FORM_122A2_MILITARY_OPEN
+
+    answer_petition(filer.session, disabled_veteran="no")
+    answered = _get(filer).json()
+    assert answered["open_on"] is None
+    assert answered["gap"] == "Answer whether you claim an expense for Demo car."
 
 
 @pytest.mark.django_db

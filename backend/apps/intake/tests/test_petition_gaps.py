@@ -4,15 +4,23 @@ Business intent: an unanswered question blocks Complete (a gate), while an answe
 would print blank is only a detail, and no question is ever answered for the filer.
 """
 
+import itertools
 import json
 
 import pytest
 
+from apps.eligibility.means_lines import military_question_open
 from apps.forms.services import petition_fit
 from apps.intake.models import FilingFee, PetitionAnswers
 from apps.intake.petition import (
     CELL_LABELS,
     DETAIL_BUSINESS,
+    DETAIL_CALLED_TO_DUTY,
+    DETAIL_DEBT_NATURE_TEXT,
+    DETAIL_DEBTS_ON_DUTY,
+    DETAIL_DUTY_CATEGORY,
+    DETAIL_DUTY_ENDED,
+    DETAIL_DUTY_RELEASED,
     DETAIL_EIN,
     DETAIL_HAZARD,
     DETAIL_ITIN,
@@ -31,6 +39,8 @@ from apps.intake.petition import (
     DETAIL_VENUE,
     DETAIL_VENUE_REASON,
     FORMS_OF_KEY,
+    GATE_DEBT_NATURE,
+    GATE_DISABLED_VETERAN,
     GATE_EVICTION,
     GATE_HAZARD,
     GATE_ITIN,
@@ -40,12 +50,21 @@ from apps.intake.petition import (
     GATE_PENDING_CASE,
     GATE_PRIOR_BANKRUPTCY,
     GATE_RENTS,
+    GATE_RESERVIST,
     GATE_SOLE_PROPRIETOR,
     STEP_1_GATES,
+    SUPP_DETAILS,
+    debt_nature_gaps,
     petition_step_gaps,
 )
 
-NO = {key: "no" for key in (*STEP_1_GATES, "hazard_answer", "rents_residence")}
+# Amounts Owed's Form 101 line 16 and Form 122A-1Supp's two military questions, each answered
+# (consumer, No, No), so a list that should hold nothing of step 6 holds nothing (4d).
+DEBTS_ANSWERED = {"debt_nature": "consumer", "disabled_veteran": "no", "reservist": "no"}
+NO = {
+    **{key: "no" for key in (*STEP_1_GATES, "hazard_answer", "rents_residence")},
+    **DEBTS_ANSWERED,
+}
 
 
 def _gaps(session, answers):
@@ -69,7 +88,7 @@ STEP_1_GATE_SENTENCES = [
 ]
 
 
-def test_a_session_with_no_record_lists_the_seven_step_1_gates_then_the_hazard_and_rent_gates(
+def test_a_session_with_no_record_lists_the_step_1_hazard_line_16_and_rent_gates_in_step_order(
     filer,
 ):
     _, session = filer
@@ -77,12 +96,14 @@ def test_a_session_with_no_record_lists_the_seven_step_1_gates_then_the_hazard_a
     assert [(g.step, g.kind, str(g)) for g in gaps[:7]] == [
         ("debtor_info", "gate", sentence) for _, sentence in STEP_1_GATE_SENTENCES
     ]
+    # Steps 5, 6 and 7: the hazard, line 16 (Amounts Owed), then the rent (4d, Ruling C).
     assert [(g.step, g.kind, str(g)) for g in gaps[7:]] == [
         ("debtor_info", "detail", DETAIL_VENUE),
         ("assets", "gate", GATE_HAZARD),
+        ("debts", "gate", GATE_DEBT_NATURE),
         ("contracts", "gate", GATE_RENTS),
     ]
-    assert len(gaps) == 7 + 1 + 1 + 1
+    assert len(gaps) == 7 + 1 + 1 + 1 + 1
 
 
 def test_each_step_1_question_left_open_is_asked_in_its_own_words(filer):
@@ -164,10 +185,11 @@ def test_a_malformed_date_is_a_detail(filer):
     assert [t for _, _, t in _gaps(session, {**base, "prior_cases": rows})] == [DETAIL_PRIOR_DATE]
 
 
-def test_nothing_of_4d_or_4i_is_listed(filer):
+def test_nothing_of_4i_is_listed(filer):
+    # 4d's line 16 is asked now (NO answers it); 4i's credit counseling is another step's.
     _, session = filer
     answers = {**NO, "venue_choice": "lived_here"}
-    assert "debt_nature" not in answers and "credit_counseling" not in answers
+    assert "credit_counseling" not in answers
     assert _gaps(session, answers) == []
 
 
@@ -178,6 +200,7 @@ def test_every_detail_names_the_forms_that_print_it_blank(filer, monkeypatch):
     every_yes = {key: "yes" for key in (*STEP_1_GATES, "hazard_answer", "rents_residence")}
     answers = {
         **every_yes,
+        **DEBTS_ANSWERED,
         "venue_choice": "other",
         "ein": "12",
         "business_name": "Demo Business",
@@ -239,6 +262,7 @@ def test_the_details_come_in_one_fixed_order(filer, monkeypatch):
     every_yes = {key: "yes" for key in (*STEP_1_GATES, "hazard_answer", "rents_residence")}
     answers = {
         **every_yes,
+        **DEBTS_ANSWERED,
         "venue_choice": "other",
         "ein": "12",
         "business_city": "Springfield",
@@ -266,17 +290,9 @@ def test_the_details_come_in_one_fixed_order(filer, monkeypatch):
 
 def test_a_too_long_answer_to_another_steps_question_is_not_listed_here(filer, monkeypatch):
     _, session = filer
-    monkeypatch.setattr(
-        PetitionAnswers,
-        "TEXT_LIMITS",
-        {"preparer_name": 3, "debt_nature_text": 3},
-    )
-    answers = {
-        **NO,
-        "venue_choice": "lived_here",
-        "preparer_name": "A" * 10,
-        "debt_nature_text": "B" * 10,
-    }
+    # 4i's preparer; line 16c's text is this module's own since 4d (its own test is below).
+    monkeypatch.setattr(PetitionAnswers, "TEXT_LIMITS", {"preparer_name": 3})
+    answers = {**NO, "venue_choice": "lived_here", "preparer_name": "A" * 10}
     assert _gaps(session, answers) == []
 
 
@@ -600,3 +616,236 @@ def test_form_103b_s_box_is_not_measured_for_a_filer_whose_packet_lacks_it(filer
     # Only a waiver puts 103B in the packet: no one else is told an answer is too long for it.
     _, session = filer
     assert _prior_case_number(session, _FITS_101_NOT_103B, payment_choice) == []
+
+
+# ── Amounts Owed: Form 101 line 16 and Form 122A-1Supp's military questions (4d) ──
+
+# Line 3's whole chain to its categories: consumer debts, line 2 settled No, Reservist Yes and
+# called to duty Yes (R-D2, Ruling J).
+CALLED = {**DEBTS_ANSWERED, "reservist": "yes", "called_to_duty": "yes"}
+
+
+def _debts(session, **changes):
+    """Step 6's gaps for NO's answers with `changes`, a None removing a key, as (kind, text)."""
+    answers = {**NO, "venue_choice": "lived_here", **changes}
+    answers = {key: value for key, value in answers.items() if value is not None}
+    return [(kind, text) for step, kind, text in _gaps(session, answers) if step == "debts"]
+
+
+def test_an_unanswered_line_16_is_the_only_debts_gate(filer):
+    # With line 16 open no military question is asked yet: the Supp asks them under consumer.
+    _, session = filer
+    answers = {**NO, "venue_choice": "lived_here"}
+    for key in DEBTS_ANSWERED:
+        del answers[key]
+    assert _gaps(session, answers) == [("debts", "gate", GATE_DEBT_NATURE)]
+
+
+def test_the_military_gates_ask_only_under_consumer(filer):
+    _, session = filer
+    open_ = {"disabled_veteran": None, "reservist": None}
+    assert _debts(session, **open_) == [
+        ("gate", GATE_DISABLED_VETERAN),
+        ("gate", GATE_RESERVIST),
+    ]
+    assert _debts(session, debt_nature="business", **open_) == []
+    assert _debts(session, debt_nature="neither", debt_nature_text="Demo fines", **open_) == []
+
+
+def test_line_2_yes_yes_asks_no_line_3_gate(filer):
+    # R-D2: Yes to both of line 2's questions ends the Supp at line 2, so line 3 is never asked.
+    _, session = filer
+    assert _debts(session, disabled_veteran="yes", debts_on_duty="yes", reservist=None) == []
+
+
+def test_line_2_yes_with_its_follow_up_open_still_asks_line_3(filer):
+    # The boundary (OD): while line 2's follow-up is open the form may still reach line 3.
+    _, session = filer
+    assert _debts(session, disabled_veteran="yes", reservist=None) == [
+        ("gate", GATE_RESERVIST),
+        ("detail", DETAIL_DEBTS_ON_DUTY),
+    ]
+
+
+# Every gate and detail of the block, in the one order Complete lists them (gates first).
+DEBTS_ORDER = [
+    GATE_DEBT_NATURE,
+    GATE_DISABLED_VETERAN,
+    GATE_RESERVIST,
+    DETAIL_DEBT_NATURE_TEXT,
+    DETAIL_DEBTS_ON_DUTY,
+    DETAIL_CALLED_TO_DUTY,
+    DETAIL_DUTY_CATEGORY,
+    DETAIL_DUTY_RELEASED,
+    DETAIL_DUTY_ENDED,
+]
+# Each key's states: unanswered (None), then every answer, and for a text or a date a blank, a
+# malformed and a good one.
+DEBTS_STATES = {
+    "debt_nature": (None, "consumer", "business", "neither"),
+    "debt_nature_text": (None, "  ", "Demo fines"),
+    "disabled_veteran": (None, "yes", "no"),
+    "debts_on_duty": (None, "yes", "no"),
+    "reservist": (None, "yes", "no"),
+    "called_to_duty": (None, "yes", "no"),
+    "duty_category": (None, "1", "2", "3", "4", "none"),
+    "duty_released_on": (None, "2021-03-04", "03/04/2021"),
+    "duty_ended_on": (None, "13/45/2021", "03/04/2021"),
+}
+MILITARY_OPEN = {
+    GATE_DISABLED_VETERAN,
+    GATE_RESERVIST,
+    DETAIL_DEBTS_ON_DUTY,
+    DETAIL_CALLED_TO_DUTY,
+    DETAIL_DUTY_CATEGORY,
+}
+
+
+def _every_debts_state():
+    for values in itertools.product(*DEBTS_STATES.values()):
+        yield {k: v for k, v in zip(DEBTS_STATES, values, strict=True) if v is not None}
+
+
+def test_the_debts_gaps_come_in_one_fixed_order():
+    # No one set of answers raises all nine (line 16 open asks nothing else, and the categories
+    # exclude each other), so every reachable set is walked: each list keeps the one order, and
+    # together they raise every gate and detail. An open military question (D3, 4d-R3) is
+    # exactly a military gate or an open follow-up, so "open" has one definition.
+    seen = set()
+    for answers in _every_debts_state():
+        texts = [str(g) for g in debt_nature_gaps(answers)]
+        assert texts == [s for s in DEBTS_ORDER if s in texts], answers
+        assert len(texts) == len(set(texts)), answers
+        assert military_question_open(answers) == bool(MILITARY_OPEN & set(texts)), answers
+        seen.update(texts)
+    assert seen == set(DEBTS_ORDER)
+
+
+def test_the_debts_block_sits_between_the_hazard_and_the_rent_in_its_own_order(filer):
+    _, session = filer
+    answers = {
+        **NO,
+        **CALLED,
+        "venue_choice": "lived_here",
+        "duty_category": "2",
+        "duty_released_on": "2021-03-04",
+    }
+    for key in ("hazard_answer", "rents_residence", "disabled_veteran"):
+        del answers[key]
+    assert _gaps(session, answers) == [
+        ("assets", "gate", GATE_HAZARD),
+        ("debts", "gate", GATE_DISABLED_VETERAN),
+        ("debts", "detail", DETAIL_DUTY_RELEASED),
+        ("contracts", "gate", GATE_RENTS),
+    ]
+
+
+def test_an_open_military_question_is_never_one_line_2_yes_yes_or_business_skips():
+    # T1-H1: the two guards route_outcome can't show. Line 2 Yes/Yes leaves line 3 unreached, so
+    # an unanswered Reservist question is not open; business debts reach no military question.
+    assert not military_question_open(
+        {"debt_nature": "consumer", "disabled_veteran": "yes", "debts_on_duty": "yes"}
+    )
+    assert not military_question_open({"debt_nature": "business"})
+
+
+def test_each_military_follow_up_is_a_detail_naming_the_supp():
+    # Each prints only on Form 122A-1Supp, so each is a detail Complete lets through (4d-R10).
+    cases = {
+        DETAIL_DEBTS_ON_DUTY: {**DEBTS_ANSWERED, "disabled_veteran": "yes"},
+        DETAIL_CALLED_TO_DUTY: {**DEBTS_ANSWERED, "reservist": "yes"},
+        DETAIL_DUTY_CATEGORY: CALLED,
+        DETAIL_DUTY_RELEASED: {**CALLED, "duty_category": "2"},
+        DETAIL_DUTY_ENDED: {**CALLED, "duty_category": "4"},
+    }
+    for sentence, answers in cases.items():
+        (gap,) = debt_nature_gaps(answers)
+        assert (str(gap), gap.step, gap.kind, gap.forms) == (
+            sentence,
+            "debts",
+            "detail",
+            ("form_122a1_supp",),
+        )
+    assert set(cases) == SUPP_DETAILS
+
+
+def test_a_neither_with_no_words_is_a_form_101_detail(filer):
+    _, session = filer
+    for text in (None, "", "   "):
+        assert _debts(session, debt_nature="neither", debt_nature_text=text) == [
+            ("detail", DETAIL_DEBT_NATURE_TEXT)
+        ]
+    (gap,) = debt_nature_gaps({"debt_nature": "neither"})
+    assert gap.forms == ("form_101",)
+    assert _debts(session, debt_nature="neither", debt_nature_text="Demo fines") == []
+
+
+def test_a_date_that_isnt_mm_dd_yyyy_is_a_detail_under_its_category_only(filer):
+    _, session = filer
+    bad, good = "2021-03-04", "03/04/2021"
+    assert _debts(session, **CALLED, duty_category="2", duty_released_on=bad) == [
+        ("detail", DETAIL_DUTY_RELEASED)
+    ]
+    assert _debts(session, **CALLED, duty_category="2", duty_released_on=good) == []
+    assert _debts(session, **CALLED, duty_category="4", duty_ended_on=bad) == [
+        ("detail", DETAIL_DUTY_ENDED)
+    ]
+    assert _debts(session, **CALLED, duty_category="4", duty_ended_on=good) == []
+    # The other category's date is not asked, and categories 1 and 3 ask none.
+    released_only = {**CALLED, "duty_category": "2", "duty_released_on": good}
+    assert _debts(session, **released_only, duty_ended_on=bad) == []
+    ended_only = {**CALLED, "duty_category": "4", "duty_ended_on": good}
+    assert _debts(session, **ended_only, duty_released_on=bad) == []
+    for category in ("1", "3"):
+        assert _debts(session, **CALLED, duty_category=category, duty_released_on=bad) == []
+    # Ruling J: a stale category the step hides asks no date.
+    for hidden in (
+        {"called_to_duty": "no"},
+        {"reservist": "no"},
+        {"disabled_veteran": "yes", "debts_on_duty": "yes"},
+    ):
+        for category in ("2", "4"):
+            stale = {**CALLED, **hidden, "duty_category": category}
+            assert _debts(session, **stale) == [], (hidden, category)
+
+
+def test_military_answers_kept_under_business_raise_no_gap(filer):
+    _, session = filer
+    stale = {
+        "disabled_veteran": "yes",
+        "reservist": "yes",
+        "called_to_duty": "yes",
+        "duty_category": "2",
+        "duty_released_on": "2021-03-04",
+    }
+    assert _debts(session, debt_nature="business", **stale) == []
+    assert _debts(session, debt_nature="neither", debt_nature_text="Demo fines", **stale) == []
+
+
+def test_none_applies_answers_the_category_question(filer):
+    # D9: "None of these categories applies to me" is an answer, and it claims no category, so
+    # neither date is asked.
+    _, session = filer
+    assert (
+        _debts(
+            session,
+            **CALLED,
+            duty_category="none",
+            duty_released_on="2021-03-04",
+            duty_ended_on="13/45/2021",
+        )
+        == []
+    )
+
+
+def test_a_too_long_16c_text_is_a_too_long_detail(filer):
+    _, session = filer
+    assert PetitionAnswers.TEXT_LIMITS["debt_nature_text"] == 82
+    label = PetitionAnswers.TEXT_LABELS["debt_nature_text"]
+    neither = {**NO, "venue_choice": "lived_here", "debt_nature": "neither"}
+    gaps = petition_step_gaps_of(session, {**neither, "debt_nature_text": "a" * 83})
+    assert [(g.step, g.kind, str(g), g.forms) for g in gaps] == [
+        ("debts", "detail", DETAIL_TOO_LONG.format(label=label), ("form_101",))
+    ]
+    # The box is hidden under consumer, so its length is no gap.
+    assert _debts(session, debt_nature_text="a" * 83) == []

@@ -106,6 +106,8 @@ Each item goes on the Schedule A/B line shown. Where the form asks who has an in
 
 **For every amount owed:** none is secured; none is contingent, unliquidated or disputed; none is subject to offset.
 
+Amounts Owed: debts primarily consumer; not a disabled veteran; not a Reservist or Guard member.
+
 **Contracts and leases:** Yes. Division Demo Properties LLC, 30 Demo St, Chicago, IL 60622. Kind: lease, residential. For: Residential lease for 2145 W Division St Apt 3, 07/01/2026–06/30/2027, $1,100 a month. You do not owe money on it now.
 
 **Form 101 rent question (Contracts & Leases step):** Answer Yes to "Do you rent your residence?" and No to "Has your landlord obtained an eviction judgment against you?"
