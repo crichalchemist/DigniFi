@@ -5671,6 +5671,38 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     expect(calls).toEqual([0, 1]);
   });
 
+  it('judges a line 16 change against the newest save, not a reply it overtook', async () => {
+    const saves = serveSessionSaves({ ...onStep6, petition_answers: LATER_PETITION_GATES });
+    const calls = serveCalculates(saves.bodies);
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    await waitFor(() => expect(calls).toEqual([0]));
+
+    vi.useFakeTimers();
+    try {
+      // Business goes out on a slow link; consumer again, sent after it, lands first and is
+      // what the server holds, so the slow reply, landing last, changes nothing
+      const landFirstSave = saves.holdNextReply();
+      choose('debt_nature', 'business');
+      await waitSeconds(3);
+      choose('debt_nature', 'consumer');
+      await waitSeconds(3);
+      await act(async () => landFirstSave());
+      await waitSeconds(2);
+      expect(saves.bodies).toHaveLength(2);
+      expect(calls).toEqual([0]);
+
+      // Business once more is a change from what the server holds
+      choose('debt_nature', 'business');
+      await waitSeconds(4);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(saves.bodies).toHaveLength(3);
+    expect(calls).toEqual([0, 3]);
+  });
+
   it('works nothing out again on a visit alone, or a save that changes no line 16 answer', async () => {
     const { bodies } = serveSessionSaves({
       ...onStep6,

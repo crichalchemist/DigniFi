@@ -1046,8 +1046,10 @@ export function IntakeWizard() {
     const saved = await api.intake.updateSession(session.id, request as Partial<IntakeSession>);
 
     // Step 6's save has landed: if it changed line 16's or the Supp's answers, the sidebar works
-    // the means test out again (F0). An edit alone, or a save that changed none of them, doesn't.
-    if (debts && petition) {
+    // the means test out again (F0). An edit alone, or a save that changed none of them, doesn't,
+    // and neither does a reply a later save of the list has overtaken: the server holds that save's
+    // answers, so only the newest save sets what the server holds.
+    if (debts && petition && debtsSave === listSavesRef.current.debts) {
       const sentRouteAnswers = JSON.stringify(petition);
       if (sentRouteAnswers !== landedRouteAnswersRef.current) {
         landedRouteAnswersRef.current = sentRouteAnswers;
