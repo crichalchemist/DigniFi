@@ -31,7 +31,12 @@ from apps.forms.registry import (
 )
 from apps.forms.schema import load_schema
 from apps.intake.models import DebtorInfo, FilingFee, Household, IncomeInfo, IntakeSession
-from apps.intake.petition import DETAIL_DUTY_RELEASED
+from apps.intake.petition import (
+    DETAIL_DEBT_NATURE_TEXT,
+    DETAIL_DUTY_RELEASED,
+    GATE_DEBT_NATURE,
+    debt_nature_gaps,
+)
 from apps.intake.tests.builders import answer_household, answer_petition
 
 User = get_user_model()
@@ -209,6 +214,28 @@ def test_the_supp_refuses_its_first_open_question_on_the_amounts_owed_step(sessi
 
     answer_petition(session, duty_released_on="03/14/2026")
     assert _needs_supp_answers(session) is None
+
+
+def test_the_supp_never_refuses_in_form_101_line_16cs_words(session):
+    # "Neither" with line 16c's words blank routes to not_consumer, so the Supp is in the packet;
+    # the blank words are a detail Complete lets through and Form 101 prints blank, never a
+    # reason to refuse the Supp (or, through the tie, 122A-1).
+    answer_petition(session, debt_nature="neither")
+    assert [gap.message for gap in debt_nature_gaps(session.petition_answers.get_answers())] == [
+        DETAIL_DEBT_NATURE_TEXT
+    ]
+
+    assert _needs_supp_answers(session) is None
+
+
+def test_the_supp_refuses_line_16_left_unanswered(session):
+    # A gate the Supp's routing hangs on refuses it in Complete's words, on Amounts Owed.
+    answer_petition(session, debt_nature=None)
+
+    with pytest.raises(PreconditionMissing) as refused:
+        _needs_supp_answers(session)
+
+    assert (str(refused.value), refused.value.step) == (GATE_DEBT_NATURE, "debts")
 
 
 def _supp_session(wages, debt_nature):
