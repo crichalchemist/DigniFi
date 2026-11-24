@@ -376,6 +376,31 @@ def test_called_to_duty_with_no_category_that_applies_works_out_122a2():
     assert route_outcome(answers, False) == AT_OR_BELOW_MEDIAN
 
 
+@pytest.mark.parametrize(
+    "answers",
+    [
+        pytest.param(
+            {**LINE_2_NO, "reservist": "no", "called_to_duty": "yes", "duty_category": "2"},
+            id="not-a-reservist-category-left",
+        ),
+        pytest.param(
+            {**LINE_2_NO, "reservist": "yes", "called_to_duty": "no", "duty_category": "2"},
+            id="not-called-category-left",
+        ),
+        pytest.param(
+            {**LINE_2_NO, "reservist": "yes", "called_to_duty": "no"}, id="not-called-no-category"
+        ),
+    ],
+)
+def test_a_withdrawn_line_3_claim_never_excludes_the_filer(answers):
+    # A No the filer gave later hides the questions under it, and their old answers stay stored
+    # behind Show and Delete. A category left from before is no claim, and nothing is still open,
+    # so 122A-2 is worked out above the median: never box 3 for a claim the filer took back.
+    assert military_question_open(answers) is False
+    assert route_outcome(answers, True) is None
+    assert route_outcome(answers, False) == AT_OR_BELOW_MEDIAN
+
+
 def test_only_calculate_routes():
     # Every routing reader reads the stored outcome; only MeansTest.calculate() decides it (4d-R2).
     backend = Path(__file__).resolve().parents[3]
