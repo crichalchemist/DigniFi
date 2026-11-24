@@ -1159,6 +1159,74 @@ ScheduleIAnswers.TEXT_LIMITS = _SCHEDULE_I_LIMITS["limits"]
 ScheduleIAnswers.TEXT_LABELS = _SCHEDULE_I_LIMITS["labels"]
 
 
+class IntentionAnswers(models.Model):
+    """The filer's own answers to Form 108, Statement of Intention (4e, R-SHAPE).
+
+    One encrypted JSON object: `secured` maps a confirmed secured debt's id (a string) to
+    `{"intention", "explain"}`, and `leases` maps a lease's id to `{"assumed"}`. A key or an
+    entry that is absent is unanswered. A save keeps only the ids still in scope (R-PRUNE), and
+    readers ignore an id the session no longer has.
+    """
+
+    KEYS: ClassVar[tuple[str, ...]] = ("secured", "leases")
+    # Form 108 Part 1's four choices in the form's order, then the app's own "I haven't decided
+    # yet.", which prints blank.
+    INTENTIONS: ClassVar[tuple[str, ...]] = (
+        "surrender",
+        "retain_redeem",
+        "retain_reaffirm",
+        "retain_explain",
+        "undecided",
+    )
+    FORM_INTENTIONS: ClassVar[tuple[str, ...]] = INTENTIONS[:4]
+    ASSUMED: ClassVar[tuple[str, ...]] = ("yes", "no", "undecided")
+    TEXT_CEILING: ClassVar[int] = 500
+    ROW_CEILING: ClassVar[int] = 100
+
+    session = models.OneToOneField(
+        IntakeSession, on_delete=models.CASCADE, related_name="intention_answers"
+    )
+    answers = EncryptedTextField(default="{}")
+    answered_on = EncryptedCharField(max_length=10, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "intention_answers"
+
+    def __str__(self) -> str:
+        return f"IntentionAnswers (Session: {self.session_id})"
+
+    def get_answers(self) -> dict:
+        return json.loads(self.answers)
+
+    def merge(self, sent: Mapping[str, Any], secured_ids: set[int], lease_ids: set[int]) -> None:
+        """Replace each sent key's object whole (a null removes it), then drop every stored id
+        outside the two sets; the fill date is stamped when the stored object changed.
+
+        Every key is checked before any is set: an unknown key raises KeyError naming it.
+        Doesn't save.
+        """
+        for key in sent:
+            if key not in self.KEYS:
+                raise KeyError(key)
+        stored = self.get_answers()
+        answers = dict(stored)
+        for key, value in sent.items():
+            if value is None:
+                answers.pop(key, None)
+            else:
+                answers[key] = value
+        # Ids are digit strings with no leading zero, so the string form of each pk matches.
+        for key, ids in (("secured", secured_ids), ("leases", lease_ids)):
+            if key in answers:
+                in_scope = {str(pk) for pk in ids}
+                answers[key] = {k: v for k, v in answers[key].items() if k in in_scope}
+        if answers != stored:
+            self.answers = json.dumps(answers)
+            self.answered_on = fill_date().isoformat()
+
+
 class DebtInfoQuerySet(models.QuerySet):
     def confirmed(self):
         """The debts the filer has confirmed, without the drafts read from scanned documents.

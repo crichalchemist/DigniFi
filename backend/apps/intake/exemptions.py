@@ -5,9 +5,15 @@ Pure: no model and nothing from apps.forms or apps.districts. The caller supplie
 (each with `id`, `name` and `description_fits`) and the keys of the laws in force. The page's
 `exemptionGaps.ts` copies this; each sentence is one literal in `copy.ts`, pinned by
 `test_exemption_copy.py`.
+
+Also each secured debt's exempt state for Form 108 (`exempt_states`, 4e-R6), from the page's
+own answers.
 """
 
 from collections.abc import Collection, Iterable, Sequence
+
+from apps.intake.asset_lines import LINE_BY_KEY
+from apps.intake.claims import link_is_live
 
 EXEMPTION_GAP_LINE_1 = "Choose which set of exemptions you are claiming."
 EXEMPTION_GAP_NO_CLAIMS = (
@@ -72,3 +78,44 @@ def exemption_gaps(session, items: Sequence, law_keys: Collection[str]) -> list[
     elif line_3 == "yes" and answers.line_3_1 is None:
         gaps.append(EXEMPTION_GAP_LINE_3_1)
     return gaps
+
+
+# Form 108's "Did you claim the property as exempt on Schedule C?" for a secured debt (R-EXEMPT,
+# 4e-R6). Only two states tick a box: a claim Schedule C prints is Yes, and "I'm not claiming any
+# property as exempt" is No. Every other state prints blank, never a No the filer didn't give.
+EXEMPT_LISTED = "listed"
+EXEMPT_NOT_CLAIMING = "not_claiming"
+EXEMPT_LATER = "later"
+EXEMPT_NOT_NAMED = "not_named"
+EXEMPT_NO_PROPERTY = "no_property"
+EXEMPT_BOX = {EXEMPT_LISTED: "yes", EXEMPT_NOT_CLAIMING: "no"}
+
+
+def exempt_states(session) -> dict[int, str]:
+    """Each secured debt's exempt state, drafts included, by debt id.
+
+    In this order: "not claiming" on the exemptions page; no live link to property; the linked
+    row has a claim Schedule C prints (a claim on a row of this session with an A/B line, as
+    exemption_items reads them); the page never answered and no claim; else not named.
+    The debts are a fresh read, never a prefetch: a save's reply must see the debts it wrote.
+    """
+    answers = getattr(session, "exemption_answers", None)
+    claims = list(session.exemption_claims.all())
+    lined = {row.pk for row in session.assets.all() if row.ab_line in LINE_BY_KEY}
+    printed = {claim.asset_id for claim in claims if claim.asset_id in lined}
+    states = {}
+    for debt in session.debts.select_related("secured_by"):
+        if not debt.is_secured:
+            continue
+        if answers is not None and answers.no_claims:
+            state = EXEMPT_NOT_CLAIMING
+        elif not link_is_live(debt.secured_by, session):
+            state = EXEMPT_NO_PROPERTY
+        elif debt.secured_by_id in printed:
+            state = EXEMPT_LISTED
+        elif answers is None and not claims:
+            state = EXEMPT_LATER
+        else:
+            state = EXEMPT_NOT_NAMED
+        states[debt.pk] = state
+    return states

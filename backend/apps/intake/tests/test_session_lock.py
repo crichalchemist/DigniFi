@@ -604,6 +604,12 @@ WRITES = {
         {"schedule_i_answers": {"line_13_answer": "no"}},
         200,
     ),
+    "intention_answers PATCH": lambda s, r: (
+        "patch",
+        _session_url(s),
+        {"intention_answers": {"leases": {str(r["contract"].pk): {"assumed": "no"}}}},
+        200,
+    ),
     "Continue to step 7": lambda s, r: (
         "post",
         _session_url(s, "update_step/"),

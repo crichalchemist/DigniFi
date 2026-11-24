@@ -47,6 +47,10 @@ export interface IntakeSession {
   petition_answers?: PetitionAnswers;
   /** Schedule I lines 1, 11 and 13 and Schedule J line 24 (4c spec §7.2) */
   schedule_i_answers?: ScheduleIAnswers;
+  /** Form 108's choices, by debt id and lease id (4e, R-SHAPE) */
+  intention_answers?: IntentionAnswers;
+  /** Read-only: each secured debt's Form 108 exempt state, by debt id (R-EXEMPT, 4e-R6) */
+  intention_exempt?: Record<string, ExemptState>;
   /** Read-only: the employer's name a pay stub gave, or "" (4c-R10) */
   paystub_employer_name?: string;
   /** The retired Expenses figures the server still holds, a two-place decimal string or null (3c4) */
@@ -803,6 +807,26 @@ export type ScheduleIAnswers = {
   line_11_amount?: string | null;
   line_13_answer?: YesNo | null;
   schedule_j_line_24_answer?: YesNo | null;
+  /** Read-only: the fill date of the last change */
+  answered_on?: string | null;
+};
+
+/** Form 108 Part 1's four choices, then "I haven't decided yet.", which prints blank (4e) */
+export type Intention =
+  | 'surrender'
+  | 'retain_redeem'
+  | 'retain_reaffirm'
+  | 'retain_explain'
+  | 'undecided';
+/** Form 108 Part 2's "Will the lease be assumed?", or undecided */
+export type Assumed = 'yes' | 'no' | 'undecided';
+/** Where a secured debt's property stands on the exemptions page (4e-R6) */
+export type ExemptState = 'listed' | 'not_claiming' | 'later' | 'not_named' | 'no_property';
+
+/** Form 108's answers, keyed by the debt's or the lease's id as a string (R-SHAPE) */
+export type IntentionAnswers = {
+  secured?: Record<string, { intention?: Intention; explain?: string }>;
+  leases?: Record<string, { assumed?: Assumed }>;
   /** Read-only: the fill date of the last change */
   answered_on?: string | null;
 };

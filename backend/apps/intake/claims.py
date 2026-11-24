@@ -190,6 +190,17 @@ def link_is_live(linked, session) -> bool:
     return linked is not None and linked.session_id == session.pk
 
 
+# The lease kinds Form 108 Part 2 asks about (4e-R23): every kind but residential, and a lease
+# stored with no kind (R-LEASE-GATE: a row an API client saved).
+FORM_108_LEASE_KINDS = ("vehicle", "other_personal_property", "other", None)
+
+
+def is_form_108_lease(contract) -> bool:
+    """A lease Form 108 asks "Will the lease be assumed?" about. lease_kind is encrypted, so
+    this runs in Python."""
+    return contract.contract_type == "lease" and contract.lease_kind in FORM_108_LEASE_KINDS
+
+
 def _row_address_missing(row) -> bool:
     return address_missing(row.street_address, row.city, row.state, row.zip_code, row.outside_us)
 
