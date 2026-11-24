@@ -193,9 +193,10 @@ class MeansTest(models.Model):
         # CMI is monthly; the Census median is annual, so annualize per 11 U.S.C. § 707(b)(7).
         annualized_cmi = cmi * Decimal("12")
 
-        # Form 122A-1Supp's route comes first, in the form's order (4d-R2), then the median. Only
-        # a filer the route leaves above the median has the 122A-2 tables read, so a filer at or
-        # below it is never refused for a lapsed 122A-2 table. Every caller has raised the Income
+        # The median is looked up first; Form 122A-1Supp's route then decides, in the form's order,
+        # before the median comparison (4d-R2). Only a filer the route leaves above the median has
+        # the 122A-2 tables read, so a filer at or below it is never refused for a lapsed 122A-2
+        # table. Every caller has raised the Income
         # step's gaps above, before read_inputs counts the household (C-ORDER). The record is read
         # here, not through forms.registry's reader: eligibility importing forms would be a cycle.
         record = getattr(self.session, "petition_answers", None)

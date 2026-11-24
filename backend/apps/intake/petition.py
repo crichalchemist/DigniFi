@@ -162,7 +162,9 @@ _GATE_SENTENCE = {
 # except the landlord keys, whose detail refuses Form 101A whole (4b2).
 # Form 101 prints the ITIN's last four but has no box for the other Social Security number, so
 # `itin` names both forms and `other_ssn` names Form 121 alone (PF2-T7-7). Form 103B line 20
-# prints Form 101 line 9's earlier cases (PF2-T10-3).
+# prints Form 101 line 9's earlier cases (PF2-T10-3). A gate's key (such as `disabled_veteran` or
+# `reservist`, the Supp's two gates) keeps the Form 101 default, which nothing reads: a gate's
+# Gap carries forms=().
 FORMS_OF_KEY: dict[str, tuple[str, ...]] = {key: ("form_101",) for key in PetitionAnswers.KEYS}
 FORMS_OF_KEY["itin"] = ("form_101", "form_121")
 FORMS_OF_KEY["other_ssn"] = ("form_121",)

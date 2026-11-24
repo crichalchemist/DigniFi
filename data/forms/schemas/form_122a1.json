@@ -47,7 +47,7 @@
         "box_3": "/Does not apply"
       },
       "page": 1,
-      "label": "Page 1: There is no presumption of abuse, or Form 122A-2 decides",
+      "label": "Page 1: There is no presumption of abuse, Form 122A-2 decides, or the means test does not apply now (box 3)",
       "required": false,
       "conditional_on": null,
       "value": null,

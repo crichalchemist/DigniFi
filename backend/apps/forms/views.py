@@ -403,11 +403,12 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         For a completed intake the means test is worked out again first, and a refusal
         covers the whole list. An unfinished intake gets the packet its stored data gives,
         and is never refused (step 2 spec §5.3, §5.6). `tables` holds the median table the means
-        test recorded, and is `[]` when there is no means test or it recorded none. `income_period` says which six
-        months the filer last confirmed on the Income step and which are in force now.
-        `payment_choice` is the Form 101 line 8 answer, or null before the filer chooses.
-        `outcome`, `family_size` and `tables_gap` are the stored means test's result (3h1 R14),
-        and `open_on` names the step the result waits on (4d-R27); `tables` also lists the tables Form 122A-2's figures were read from.
+        test recorded, and is `[]` when there is no means test or it recorded none.
+        `income_period` says which six months the filer last confirmed on the Income step and
+        which are in force now. `payment_choice` is the Form 101 line 8 answer, or null before
+        the filer chooses. `outcome`, `family_size` and `tables_gap` are the stored means test's
+        result (3h1 R14), and `open_on` names the step the result waits on (4d-R27); `tables`
+        also lists the tables Form 122A-2's figures were read from.
         """
         session, err = _session_or_error(request, request.query_params.get("session"), "session")
         if err:
@@ -724,9 +725,9 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         still the one read before drawing: a form marked filed meanwhile keeps the values
         it was filed with. A filed form draws its stored parts, or its values stored before
         3a2, so it matches what was filed, even after it has left the packet (DIG-155). A
-        filed form with no stored values is drawn as one not yet filed, through the completion gap
-        list (`_prepare`) and the packet check, from the current intake, and the parts it draws are kept
-        as its filed ones if it is still filed when the draw ends.
+        filed form with no stored values is drawn as one not yet filed, through the completion
+        gap list (`_prepare`) and the packet check, from the current intake, and the parts it
+        draws are kept as its filed ones if it is still filed when the draw ends.
         """
         generated_form = self.get_object()
         form_type = generated_form.form_type
