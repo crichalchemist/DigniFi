@@ -9,6 +9,7 @@ section 11), so the demos and the journeys meet no gap, and no figure the means 
 moves.
 """
 
+import json
 import re
 from datetime import date
 from decimal import Decimal
@@ -31,6 +32,7 @@ from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.intake.asset_lines import LINE_BY_KEY, ordered_assets, rows_on, shown_lines
 from apps.intake.claims import claim_step_gaps, total_monthly_expenses
 from apps.intake.completion import Gap, completion_gaps
+from apps.intake.intentions import claim_text_gaps
 from apps.intake.management.commands.seed_demo_data import (
     PERSONAS,
     _andres_kettleby,
@@ -916,3 +918,75 @@ def test_no_seed_builder_or_fixture_writes_a_4i_key():
 
     assert all(written)
     assert [sorted(forbidden & set(answers)) for answers in written] == [[]] * len(written)
+
+
+# The owner's Form 108 choices (4e, E5), by creditor or counterparty name. None surrenders the
+# property, and Maria and Sarah, who hold no secured debt and no lease Form 108 asks about, have
+# no record.
+FORM_108_CHOICES = {
+    "james": {"secured": {"Crestway Auto Credit": {"intention": "retain_reaffirm"}}},
+    "priya": {"secured": {"Kestrel Auto Finance": {"intention": "retain_redeem"}}},
+    "deshawn": {
+        "secured": {
+            "Harrowgate Home Loans": {
+                "intention": "retain_explain",
+                "explain": "I am current on the mortgage and will keep paying as agreed",
+            }
+        }
+    },
+    "andres": {
+        "secured": {
+            "Copperline Auto Finance": {
+                "intention": "retain_explain",
+                "explain": "My brother Mateo, the co-owner, keeps paying the loan.",
+            }
+        },
+        "leases": {"Northlight Auto Leasing": {"assumed": "yes"}},
+    },
+    "maria": None,
+    "sarah": None,
+}
+
+
+@pytest.mark.django_db
+def test_each_persona_makes_the_owners_form_108_choice():
+    # The choice is the filer's own: the seed stores what each persona's brief says, against the
+    # creditor named, and no persona surrenders the property.
+    assert set(FORM_108_CHOICES) == set(PERSONAS)
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", stdout=StringIO())
+
+    for persona, expected in FORM_108_CHOICES.items():
+        session = IntakeSession.objects.get(user__username=f"demo_{persona}")
+        record = getattr(session, "intention_answers", None)
+        if expected is None:
+            assert record is None, persona
+            continue
+        wanted = {}
+        for key, entries in expected.items():
+            kind = "debt" if key == "secured" else "contract"
+            wanted[key] = {
+                claim_links(session, [(kind, name)])[0]["id"]: entry
+                for name, entry in entries.items()
+            }
+        stored = {
+            key: {int(row_id): entry for row_id, entry in entries.items()}
+            for key, entries in record.get_answers().items()
+        }
+        assert stored == wanted, persona
+        assert record.answered_on == fill_date().isoformat(), persona
+        assert "surrender" not in json.dumps(stored), persona
+
+
+@pytest.mark.django_db
+def test_no_personas_explanation_is_too_long():
+    # DeShawn's 59 characters and Andres's 54 sit under the tool's cap of about 62 (4e-R5), so a
+    # cap below 59 fails here. Every persona is checked on every step (ruling F2): none meets a
+    # claims text detail on any of them.
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", stdout=StringIO())
+
+    sessions = list(IntakeSession.objects.filter(status="completed"))
+    assert len(sessions) == len(PERSONAS)
+    for session in sessions:
+        assert claim_text_gaps(session) == [], session.user.username
