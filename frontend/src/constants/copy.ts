@@ -143,7 +143,7 @@ export const MEANS_OUTCOME_VETERAN =
 
 // DRAFT: counsel C-39
 export const MEANS_OUTCOME_MILITARY =
-  "You chose one of the service categories on line 3 of Form 122A-1Supp. The form says that a filer who answers this way checks box 3 on Form 122A-1 and doesn't fill out the rest of that form during the exclusion period. The form counts 540 days from the day you file; DigniFi doesn't check that. Your packet follows the form.";
+  "You chose one of the service categories on line 3 of Form 122A-1Supp. The form says that a filer who answers this way checks box 3 on Form 122A-1 and doesn't fill out the rest of that form during the exclusion period. The form counts back 540 days from the day you file; DigniFi doesn't check that. Your packet follows the form.";
 
 // DRAFT: counsel C-24
 export const MEANS_TABLE_MISSING =
@@ -1813,7 +1813,7 @@ export const MILITARY_FRAMING =
   'Form 122A-1Supp asks two questions about military service. The form asks these of everyone whose debts are mostly consumer debts.';
 // DRAFT: counsel C-39
 export const MILITARY_540_DAYS =
-  "The 540 days count from the day you file. DigniFi doesn't know that day and doesn't check it; your tick is your statement.";
+  "The form counts back 540 days from the day you file. DigniFi doesn't know that day and doesn't check it; your tick is your statement.";
 // The fifth duty_category answer, "none" (D9): DigniFi's words, not the form's
 // DRAFT: counsel C-39
 export const DUTY_CATEGORY_NONE = 'None of these categories applies to me';

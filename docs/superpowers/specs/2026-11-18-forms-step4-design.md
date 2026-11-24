@@ -1146,5 +1146,6 @@ The controller's rulings recorded beside the owner's decisions:
   - D9's "none applies" label;
   - D11's notice;
   - the list's adjacency to "Total Amounts Owed". The list of the filer's amounts owed by kind sits inside the line 16 block, one disclaimer above the step's existing "Total Amounts Owed" (F11, 4d-R16). S:296 gives the reason no total sits beside the question: "a total beside the question would adopt the by-amount reading of "primarily", one of several".
+- **The 540 days (owner 2026-11-24).** S:584's "counts 540 days from the day you file" read as a window opening at filing; Form 122A-1Supp looks back from filing. `MEANS_OUTCOME_MILITARY` and `MILITARY_540_DAYS` now say "The form counts back 540 days from the day you file".
 
 <!-- prettier-ignore-end -->

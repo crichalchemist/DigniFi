@@ -412,7 +412,7 @@ const EXACT_WORDS: [string, string][] = [
   ],
   [
     'MEANS_OUTCOME_MILITARY',
-    "You chose one of the service categories on line 3 of Form 122A-1Supp. The form says that a filer who answers this way checks box 3 on Form 122A-1 and doesn't fill out the rest of that form during the exclusion period. The form counts 540 days from the day you file; DigniFi doesn't check that. Your packet follows the form.",
+    "You chose one of the service categories on line 3 of Form 122A-1Supp. The form says that a filer who answers this way checks box 3 on Form 122A-1 and doesn't fill out the rest of that form during the exclusion period. The form counts back 540 days from the day you file; DigniFi doesn't check that. Your packet follows the form.",
   ],
   [
     'MEANS_OUTCOME_ANSWER_DEBTS',

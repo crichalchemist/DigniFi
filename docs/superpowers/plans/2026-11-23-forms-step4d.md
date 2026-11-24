@@ -103,14 +103,14 @@ Controller rulings R-D2, R-D5, R-D6, R-ROUTE and 4d-R26 are recorded there too.
 - `MEANS_FILED_BOX_2_NOW_SUPP`: This filed copy has box 2 checked. With your current answers, your packet holds Form 122A-1Supp, and Form 122A-1 checks a different box.
 - `MEANS_OUTCOME_NOT_CONSUMER`: You answered that your debts are not primarily consumer debts. Form 122A-1Supp says that a filer who answers this way checks box 1 on Form 122A-1, signs Part 3 and submits this supplement with it. Your packet follows the form.
 - `MEANS_OUTCOME_VETERAN`: You answered Yes to both questions on line 2 of Form 122A-1Supp. The form says that a filer who answers this way checks box 1 on Form 122A-1, signs Part 3 and submits this supplement with it. Your packet follows the form.
-- `MEANS_OUTCOME_MILITARY`: You chose one of the service categories on line 3 of Form 122A-1Supp. The form says that a filer who answers this way checks box 3 on Form 122A-1 and doesn't fill out the rest of that form during the exclusion period. The form counts 540 days from the day you file; DigniFi doesn't check that. Your packet follows the form. (Followed by `FORM_122A1SUPP_AMENDED`, the form's own words: "If your exclusion period ends before your case is closed, you may have to file an amended form later.")
+- `MEANS_OUTCOME_MILITARY`: You chose one of the service categories on line 3 of Form 122A-1Supp. The form says that a filer who answers this way checks box 3 on Form 122A-1 and doesn't fill out the rest of that form during the exclusion period. The form counts back 540 days from the day you file; DigniFi doesn't check that. Your packet follows the form. (Followed by `FORM_122A1SUPP_AMENDED`, the form's own words: "If your exclusion period ends before your case is closed, you may have to file an amended form later.")
 - `MEANS_OUTCOME_ANSWER_DEBTS`: Its result can't be worked out until you answer the questions on the Amounts Owed step. Its link text is `MEANS_DEBTS_STEP_PHRASE`, "the Amounts Owed step".
 - `DEBT_NATURE_LIST_HEADING`: Your amounts owed, by the kind you chose for each
 - `DEBT_NATURE_LIST_NOTE`: The form asks you to say which kind your debts primarily are. It doesn't say how to measure that.
 - `DEBT_NATURE_LIST_EMPTY`: You haven't listed any amounts owed on this step.
 - `DEBT_NATURE_KIND_NOT_CHOSEN`: Kind not chosen yet
 - `MILITARY_FRAMING`: Form 122A-1Supp asks two questions about military service. The form asks these of everyone whose debts are mostly consumer debts.
-- `MILITARY_540_DAYS`: The 540 days count from the day you file. DigniFi doesn't know that day and doesn't check it; your tick is your statement.
+- `MILITARY_540_DAYS`: The form counts back 540 days from the day you file. DigniFi doesn't know that day and doesn't check it; your tick is your statement.
 - `DUTY_CATEGORY_NONE`: None of these categories applies to me
 - `WHAT_DOES_DISABLED_VETERAN_MEAN`: What does “disabled veteran” mean?
 - `WHAT_DOES_HOMELAND_DEFENSE_MEAN`: What does “homeland defense activity” mean on this form? (owner 2026-11-24, replacing "What’s “homeland defense activity”?", which the reading-level test scores at 12.3)
