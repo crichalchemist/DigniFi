@@ -113,7 +113,7 @@ Controller rulings R-D2, R-D5, R-D6, R-ROUTE and 4d-R26 are recorded there too.
 - `MILITARY_540_DAYS`: The 540 days count from the day you file. DigniFi doesn't know that day and doesn't check it; your tick is your statement.
 - `DUTY_CATEGORY_NONE`: None of these categories applies to me
 - `WHAT_DOES_DISABLED_VETERAN_MEAN`: What does “disabled veteran” mean?
-- `WHAT_DOES_HOMELAND_DEFENSE_MEAN`: What’s “homeland defense activity”?
+- `WHAT_DOES_HOMELAND_DEFENSE_MEAN`: What does “homeland defense activity” mean on this form? (owner 2026-11-24, replacing "What’s “homeland defense activity”?", which the reading-level test scores at 12.3)
 - `FORM_TYPE_METADATA.form_122a1_supp.label`: Form 122A-1Supp - Statement of Exemption from Presumption of Abuse
 
 ## Global Constraints
