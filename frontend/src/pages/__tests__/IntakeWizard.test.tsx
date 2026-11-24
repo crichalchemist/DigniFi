@@ -71,9 +71,16 @@ vi.mock('../../components/wizard/WizardLayout', async (importOriginal) => {
 // Shared fixtures
 // ---------------------------------------------------------------------------
 
-// Form 101's gates on Assets (line 14) and Contracts & Leases (line 11), answered No, so a session
-// past those steps can continue from them as it could before 4b asked them (PF2-T9-6)
-const LATER_PETITION_GATES = { hazard_answer: 'no' as const, rents_residence: 'no' as const };
+// Form 101's gates on Assets (line 14), Amounts Owed (line 16 and Form 122A-1Supp's two military
+// questions, 4d) and Contracts & Leases (line 11), answered, so a session past those steps can
+// continue from them as it could before 4b and 4d asked them (PF2-T9-6)
+const LATER_PETITION_GATES = {
+  hazard_answer: 'no' as const,
+  debt_nature: 'consumer' as const,
+  disabled_veteran: 'no' as const,
+  reservist: 'no' as const,
+  rents_residence: 'no' as const,
+};
 
 const sessionAtStep9 = {
   id: 1,
@@ -1744,7 +1751,12 @@ describe.each([
     fill,
     stored,
   }) => {
-    const onStep = { ...sessionAtStep1, current_step: step };
+    // Amounts Owed's Continue also waits for line 16 and the Supp's gates (4d), answered here
+    const onStep = {
+      ...sessionAtStep1,
+      current_step: step,
+      ...(list === 'debts' && { petition_answers: LATER_PETITION_GATES }),
+    };
     const rowsSent = (body: Record<string, unknown>) => body[list] as Record<string, unknown>[];
     const idsSent = (bodies: Record<string, unknown>[]) =>
       bodies.map((body) => rowsSent(body).map((row) => row.id));
@@ -1993,7 +2005,12 @@ describe('IntakeWizard the priority answers on the Amounts Owed step', () => {
   };
 
   async function continueWith(debt: Record<string, unknown>) {
-    const { bodies } = serveSessionSaves({ ...sessionAtStep1, current_step: 6, debts: [debt] });
+    const { bodies } = serveSessionSaves({
+      ...sessionAtStep1,
+      current_step: 6,
+      debts: [debt],
+      petition_answers: LATER_PETITION_GATES,
+    });
     renderWizard();
     await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
@@ -5320,6 +5337,18 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     typeof value === 'object' && value !== null
       ? Object.entries(value).some(([key, inner]) => key.startsWith('_') || hasBrowserKey(inner))
       : false;
+  /** Step 6's Form 101 line 16 and Supp keys with nothing answered, as its body sends them */
+  const NO_DEBT_NATURE_ANSWER = {
+    debt_nature: null,
+    debt_nature_text: null,
+    disabled_veteran: null,
+    debts_on_duty: null,
+    reservist: null,
+    called_to_duty: null,
+    duty_category: null,
+    duty_released_on: null,
+    duty_ended_on: null,
+  };
 
   it('saves a half-filled debt two seconds after typing stops, with its amount as 0', async () => {
     const { bodies } = serveSessionSaves({ ...sessionAtStep1, current_step: 6 });
@@ -5433,7 +5462,11 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       fireEvent.click(screen.getByRole('button', { name: 'I have no amounts owed' }));
       await waitSeconds(3);
       expect(bodies).toHaveLength(1);
-      expect(bodies[0]).toEqual({ debts: [], claim_answers: { no_debts: true } });
+      expect(bodies[0]).toEqual({
+        debts: [],
+        claim_answers: { no_debts: true },
+        petition_answers: NO_DEBT_NATURE_ANSWER,
+      });
 
       fireEvent.change(field('creditor_name_0'), { target: { value: 'Demo Clinic' } });
       await waitSeconds(3);
@@ -5485,6 +5518,8 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       current_step: 6,
       debts: [storedDebt],
       claim_answers: { no_debts: true },
+      // Line 16 and the Supp's gates answered, so the status speaks only to the rows (4d)
+      petition_answers: LATER_PETITION_GATES,
     });
     renderWizard();
     await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
@@ -5495,6 +5530,90 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     ).not.toBeInTheDocument();
     // The answer is not read as a contradiction the filer can't undo
     expect(document.querySelector('.debts-step [role="status"]')).toBeEmptyDOMElement();
+  });
+
+  // Form 101 line 16 and Form 122A-1Supp's questions ride in step 6's session PATCH, each key as
+  // its answer or null, so a stored answer reaches the body as it was loaded (4d)
+  const sentPetition = (body: unknown) =>
+    (body as { petition_answers: Record<string, unknown> }).petition_answers;
+  const choose = (name: string, value: string) =>
+    fireEvent.click(document.querySelector(`input[name="${name}"][value="${value}"]`)!);
+
+  it('step 6 sends every line 16 and military key, null while unanswered', async () => {
+    const { bodies } = serveSessionSaves({
+      ...onStep6,
+      petition_answers: { hazard_answer: 'no', rents_residence: 'no' },
+    });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      choose('debt_nature', 'consumer');
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toHaveLength(1);
+    // The step's nine keys and no other petition key: the hazard and rent answers are other steps'
+    expect(sentPetition(bodies[0])).toEqual({ ...NO_DEBT_NATURE_ANSWER, debt_nature: 'consumer' });
+  });
+
+  it('step 6 still sends military answers kept under business', async () => {
+    const military = {
+      disabled_veteran: 'yes',
+      debts_on_duty: 'no',
+      reservist: 'yes',
+      called_to_duty: 'yes',
+      duty_category: '2',
+      duty_released_on: '01/15/2025',
+    };
+    const { bodies } = serveSessionSaves({
+      ...onStep6,
+      petition_answers: { ...LATER_PETITION_GATES, debt_nature: 'consumer', ...military },
+    });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      choose('debt_nature', 'business');
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    // Business hides the military block but deletes nothing: the answers stay behind Show and
+    // Delete, and a null would remove them on the server (4d-R15)
+    expect(bodies).toHaveLength(1);
+    expect(sentPetition(bodies[0])).toEqual({
+      ...NO_DEBT_NATURE_ANSWER,
+      debt_nature: 'business',
+      ...military,
+    });
+  });
+
+  it('autosave on step 6 sends nothing more after a save', async () => {
+    const { bodies } = serveSessionSaves({
+      ...onStep6,
+      petition_answers: { hazard_answer: 'no', rents_residence: 'no' },
+    });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      choose('debt_nature', 'consumer');
+      await waitSeconds(3);
+      expect(bodies).toHaveLength(1);
+      // The saved copy keeps the petition answers sent, so the next body equals it
+      await waitSeconds(6);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toHaveLength(1);
   });
 
   it('sends a new debt that has a number but no name', async () => {

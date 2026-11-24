@@ -111,6 +111,8 @@ Each item goes on the Schedule A/B line shown. You are the only one with an inte
 - Lakeline Electric utility — $800, paying $0 (in collections). Address: PO Box 4403, Chicago, IL 60680. Account ends 0443. Since 2025. Someone else is contacting you: Demo Recovery Services, PO Box 4405, Chicago, IL 60680, account ends 7443. None of the status choices applies; not subject to offset.
 - Southmoor Health medical — $4,200, paying $0 (in collections). Address: PO Box 4404, Chicago, IL 60680. Account ends 0444. Since 2025. Someone else is contacting you: Demo Medical Collections, PO Box 4406, Chicago, IL 60680, account ends 7444. None of the status choices applies; not subject to offset.
 
+Amounts Owed: debts primarily consumer; not a disabled veteran; not a Reservist or Guard member.
+
 **Contracts and leases:** No. **Codebtors:** No. Not in a community property state in the last 8 years.
 
 **Form 101 rent question (Contracts & Leases step):** Answer No to "Do you rent your residence?" No eviction question follows.

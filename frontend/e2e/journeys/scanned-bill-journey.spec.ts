@@ -127,6 +127,8 @@ test.describe('Scanned bill — upload to Amounts Owed', () => {
 
       // The scan can't give the address or the answers after it
       await wizard.fillDebtAnswers(0, SCANNED_BILL_ANSWERS);
+      // Form 101 line 16 and the Supp's military gates hold Continue too (4d)
+      await wizard.answerDebtNature(FILER.petition);
 
       // Continue saves step 6 and stores step 7 as the place to resume
       await wizard.nextStep();

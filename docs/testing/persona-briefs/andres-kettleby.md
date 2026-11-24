@@ -110,6 +110,8 @@ Each item goes on the Schedule A/B line shown. Answer Yes to line 37 (your drivi
 
 Every other amount owed: not contingent, unliquidated or disputed, and not subject to offset, and no one else is contacting you about it.
 
+Amounts Owed: debts primarily consumer; not a disabled veteran; not a Reservist or Guard member.
+
 **Contracts and codebtors:** Contracts and leases: Yes. Northlight Auto Leasing, PO Box 92650, Itasca, IL 60143: lease of a 2024 Toyota Corolla Hybrid, 36 months, 03/01/2025–02/29/2028, kind vehicle, the Corolla on line 3, $389 a month; you do not owe money on it now. Fox Run Property Management, 2200 W Indian Trail, Aurora, IL 60506: apartment lease, 06/01/2026–05/31/2027, kind residential; you do not owe money on it now. Codebtors: Yes. Mateo Kettleby (your brother), 377 Douglas Ave, Elgin, IL 60120, shares the Copperline Auto Finance amount. Not in a community property state in the last 8 years.
 
 **Form 101 rent question (Contracts & Leases step):** Answer Yes to "Do you rent your residence?" and No to "Has your landlord obtained an eviction judgment against you?"

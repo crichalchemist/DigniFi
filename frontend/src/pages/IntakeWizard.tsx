@@ -77,6 +77,7 @@ import { WIZARD_STEPS } from '../constants/wizardSteps';
 import { AB_PARTS, ASSET_LINES } from '../constants/assetLines';
 import { firstIncompletePart } from '../components/wizard/steps/assets/assetGaps';
 import {
+  DEBT_NATURE_KEYS,
   HAZARD_KEYS,
   hazardGap,
   isBlankPetitionRow,
@@ -185,9 +186,10 @@ function step1PetitionBody(
 }
 
 /**
- * A later step's `petition_answers`: its own keys only (HAZARD_KEYS on Assets, RENT_KEYS on
- * Contracts & Leases, which sends RENT_KEYS and LANDLORD_KEYS), null when unanswered, built the same way from loaded and edited answers, so
- * showing the step again sends nothing. A hazard text kept under a No still goes (PF2-T9-8).
+ * A later step's `petition_answers`: its own keys only (HAZARD_KEYS on Assets, DEBT_NATURE_KEYS on
+ * Amounts Owed, RENT_KEYS and LANDLORD_KEYS on Contracts & Leases), null when unanswered, built
+ * the same way from loaded and edited answers, so showing the step again sends nothing. A hazard
+ * text kept under a No still goes (PF2-T9-8), and so do military answers kept under business.
  */
 function stepPetitionBody(
   answers: PetitionAnswers,
@@ -735,6 +737,8 @@ export function IntakeWizard() {
         return {
           debts: kept,
           claim_answers: { no_debts: noDebtsToSend(kept, noDebts) },
+          // Form 101 line 16 and Form 122A-1Supp's questions: the step's own keys alone (4d)
+          petition_answers: stepPetitionBody(petitionAnswers, DEBT_NATURE_KEYS),
         } as unknown as Partial<IntakeSession>;
       }
 
@@ -1255,6 +1259,8 @@ export function IntakeWizard() {
               linkedSums(debtsData, contractsData, assetsData)
             )}
             onRemoveLegacy={removeLegacy}
+            petition={petitionAnswers}
+            onPetitionChange={setPetitionAnswers}
           />
         );
 
