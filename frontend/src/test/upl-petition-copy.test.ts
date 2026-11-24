@@ -46,6 +46,20 @@ const GAP_NAMES = Object.keys(strings).filter(
 // lists' Add, row and Remove labels), found by prefix so a new label is checked too
 const PREFIXED_NAMES = Object.keys(strings).filter((name) => name.startsWith('PETITION_'));
 
+// Amounts Owed's block (4d, owner-copy §4): the list beside line 16, the military lines, the fifth
+// category's label and the two definitions' names, each under counsel mark C-39
+const STEP_6_NAMES = [
+  'DEBT_NATURE_LIST_HEADING',
+  'DEBT_NATURE_LIST_NOTE',
+  'DEBT_NATURE_LIST_EMPTY',
+  'DEBT_NATURE_KIND_NOT_CHOSEN',
+  'MILITARY_FRAMING',
+  'MILITARY_540_DAYS',
+  'DUTY_CATEGORY_NONE',
+  'WHAT_DOES_DISABLED_VETERAN_MEAN',
+  'WHAT_DOES_HOMELAND_DEFENSE_MEAN',
+];
+
 const PETITION_NAMES = [
   ...PREFIXED_NAMES,
   'WHY_OTHER_NAMES',
@@ -84,6 +98,8 @@ const PETITION_NAMES = [
   'LANDLORD_PICK_PLACEHOLDER',
   'LANDLORD_PICK_HINT',
   'GUIDE_FORM_101A_BOXES_BLANK',
+  // Amounts Owed's Form 101 line 16 and Form 122A-1Supp block in DigniFi's words (4d)
+  ...STEP_6_NAMES,
 ];
 
 // The notice's sentences and its two pages, each under the counsel mark (PF2-T9-3, PF2-T9-4)
@@ -176,6 +192,7 @@ describe("step 1's Form 101 sentences are information, never advice", () => {
     'PETITION_DETAIL_DUTY_CATEGORY',
     'PETITION_DETAIL_DUTY_RELEASED',
     'PETITION_DETAIL_DUTY_ENDED',
+    ...STEP_6_NAMES,
   ])('%s carries counsel mark C-39 on the line above', (name) => {
     expect(copySource).toMatch(new RegExp(`// DRAFT: counsel C-39\\nexport const ${name}\\b`));
   });

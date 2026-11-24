@@ -1797,6 +1797,34 @@ export const HIDDEN_ANSWERS =
 export const SHOW_HIDDEN = 'Show';
 export const DELETE_HIDDEN = 'Delete';
 
+// Amounts Owed's Form 101 line 16 and Form 122A-1Supp block (4d, owner approved 2026-11-23 as
+// drafted). The list beside line 16 has no sum, no count and no comparison (spec §6.6).
+// DRAFT: counsel C-39
+export const DEBT_NATURE_LIST_HEADING = 'Your amounts owed, by the kind you chose for each';
+// DRAFT: counsel C-39
+export const DEBT_NATURE_LIST_NOTE =
+  "The form asks you to say which kind your debts primarily are. It doesn't say how to measure that.";
+// DRAFT: counsel C-39
+export const DEBT_NATURE_LIST_EMPTY = "You haven't listed any amounts owed on this step.";
+// DRAFT: counsel C-39
+export const DEBT_NATURE_KIND_NOT_CHOSEN = 'Kind not chosen yet';
+// DRAFT: counsel C-39
+export const MILITARY_FRAMING =
+  'Form 122A-1Supp asks two questions about military service. The form asks these of everyone whose debts are mostly consumer debts.';
+// DRAFT: counsel C-39
+export const MILITARY_540_DAYS =
+  "The 540 days count from the day you file. DigniFi doesn't know that day and doesn't check it; your tick is your statement.";
+// The fifth duty_category answer, "none" (D9): DigniFi's words, not the form's
+// DRAFT: counsel C-39
+export const DUTY_CATEGORY_NONE = 'None of these categories applies to me';
+// The two definitions' names, each the visible words of its summary (4d-R21, Ruling M)
+// DRAFT: counsel C-39
+export const WHAT_DOES_DISABLED_VETERAN_MEAN = 'What does “disabled veteran” mean?';
+// The owner's words of 2026-11-24, replacing the four-word label
+// DRAFT: counsel C-39
+export const WHAT_DOES_HOMELAND_DEFENSE_MEAN =
+  'What does “homeland defense activity” mean on this form?';
+
 // Schedule I lines 1, 11 and 13 and Schedule J line 24 (4c, words owner-approved 2026-11-22). The
 // gap sentences mirror apps/intake/schedule_i.py word for word; test_schedule_i_frontend_copy.py
 // pins them. {label} is a box in plain words (SCHEDULE_I_TEXT_LABELS) and {form} the form whose

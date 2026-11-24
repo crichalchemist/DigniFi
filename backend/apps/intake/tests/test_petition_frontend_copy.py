@@ -150,6 +150,24 @@ def test_the_choices_step_1_offers_are_the_servers():
     )
 
 
+def test_the_choices_step_6_offers_are_the_servers():
+    # A choice spelled differently is a 400 for the whole Amounts Owed save. Line 16's three come
+    # from DEBT_NATURE_CHOICES; the Supp's four categories are the record's unquoted keys, then
+    # DigniFi's "none applies" (D9, Ruling G), which the form doesn't print.
+    source = (PETITION_DIR / "petitionGaps.ts").read_text()
+    match = re.search(
+        r"^export const DEBT_NATURE_CHOICES = \[(.*?)\] as const;", source, re.M | re.S
+    )
+    assert match, "petitionGaps.ts has no DEBT_NATURE_CHOICES"
+    assert tuple(re.findall(r"'(\w+)'", match.group(1))) == (
+        PetitionAnswers.CHOICE_KEYS["debt_nature"]
+    )
+    form_text = FRONTEND / "constants" / "formText.ts"
+    categories = _record_keys(form_text, "FORM_122A1SUPP_CATEGORIES")
+    assert categories == ["1", "2", "3", "4"]
+    assert (*categories, "none") == PetitionAnswers.CHOICE_KEYS["duty_category"]
+
+
 def test_the_step_1_body_names_exactly_the_keys_step_1_asks():
     # One wrong key is a 400 for the whole step 1 save. The secrets go only when typed.
     source = (FRONTEND / "pages" / "IntakeWizard.tsx").read_text()
@@ -177,10 +195,18 @@ def test_the_revision_the_wizard_names_is_the_one_the_template_prints():
         re.M,
     )
     assert mark_101a, "Form 101A's page 1 has no title line with an edition mark"
+    page_supp = pypdf.PdfReader(PDFS / SUPP_TEMPLATE).pages[0].extract_text()
+    mark_supp = re.search(
+        r"^Statement of Exemption from Presumption of Abuse Under § 707\(b\)\(2\) (\d{2}/\d{2}) *$",
+        page_supp,
+        re.M,
+    )
+    assert mark_supp, "Form 122A-1Supp's page 1 has no title line with an edition mark"
     form_text = FRONTEND / "constants" / "formText.ts"
     assert _string_record(form_text, "FORM_REVISIONS") == {
         "form_101": mark.group(1),
         "form_101a": mark_101a.group(1),
+        "form_122a1_supp": mark_supp.group(1),
     }
 
 
@@ -211,11 +237,15 @@ def _form_text_strings(name: str) -> list[str]:
     return [(single or double).replace("\\'", "'").replace('\\"', '"') for single, double in found]
 
 
-# The eviction and hazard quotes this test owns: every formText.ts constant with one of these
-# prefixes is a quotation and must be listed below
-OWNED_PREFIXES = re.compile(r"^export const (FORM_101_LINE_1[14]\w*|FORM_101[AB]_\w*)\b", re.M)
+# The eviction, hazard and debt-kind quotes this test owns: every formText.ts constant with one of
+# these prefixes is a quotation and must be listed below
+OWNED_PREFIXES = re.compile(r"^export const (FORM_101_LINE_1[146]\w*|FORM_101[AB]_\w*)\b", re.M)
 
 QUOTES = [
+    ("FORM_101_LINE_16", "form_b101.pdf", 6),
+    ("FORM_101_LINE_16A", "form_b101.pdf", 6),
+    ("FORM_101_LINE_16B", "form_b101.pdf", 6),
+    ("FORM_101_LINE_16C", "form_b101.pdf", 6),
     ("FORM_101_LINE_11_RENT", "form_b101.pdf", 3),
     ("FORM_101_LINE_11_EVICTION", "form_b101.pdf", 3),
     ("FORM_101_LINE_11_NOTICE", "form_b101.pdf", 3),
@@ -240,10 +270,11 @@ QUOTES = [
 # What may sit on either side of a whole quotation on the page: the page's edge; before it, the end
 # of a sentence, a line number ("11.") or an edition mark ("12/15"), or a heading this test pins
 # (HEADINGS: the certification's sentence follows its heading); after it, a capital starting a new
-# sentence or a heading ("(b) Stay…"); on either side a check box or bullet glyph (the templates
+# sentence, a heading ("(b) Stay…") or the next line's number (line 16's question is followed by
+# "16a."); on either side a check box or bullet glyph (the templates
 # draw them from a private-use font, U+F000 to U+F8FF) or an answer line's underscores
 WHOLE_BEFORE = re.compile(r"(?:^|[.?:\uf000-\uf8ff_]|\d{2}/\d{2})$")
-WHOLE_AFTER = re.compile(r"^(?:$|[A-Z(\uf000-\uf8ff_])")
+WHOLE_AFTER = re.compile(r"^(?:$|[A-Z(\uf000-\uf8ff_]|\d+[a-z]?\.\s)")
 
 # Headings printed without a closing mark, each a quotation pinned above in its own right
 HEADINGS = ("FORM_101A_CERTIFICATION_HEADING",)
@@ -251,6 +282,17 @@ HEADINGS = ("FORM_101A_CERTIFICATION_HEADING",)
 # The form's own labels that end the text before a quotation, as the page prints them (4b2-R10):
 # the gate sentence follows the address block's last label
 LABELS_BEFORE = ("City State ZIP Code",)
+
+
+def test_the_step_6_body_names_exactly_the_keys_step_6_asks():
+    # One wrong key is a 400 for the whole Amounts Owed save; the order is PETITION_STEP_OF_KEY's
+    # (E16), not models.py's, which lists debt_nature_text among the text keys
+    source = (PETITION_DIR / "petitionGaps.ts").read_text()
+    match = re.search(r"^export const DEBT_NATURE_KEYS = \[(.*?)\] as const;", source, re.M | re.S)
+    assert match, "petitionGaps.ts has no DEBT_NATURE_KEYS"
+    assert tuple(re.findall(r"'(\w+)'", match.group(1))) == tuple(
+        key for key, step in PETITION_STEP_OF_KEY.items() if step == "debts"
+    )
 
 
 def test_the_landlord_keys_the_browser_sends_are_the_servers():
@@ -294,7 +336,15 @@ SUPP_PREFIXES = re.compile(r"^export const (FORM_122A1SUPP_\w*)\b", re.M)
 
 SUPP_TEMPLATE = "form_b122a-1supp.pdf"
 
-SUPP_QUOTES = ["FORM_122A1SUPP_AMENDED"]
+SUPP_QUOTES = [
+    "FORM_122A1SUPP_AMENDED",
+    "FORM_122A1SUPP_LINE_2",
+    "FORM_122A1SUPP_LINE_2_FOLLOW_UP",
+    "FORM_122A1SUPP_LINE_3",
+    "FORM_122A1SUPP_LINE_3_FOLLOW_UP",
+    "FORM_122A1SUPP_CATEGORIES_LEAD",
+    "FORM_122A1SUPP_CATEGORIES",
+]
 
 
 def _squeezed(text: str) -> str:
@@ -311,7 +361,15 @@ def test_every_supp_quote_is_pinned():
 
 @pytest.mark.parametrize("name", SUPP_QUOTES)
 def test_the_supp_words_are_the_forms_own(name):
-    # D8: the military exclusion's second sentence is the form's own, word for word (owner-copy §6)
+    # D8: the military exclusion's second sentence is the form's own, word for word (owner-copy §6),
+    # and so are Amounts Owed's questions and categories (4d), each found whole: a quote cut short,
+    # or begun mid-sentence, would put words in the form's mouth. A record's values are each one
+    # quotation (FORM_122A1SUPP_CATEGORIES, keyed '1'-'4').
     page = _squeezed(pypdf.PdfReader(PDFS / SUPP_TEMPLATE).pages[0].extract_text())
     for text in _form_text_strings(name):
-        assert _squeezed(text) in page, f"{name}: {text!r} is not on {SUPP_TEMPLATE} page 1"
+        squeezed = _squeezed(text)
+        at = page.find(squeezed)
+        assert at >= 0, f"{name}: {text!r} is not on {SUPP_TEMPLATE} page 1"
+        before, after = page[:at], page[at + len(squeezed) :]
+        assert WHOLE_BEFORE.search(before), f"{name}: {text[:40]!r}… begins mid-sentence"
+        assert WHOLE_AFTER.match(after), f"{name}: …{text[-40:]!r} stops mid-sentence"

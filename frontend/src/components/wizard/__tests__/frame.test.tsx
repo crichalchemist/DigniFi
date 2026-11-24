@@ -72,6 +72,22 @@ describe('the frame components', () => {
     expect(screen.getByText('11 U.S.C. section 101')).toBeVisible();
   });
 
+  it('a definition with a label is named by it', async () => {
+    // Two definitions on one step must be told apart (4d-R21), and the name a screen reader reads
+    // is the words on screen, with no differing aria-label (WCAG 2.5.3, Ruling M)
+    render(
+      <WhatDoesThisMean label="What does “a term” mean?" citation="11 U.S.C. section 101">
+        The words of the statute.
+      </WhatDoesThisMean>
+    );
+    const summary = screen.getByText('What does “a term” mean?');
+    expect(summary.tagName).toBe('SUMMARY');
+    expect(summary).not.toHaveAttribute('aria-label');
+    expect(screen.queryByText(WHAT_DOES_THIS_MEAN)).not.toBeInTheDocument();
+    await userEvent.click(summary);
+    expect(screen.getByText('The words of the statute.')).toBeVisible();
+  });
+
   it('has no accessibility violations with the four together', async () => {
     const { container } = render(
       <main>

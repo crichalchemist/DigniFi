@@ -714,6 +714,44 @@ export const PRESUMPTION_INSTRUCTIONS =
 // exclusion's outcome sentence (D8)
 export const FORM_122A1SUPP_AMENDED =
   'If your exclusion period ends before your case is closed, you may have to file an amended form later.';
+// Form 122A-1Supp page 1, Part 2, asked on Amounts Owed under consumer debts (4d): line 2 as
+// printed
+export const FORM_122A1SUPP_LINE_2 =
+  'Are you a disabled veteran (as defined in 38 U.S.C. § 3741(1))?';
+// Line 2's Yes, the question under it as printed, its citations included
+export const FORM_122A1SUPP_LINE_2_FOLLOW_UP =
+  'Did you incur debts mostly while you were on active duty or while you were performing a homeland defense activity? 10 U.S.C. § 101(d)(1); 32 U.S.C. § 901(1).';
+// Line 3 as printed
+export const FORM_122A1SUPP_LINE_3 =
+  'Are you or have you been a Reservist or member of the National Guard?';
+// Line 3's Yes, the question under it as printed, its citations included
+export const FORM_122A1SUPP_LINE_3_FOLLOW_UP =
+  'Were you called to active duty or did you perform a homeland defense activity? 10 U.S.C. § 101(d)(1); 32 U.S.C. § 901(1).';
+// That question's Yes, the sentence above the categories
+export const FORM_122A1SUPP_CATEGORIES_LEAD =
+  'Check any one of the following categories that applies:';
+// The four categories as printed, keyed by the duty_category answer each one is; the fifth answer,
+// "none" (D9), is DigniFi's words (DUTY_CATEGORY_NONE in copy.ts)
+export const FORM_122A1SUPP_CATEGORIES: Record<'1' | '2' | '3' | '4', string> = {
+  1: 'I was called to active duty after September 11, 2001, for at least 90 days and remain on active duty.',
+  2: 'I was called to active duty after September 11, 2001, for at least 90 days and was released from active duty on _______________, which is fewer than 540 days before I file this bankruptcy case.',
+  3: 'I am performing a homeland defense activity for at least 90 days.',
+  4: 'I performed a homeland defense activity for at least 90 days, ending on _______________, which is fewer than 540 days before I file this bankruptcy case.',
+};
+
+// The statutes' own words under "What does this mean?" on Amounts Owed (4d, B43), with their
+// citations; pinned word for word by DebtNatureQuestion.test.tsx, re-checked against
+// uscode.house.gov on 2026-11-24
+// DRAFT: counsel C-39
+export const STATUTE_DISABLED_VETERAN_CITATION = '38 U.S.C. § 3741(1)';
+// DRAFT: counsel C-39
+export const STATUTE_DISABLED_VETERAN =
+  'The term “disabled veteran” means (A) a veteran who is entitled to compensation under laws administered by the Secretary for a disability rated at 30 percent or more, or (B) a veteran whose discharge or release from active duty was for a disability incurred or aggravated in line of duty.';
+// DRAFT: counsel C-39
+export const STATUTE_HOMELAND_DEFENSE_CITATION = '32 U.S.C. § 901(1)';
+// DRAFT: counsel C-39
+export const STATUTE_HOMELAND_DEFENSE =
+  'The term “homeland defense activity” means an activity undertaken for the military protection of the territory or domestic population of the United States, or of infrastructure or other assets of the United States determined by the Secretary of Defense as being critical to national security, from a threat or aggression against the United States.';
 
 // Form 122A-2's title, page 1
 export const FORM_122A2_TITLE = 'Form 122A-2: Chapter 7 Means Test Calculation';
@@ -833,6 +871,7 @@ export const FORM_122A2_LINE_43_AMOUNT = 'Average monthly expense or income adju
 export const FORM_REVISIONS: Record<string, string> = {
   form_101: '11/26',
   form_101a: '12/15',
+  form_122a1_supp: '12/15',
 };
 
 // Line 1, the label under the suffix box
@@ -928,6 +967,17 @@ export const FORM_101_LINE_14_PROMPTS = {
   why: 'If immediate attention is needed, why is it needed?',
   where: 'Where is the property?',
 };
+// Line 16 (page 6), asked on Amounts Owed as one choice (4d): the question as printed
+export const FORM_101_LINE_16 = 'What kind of debts do you have?';
+// 16a, the `consumer` choice, as printed, no cut
+export const FORM_101_LINE_16A =
+  'Are your debts primarily consumer debts? Consumer debts are defined in 11 U.S.C. § 101(8) as “incurred by an individual primarily for a personal, family, or household purpose.”';
+// 16b, the `business` choice, as printed, no cut
+export const FORM_101_LINE_16B =
+  'Are your debts primarily business debts? Business debts are debts that you incurred to obtain money for a business or investment or through the operation of the business or investment.';
+// 16c, the `neither` choice and its box, as printed
+export const FORM_101_LINE_16C =
+  'State the type of debts you owe that are not consumer debts or business debts.';
 
 // Form 101A (form_b101a_0.pdf, the 12/15 revision, page 1), quoted on Contracts & Leases under
 // Form 101 line 11's two Yes answers (owner answer Q2). The opening sentence, as printed
