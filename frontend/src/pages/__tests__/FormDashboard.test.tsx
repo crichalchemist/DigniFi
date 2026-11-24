@@ -2376,6 +2376,35 @@ describe('FormDashboard', () => {
       expect(refusal.closest('[role="status"]')).toBe(region);
     });
 
+    // T7-R2: below the median 122A-1 has no partner, so its refusal is an error like any other
+    it('puts a below-median 122A-1 refusal in the alert block, not the pair’s region', async () => {
+      const LETTER = 'The court form can’t print the letter “ą”. Change it.';
+      packetWith({ outcome: 'at_or_below_median', family_size: 4 }, [
+        'form_101',
+        'form_121',
+        'form_122a1',
+      ]);
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({
+            generated: [],
+            errors: [{ form_type: 'form_122a1', error: LETTER, step: 'debtor_info' }],
+            total_generated: 0,
+            total_errors: 1,
+          })
+        )
+      );
+      const { container } = renderFormDashboard();
+      await generateAll();
+
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent(/^1 form could not be generated\./);
+      expect(alert).toHaveTextContent('Form 122A-1 - Means Test');
+      expect(alert).toHaveTextContent(LETTER);
+      expect(container.querySelector('.form-dashboard-pair')).toBeEmptyDOMElement();
+      expect(resultRegion()?.textContent ?? '').not.toContain(LETTER);
+    });
+
     describe('marking the pair filed together', () => {
       const CARD_1 = 'Form 122A-1 - Means Test';
       const CARD_2 = 'Form 122A-2 - Means Test Expenses';
@@ -2988,7 +3017,7 @@ describe('FormDashboard', () => {
 
       // T7-H1: the filed 122A-1's notice is shown on the Supp's card before it marks alone
       it('shows the box 2 notice before the Supp marks alone after a filed 122A-1', async () => {
-        let markFiledCalls = 0;
+        const markedIds: string[] = [];
         let pairCalls = 0;
         packetWith(
           { outcome: 'not_consumer', family_size: 4, tables_gap: null, open_on: null },
@@ -3003,8 +3032,8 @@ describe('FormDashboard', () => {
           storedForm('form_122a1_supp', 9)
         );
         server.use(
-          http.post('http://localhost:8000/api/forms/:id/mark_filed/', () => {
-            markFiledCalls += 1;
+          http.post('http://localhost:8000/api/forms/:id/mark_filed/', ({ params }) => {
+            markedIds.push(String(params.id));
             return HttpResponse.json({ message: 'Marked as filed.' });
           }),
           http.post('http://localhost:8000/api/forms/mark_pair_filed/', () => {
@@ -3024,7 +3053,8 @@ describe('FormDashboard', () => {
 
         await userEvent.click(within(group).getByRole('button', { name: MEANS_PAIR_MARK_ALONE }));
 
-        await waitFor(() => expect(markFiledCalls).toBe(1));
+        // The Supp (id 9) is marked, never the filed 122A-1 (id 7)
+        await waitFor(() => expect(markedIds).toEqual(['9']));
         expect(pairCalls).toBe(0);
       });
     });
