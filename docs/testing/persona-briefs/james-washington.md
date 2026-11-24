@@ -109,6 +109,8 @@ Amounts Owed: debts primarily consumer; not a disabled veteran; not a Reservist 
 
 **Codebtors:** No. Not in a community property state in the last 8 years.
 
+**Your Plans (step 9, Form 108):** For Crestway Auto Credit (the Toyota Camry), choose "Retain the property and enter into a Reaffirmation Agreement." This is James's own choice for the demo, not a recommended one.
+
 **Exemptions (Schedule C, on the page after the filing-fee page):** Line 1: You are claiming state and federal nonbankruptcy exemptions. You claim: Toyota Camry 2019 (line 3.1): 735 ILCS 5/12-1001(c), $3,600; Toyota Camry 2019 (line 3.1): 735 ILCS 5/12-1001(b), $1,900; Bed, couch, table, kitchenware (secondhand) (line 6): 735 ILCS 5/12-1001(a), 100% of fair market value, up to any applicable statutory limit, shorter description "Bed, couch, table, kitchenware"; TV, laptop, cell phone (line 7): 735 ILCS 5/12-1001(a), 100% of fair market value, up to any applicable statutory limit; Everyday clothes and work clothes (line 11): 735 ILCS 5/12-1001(a), 100% of fair market value, up to any applicable statutory limit; Cash (line 16): 735 ILCS 5/12-1001(b), $40; Bank of America (line 17.1): 735 ILCS 5/12-1001(b), $1,200. Line 3: No.
 
 ## What to Watch For

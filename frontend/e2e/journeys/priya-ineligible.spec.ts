@@ -81,6 +81,9 @@ test.describe('Priya Sharma — Above the Median', () => {
     // Step 8: Codebtors (answered from the persona)
     await wizard.walkCodebtors(PRIYA);
 
+    // Step 9: Your Plans (Form 108, the persona's choices)
+    await wizard.walkPlans(PRIYA);
+
     await wizard.fillReview();
     await wizard.completeIntake();
 

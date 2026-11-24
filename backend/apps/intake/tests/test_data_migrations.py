@@ -31,6 +31,8 @@ INCOME_ENCRYPTED = [("intake", "0022_incomeinfo_encrypt_swap")]
 EXPENSES_ENCRYPTED = [("intake", "0025_expenseinfo_encrypt_swap")]
 BEFORE = [("intake", "0027_expenseinfo_schedule_j_lines")]
 SHIFT = [("intake", "0028_shift_current_step")]
+INTENTION_ANSWERS = [("intake", "0048_intention_answers")]
+PLANS_SHIFT = [("intake", "0049_shift_current_step_for_plans")]
 FILING_FEE = [("intake", "0029_filingfee")]
 WAIVER_CARRIED = [("intake", "0030_fee_waiver_applications_to_filing_fee")]
 APPLICATION_DROPPED = [("intake", "0031_delete_feewaiverapplication")]
@@ -608,6 +610,54 @@ def test_a_session_saved_before_take_home_pay_reopens_on_the_same_step_on_postgr
     assert after == {1: 1, 2: 2, 3: 4, 8: 9, 0: 0, 12: 12}
     assert undone == {1: 1, 2: 2, 3: 3, 8: 8, 0: 0, 12: 12}
     assert take_home == 3
+
+
+def _run_the_plans_shift(migrate):
+    """Sessions saved before Your Plans, read after 0049 and again after undoing it, and a
+    session saved on Your Plans (step 9) after 0049, read after undoing it."""
+    apps = migrate(INTENTION_ANSWERS)
+    IntakeSession = apps.get_model("intake", "IntakeSession")
+    first = _session(apps)
+    rows = {
+        step: IntakeSession.objects.create(
+            user_id=first.user_id, district_id=first.district_id, current_step=step
+        )
+        for step in (1, 7, 8, 9, 0, 12)
+    }
+    apps = migrate(PLANS_SHIFT)
+    after = {
+        step: apps.get_model("intake", "IntakeSession").objects.get(pk=row.pk).current_step
+        for step, row in rows.items()
+    }
+    on_plans = apps.get_model("intake", "IntakeSession").objects.create(
+        user_id=first.user_id, district_id=first.district_id, current_step=9
+    )
+    apps = migrate(INTENTION_ANSWERS)
+    undone = {
+        step: apps.get_model("intake", "IntakeSession").objects.get(pk=row.pk).current_step
+        for step, row in rows.items()
+    }
+    return (
+        after,
+        undone,
+        apps.get_model("intake", "IntakeSession").objects.get(pk=on_plans.pk).current_step,
+    )
+
+
+def test_a_session_on_review_before_4e_opens_on_review_after(migrate):
+    after, undone, on_plans = _run_the_plans_shift(migrate)
+    assert after == {1: 1, 7: 7, 8: 8, 9: 10, 0: 0, 12: 12}
+    assert undone == {1: 1, 7: 7, 8: 8, 9: 9, 0: 0, 12: 12}
+    assert on_plans == 9  # Your Plans undone reads as the old Review, the step after it
+
+
+@pytest.mark.postgres
+@ON_POSTGRES
+def test_a_session_on_review_before_4e_opens_on_review_after_on_postgres(migrate):
+    after, undone, on_plans = _run_the_plans_shift(migrate)
+    assert after == {1: 1, 7: 7, 8: 8, 9: 10, 0: 0, 12: 12}
+    assert undone == {1: 1, 7: 7, 8: 8, 9: 9, 0: 0, 12: 12}
+    assert on_plans == 9
 
 
 def _filing_fee_round_trip(migrate):

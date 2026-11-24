@@ -461,21 +461,21 @@ def test_update_step_names_the_wizards_last_step_in_its_refusal(filer, completed
 
 
 def test_update_step_bound_follows_the_wizards_step_count(filer, completed, monkeypatch):
-    # The refusal above passes with a literal 9 too (WIZARD_STEP_COUNT is 9); moving the constant
-    # is what proves the view reads it. The patch target is the name views.py imports.
+    # The refusal above would pass with the constant's value written in as a literal; moving the
+    # constant is what proves the view reads it. The patch target is the name views.py imports.
     client, _ = filer
-    monkeypatch.setattr("apps.intake.views.WIZARD_STEP_COUNT", 10)
+    monkeypatch.setattr("apps.intake.views.WIZARD_STEP_COUNT", 11)
 
     accepted = client.post(
-        _session_url(completed, "update_step/"), {"current_step": 10}, format="json"
+        _session_url(completed, "update_step/"), {"current_step": 11}, format="json"
     )
     refused = client.post(
-        _session_url(completed, "update_step/"), {"current_step": 11}, format="json"
+        _session_url(completed, "update_step/"), {"current_step": 12}, format="json"
     )
 
     assert accepted.status_code == 200
     assert refused.status_code == 400
-    assert refused.data == {"current_step": ["Must be a whole number from 1 to 10."]}
+    assert refused.data == {"current_step": ["Must be a whole number from 1 to 11."]}
 
 
 @pytest.fixture

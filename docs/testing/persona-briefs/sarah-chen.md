@@ -97,6 +97,8 @@ Amounts Owed: debts primarily consumer; not a disabled veteran; not a Reservist 
 
 **Codebtors:** No. Not in a community property state in the last 8 years.
 
+**Your Plans:** Form 108 doesn't apply.
+
 **Exemptions (Schedule C, on the page after the filing-fee page):** You press "I'm not claiming any property as exempt" and claim nothing. Line 1: You are claiming state and federal nonbankruptcy exemptions. Line 3: No.
 
 ## What to Watch For

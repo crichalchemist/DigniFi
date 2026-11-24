@@ -71,7 +71,10 @@ test.describe('DeShawn Mitchell — Assets', () => {
     // Step 8: Codebtors (answered from the persona)
     await wizard.walkCodebtors(DESHAWN);
 
-    // Step 9: Review & Complete
+    // Step 9: Your Plans (Form 108, the persona's choices)
+    await wizard.walkPlans(DESHAWN);
+
+    // Step 10: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
 

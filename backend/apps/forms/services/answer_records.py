@@ -21,7 +21,7 @@ RECORD_OF_NAMESPACE = {
 
 # A step the wizard doesn't have yet; each leaves this tuple when its PR adds the step to
 # frontend/src/constants/wizardSteps.ts.
-NEW_STEP_KEYS = ("plans", "last_few_years_1", "last_few_years_2")
+NEW_STEP_KEYS = ("last_few_years_1", "last_few_years_2")
 
 # No leading zero: `l05_` is not how §7.4 spells line 5.
 _AFFAIRS_LINE = re.compile(r"l([1-9]\d*)_")

@@ -68,7 +68,10 @@ test.describe('James Washington — Borderline', () => {
     // Step 8: Codebtors (answered from the persona)
     await wizard.walkCodebtors(JAMES);
 
-    // Step 9: Review & Complete
+    // Step 9: Your Plans (Form 108, the persona's choices)
+    await wizard.walkPlans(JAMES);
+
+    // Step 10: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
 

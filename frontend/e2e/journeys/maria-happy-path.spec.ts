@@ -73,7 +73,10 @@ test.describe('Maria Torres — Happy Path', () => {
     // Step 8: Codebtors (answered from the persona)
     await wizard.walkCodebtors(MARIA);
 
-    // Step 9: Review & Complete
+    // Step 9: Your Plans (Form 108 doesn't apply)
+    await wizard.walkPlans(MARIA);
+
+    // Step 10: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
 

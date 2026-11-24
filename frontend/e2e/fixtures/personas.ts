@@ -206,6 +206,20 @@ export interface PersonaContract {
   owes_now: 'yes' | 'no';
 }
 
+/** A Form 108 Part 1 choice on Your Plans (4e, E5): the row is found by its creditor's name */
+export interface PersonaIntention {
+  creditor: string;
+  intention: 'surrender' | 'retain_redeem' | 'retain_reaffirm' | 'retain_explain';
+  /** The filer's own words, typed under "Retain the property and [explain]:" */
+  explain?: string;
+}
+
+/** A Form 108 Part 2 answer on Your Plans: the lease is found by its lessor's name */
+export interface PersonaLeasePlan {
+  lessor: string;
+  assumed: 'yes' | 'no';
+}
+
 export interface PersonaCodebtor {
   name: string;
   relationship?: string;
@@ -360,6 +374,9 @@ export interface PersonaData {
   contracts: PersonaContract[];
   codebtors: PersonaCodebtor[];
   claim_answers: PersonaClaimAnswers;
+  /** Your Plans (Form 108): each secured debt's choice and each lease of personal property's
+   * answer, both lists empty when Form 108 doesn't apply */
+  plans: { secured: PersonaIntention[]; leases: PersonaLeasePlan[] };
   petition: PersonaPetition;
   filing_fee: PersonaFilingFee;
   exemptions: PersonaExemptions;
@@ -598,6 +615,8 @@ export const MARIA: PersonaData = {
   ],
   codebtors: [],
   claim_answers: { contracts_answer: 'yes', codebtors_answer: 'no', community_lived: 'no' },
+  // No secured debt and only a residential lease: Form 108 doesn't apply
+  plans: { secured: [], leases: [] },
   filing_fee: {
     payment_choice: 'waiver',
     waiver: {
@@ -762,6 +781,11 @@ export const JAMES: PersonaData = {
   ],
   codebtors: [],
   claim_answers: { contracts_answer: 'yes', codebtors_answer: 'no', community_lived: 'no' },
+  // Form 108 (E5): James's own choice for the demo, not a recommended one
+  plans: {
+    secured: [{ creditor: 'Crestway Auto Credit', intention: 'retain_reaffirm' }],
+    leases: [],
+  },
   filing_fee: { payment_choice: 'pay_in_full' },
   petition: gates('yes'),
   exemptions: {
@@ -1025,6 +1049,11 @@ export const PRIYA: PersonaData = {
     },
   ],
   claim_answers: { contracts_answer: 'yes', codebtors_answer: 'yes', community_lived: 'no' },
+  // Form 108 (E5): Priya's own choice for the demo, not a recommended one
+  plans: {
+    secured: [{ creditor: 'Kestrel Auto Finance', intention: 'retain_redeem' }],
+    leases: [],
+  },
   filing_fee: { payment_choice: 'pay_in_full' },
   petition: gates('yes'),
   exemptions: {
@@ -1290,6 +1319,17 @@ export const DESHAWN: PersonaData = {
   contracts: [],
   codebtors: [],
   claim_answers: { contracts_answer: 'no', codebtors_answer: 'no', community_lived: 'no' },
+  // Form 108 (E5, 4e-R18): DeShawn's own choice and words for the demo, not a recommended one
+  plans: {
+    secured: [
+      {
+        creditor: 'Harrowgate Home Loans',
+        intention: 'retain_explain',
+        explain: 'I am current on the mortgage and will keep paying as agreed',
+      },
+    ],
+    leases: [],
+  },
   filing_fee: { payment_choice: 'installments' },
   petition: gates('no'),
   exemptions: {
@@ -1423,6 +1463,8 @@ export const SARAH: PersonaData = {
   ],
   codebtors: [],
   claim_answers: { contracts_answer: 'yes', codebtors_answer: 'no', community_lived: 'no' },
+  // No secured debt and only a residential lease: Form 108 doesn't apply
+  plans: { secured: [], leases: [] },
   filing_fee: {
     payment_choice: 'waiver',
     waiver: {
@@ -1743,6 +1785,18 @@ export const ANDRES: PersonaData = {
     },
   ],
   claim_answers: { contracts_answer: 'yes', codebtors_answer: 'yes', community_lived: 'no' },
+  // Form 108 (E5): Andrés's own choices for the demo, not recommended ones. His apartment lease
+  // (Fox Run) is residential, so Part 2 asks only about the Northlight vehicle lease.
+  plans: {
+    secured: [
+      {
+        creditor: 'Copperline Auto Finance',
+        intention: 'retain_explain',
+        explain: 'My brother Mateo, the co-owner, keeps paying the loan.',
+      },
+    ],
+    leases: [{ lessor: 'Northlight Auto Leasing', assumed: 'yes' }],
+  },
   filing_fee: { payment_choice: 'installments' },
   petition: {
     ...gates('yes'),

@@ -72,7 +72,10 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
     // Step 8: Codebtors (answered from the persona)
     await wizard.walkCodebtors(ANDRES);
 
-    // Step 9: Review & Complete
+    // Step 9: Your Plans (Form 108, the persona's choices)
+    await wizard.walkPlans(ANDRES);
+
+    // Step 10: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
 

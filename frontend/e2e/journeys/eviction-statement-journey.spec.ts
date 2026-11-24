@@ -91,6 +91,7 @@ test.describe('Eviction statement — Form 101A', () => {
     await wizard.nextStep();
 
     await wizard.walkCodebtors(RENTER);
+    await wizard.walkPlans(RENTER);
 
     await wizard.fillReview();
     await wizard.completeIntake();

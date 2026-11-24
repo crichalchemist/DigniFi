@@ -119,10 +119,13 @@ export type SentDebt = Omit<
  * The debt a save carries: the browser-only mark gone, a blank amount as 0 (B29), a blank
  * payment as null and a blank type as '' (undefined would drop out of the JSON and the server
  * would keep the old type). Deleted by key, as `withoutKey` does, not destructured away.
+ * `is_draft` is read-only on the server and goes too, so the wizard clearing it once Continue
+ * confirms the drafts (4e-R2) leaves the step's body unchanged.
  */
 export function sentDebt(row: DebtRow): SentDebt {
   const sent: Partial<DebtRow> = { ...row };
   delete sent._securedPressed;
+  delete sent.is_draft;
   return {
     ...(sent as DebtRow),
     amount_owed: row.amount_owed ?? 0,

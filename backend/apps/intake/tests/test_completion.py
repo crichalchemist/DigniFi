@@ -158,8 +158,8 @@ _MISSING = object()
 
 @pytest.mark.parametrize(
     "step",
-    [0, 10, -1, "3", 3.0, 2.5, True, None, _MISSING],
-    ids=["0", "10", "-1", "string", "float", "fraction", "bool", "null", "missing"],
+    [0, 11, -1, "3", 3.0, 2.5, True, None, _MISSING],
+    ids=["0", "11", "-1", "string", "float", "fraction", "bool", "null", "missing"],
 )
 def test_wizard_step_must_be_one_of_the_wizard_steps(filer, completed, step):
     # A step the wizard doesn't have is a client fault, not something the filer can fix.
@@ -1021,9 +1021,9 @@ def test_a_refused_save_leaves_a_completed_intake_complete(filer, completed):
     assert _status(completed) == "completed"
 
 
-@pytest.mark.parametrize("step", [5, 9])
+@pytest.mark.parametrize("step", [5, 10])
 def test_moving_between_wizard_steps_after_complete_reopens_it(filer, completed, step):
-    # Take-home pay made the wizard nine steps long: Review, the last, is step 9
+    # Your Plans made the wizard ten steps long: Review, the last, is step 10
     client, _ = filer
 
     response = client.post(

@@ -11,9 +11,9 @@ from .asset_lines import asset_step_gaps
 from .claims import claim_gap_parts
 from .income import deductions_blank, schedule_i_line4
 
-# The wizard's last step is Review, step 9: the length of WIZARD_STEPS in
+# The wizard's last step is Review, step 10: the length of WIZARD_STEPS in
 # frontend/src/constants/wizardSteps.ts, which test_wizard_step_count_is_the_browsers pins.
-WIZARD_STEP_COUNT = 9
+WIZARD_STEP_COUNT = 10
 
 TAKE_HOME_PAY_NOT_ENTERED = (
     "Enter what is taken out of your pay on the Take-home pay step. "
