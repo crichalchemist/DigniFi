@@ -1243,6 +1243,16 @@ describe('DebtsStep asks Form 101 line 16 and the military questions', () => {
     expect(status()).toHaveTextContent(copy.PETITION_GATE_DISABLED_VETERAN);
   });
 
+  it('marks the military gates unanswered as soon as consumer is picked, before focus leaves', async () => {
+    const user = userEvent.setup();
+    render(<Harness petition={{}} />);
+
+    // The answer alone touches the block: the filer needn't leave it to learn what is still open
+    await user.click(box('debt_nature', 'consumer'));
+    expect(screen.getAllByText(copy.NOT_ANSWERED_YET)).toHaveLength(2);
+    expect(status()).toHaveTextContent(copy.DEBT_GAP_NO_ANSWER);
+  });
+
   it('asks line 16 after "I have no amounts owed"', async () => {
     const user = userEvent.setup();
     const onValidity = vi.fn();
