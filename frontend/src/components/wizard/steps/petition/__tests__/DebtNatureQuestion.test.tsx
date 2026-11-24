@@ -455,6 +455,57 @@ describe('DebtNatureQuestion', () => {
     expect(screen.queryByText(HIDDEN_ANSWERS)).not.toBeInTheDocument();
   });
 
+  it('hides a block Show opened again once an outer answer hides the block around it', async () => {
+    // Show opened line 3's follow-up under a Reservist No; line 2 Yes and Yes then hides line 3,
+    // and its No brings line 3 back with the follow-up behind its line again, not open (4d-R15)
+    render(
+      <Harness
+        initial={{
+          debt_nature: 'consumer',
+          disabled_veteran: 'no',
+          reservist: 'no',
+          called_to_duty: 'yes',
+        }}
+      />
+    );
+    await userEvent.click(screen.getByRole('button', { name: SHOW_HIDDEN }));
+    expect(radio('called_to_duty', 'yes')).toBeChecked();
+
+    await userEvent.click(radio('disabled_veteran', 'yes')!);
+    await userEvent.click(radio('debts_on_duty', 'yes')!);
+    expect(radiosNamed('reservist')).toHaveLength(0);
+    await userEvent.click(radio('debts_on_duty', 'no')!);
+
+    expect(radio('reservist', 'no')).toBeChecked();
+    expect(radiosNamed('called_to_duty')).toHaveLength(0);
+    expect(screen.getAllByText(HIDDEN_ANSWERS)).toHaveLength(1);
+    expect(screen.getByRole('button', { name: SHOW_HIDDEN })).toBeVisible();
+  });
+
+  it('marks line 3 required only where the Supp reaches it', async () => {
+    // Under line 2 Yes and Yes, Show opens line 3 to be read or changed: Continue doesn't hold it,
+    // so it carries no required mark and no "Not answered yet"
+    render(
+      <Harness
+        touched
+        initial={{
+          debt_nature: 'consumer',
+          disabled_veteran: 'yes',
+          debts_on_duty: 'yes',
+          called_to_duty: 'no',
+        }}
+      />
+    );
+    await userEvent.click(screen.getByRole('button', { name: SHOW_HIDDEN }));
+    const lineThree = screen.getByRole('group', { name: startsWith(FORM_122A1SUPP_LINE_3) });
+    expect(within(lineThree).getByRole('radio', { name: 'No' })).not.toHaveAttribute(
+      'aria-required'
+    );
+    // The legend is the question alone, with no required mark after it
+    expect(lineThree.querySelector('legend')!.textContent).toBe(FORM_122A1SUPP_LINE_3);
+    expect(screen.queryByText(NOT_ANSWERED_YET)).not.toBeInTheDocument();
+  });
+
   it('offers "none applies" after the four categories and asks no date under it', async () => {
     render(<Harness initial={CALLED} />);
     const categories = radiosNamed('duty_category');

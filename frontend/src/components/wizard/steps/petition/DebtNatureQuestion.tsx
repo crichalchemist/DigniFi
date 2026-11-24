@@ -105,6 +105,18 @@ const GATE_BLOCKS: Partial<Record<keyof PetitionAnswers, string[]>> = {
   duty_category: ['duty_released_on', 'duty_ended_on'],
 };
 
+/** The blocks shown inside each block, so a hidden block hides what Show opened inside it too */
+const NESTED_BLOCKS: Record<string, string[]> = {
+  military: ['debts_on_duty', 'line_3'],
+  line_3: ['called_to_duty'],
+  called_to_duty: ['categories'],
+  categories: ['duty_released_on', 'duty_ended_on'],
+};
+
+/** The blocks an answer gates, and every block nested inside them */
+const blocksUnder = (blocks: string[]): string[] =>
+  blocks.flatMap((block) => [block, ...blocksUnder(NESTED_BLOCKS[block] ?? [])]);
+
 const yesNo = (value: unknown): YesNo | null => (value === 'yes' || value === 'no' ? value : null);
 const nullAll = (keys: readonly (keyof PetitionAnswers)[]) =>
   Object.fromEntries(keys.map((key) => [key, null])) as Partial<PetitionAnswers>;
@@ -123,7 +135,7 @@ export function DebtNatureQuestion({
   const answer = (key: keyof PetitionAnswers, value: PetitionAnswers[keyof PetitionAnswers]) => {
     setShown((current) => ({
       ...current,
-      ...Object.fromEntries((GATE_BLOCKS[key] ?? []).map((block) => [block, false])),
+      ...Object.fromEntries(blocksUnder(GATE_BLOCKS[key] ?? []).map((block) => [block, false])),
     }));
     set({ [key]: value });
   };
@@ -222,8 +234,10 @@ export function DebtNatureQuestion({
       name="reservist"
       value={reservist}
       onChange={(next) => answer('reservist', next)}
-      unanswered={consumer && touched && reservist === null}
-      required={consumer}
+      // Required only where the Supp reaches line 3, as Continue holds it: Show under line 2 Yes
+      // and Yes opens it with no mark
+      unanswered={consumer && lineThreeReached && touched && reservist === null}
+      required={consumer && lineThreeReached}
     >
       {reservist === 'yes' || shown.called_to_duty ? (
         <YesNoThenDetails
