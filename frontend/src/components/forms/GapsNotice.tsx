@@ -4,8 +4,8 @@
  * A `gate` is an answer the forms can't be prepared without, so it is named as missing. A `detail`
  * is one Complete lets through: a missing answer, which the forms print blank and the count names
  * as blank, a too-long answer, listed with its words but never counted as blank (isTooLong), or
- * a missing answer whose form is refused whole (Form 101A's landlord), also never counted as blank
- * (isRefusedForm).
+ * a missing answer whose form is refused whole or left out (Form 101A's landlord, Form 122A-1Supp's
+ * military follow-ups), also never counted as blank (isRefusedForm).
  * Each affected step gets its messages and one way to it.
  */
 
@@ -15,6 +15,11 @@ import {
   DASHBOARD_GAPS_ONE,
   DASHBOARD_GATES_MANY,
   DASHBOARD_GATES_ONE,
+  PETITION_DETAIL_CALLED_TO_DUTY,
+  PETITION_DETAIL_DEBTS_ON_DUTY,
+  PETITION_DETAIL_DUTY_CATEGORY,
+  PETITION_DETAIL_DUTY_ENDED,
+  PETITION_DETAIL_DUTY_RELEASED,
   PETITION_DETAIL_LANDLORD,
   PETITION_DETAIL_TOO_LONG,
   PETITION_DETAIL_TOO_LONG_101A,
@@ -66,12 +71,23 @@ function isTooLong(gap: CompletionGap): boolean {
 }
 
 /**
- * A missing landlord is no blank box: Form 101A is refused whole while it is missing, never
- * printed with an empty block (4b2-R12). Matched by its exact sentence, as the too-long ones are
- * by their patterns
+ * Sentences that leave no blank box. A missing landlord: Form 101A is refused whole while it is
+ * missing, never printed with an empty block (4b2-R12). A military follow-up or service date: an
+ * open one keeps Form 122A-1Supp out of the packet (above the median Form 122A-2 waits for it),
+ * and a claimed exclusion's missing date refuses the Supp whole (4d-R10). Matched by their exact
+ * sentences, as the too-long ones are by their patterns
  */
+const REFUSED_FORM_SENTENCES = [
+  PETITION_DETAIL_LANDLORD,
+  PETITION_DETAIL_DEBTS_ON_DUTY,
+  PETITION_DETAIL_CALLED_TO_DUTY,
+  PETITION_DETAIL_DUTY_CATEGORY,
+  PETITION_DETAIL_DUTY_RELEASED,
+  PETITION_DETAIL_DUTY_ENDED,
+];
+
 function isRefusedForm(gap: CompletionGap): boolean {
-  return gap.message === PETITION_DETAIL_LANDLORD;
+  return REFUSED_FORM_SENTENCES.includes(gap.message);
 }
 
 export function GapsNotice({ gaps }: { gaps: CompletionGap[] }) {

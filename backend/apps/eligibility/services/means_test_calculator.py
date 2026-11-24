@@ -21,7 +21,7 @@ class MeansTestCalculator:
     Service class for calculating Chapter 7 bankruptcy means test.
 
     This service encapsulates the business logic for means test calculations,
-    including its four outcomes.
+    including its seven outcomes.
     """
 
     def __init__(self, intake_session: IntakeSession):
@@ -60,7 +60,8 @@ class MeansTestCalculator:
                     "details": dict,
                     "means_test_id": int,
                     "outcome": str,
-                    "tables_gap": str | None
+                    "tables_gap": str | None,
+                    "open_on": "debts" | None (the result waits on Amounts Owed, 4d-R27)
                 }
 
         Raises:
@@ -94,8 +95,9 @@ class MeansTestCalculator:
         # Save updated means test
         means_test.save()
 
-        # The result is Form 122A-2's arithmetic in one of four outcomes; no sentence leaves
-        # the server (the browser composes the words).
+        # The result is one of seven outcomes (means_lines.OUTCOMES): the median comparison, Form
+        # 122A-2's arithmetic or one of Form 122A-1Supp's three routes. No sentence leaves the
+        # server (the browser composes the words).
         details = means_test.get_calculation_details()
         return {
             "passes_means_test": means_test.passes_means_test,
@@ -106,4 +108,5 @@ class MeansTestCalculator:
             "means_test_id": means_test.id,
             "outcome": means_test.outcome,
             "tables_gap": details["tables_gap"],
+            "open_on": details["open_on"],
         }

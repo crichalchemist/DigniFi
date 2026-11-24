@@ -26,6 +26,11 @@ from apps.eligibility.cmi import (
     is_above_median,
     spouse_monthly_income,
 )
+from apps.eligibility.means_lines import (
+    MILITARY_EXCLUSION,
+    SUPP_OUTCOMES,
+    supp_line_3_reached,
+)
 from apps.forms.services.answer_records import PETITION_STEP_OF_KEY, is_itin, record_value
 from apps.intake.asset_lines import (
     LINE_BY_KEY,
@@ -608,6 +613,30 @@ def _median_comparison(session: IntakeSession) -> str:
     if is_above_median(means_test.calculated_cmi, means_test.median_income_threshold):
         return "above"
     return "below"
+
+
+def _means_result_box(session: IntakeSession) -> str:
+    """
+    Page 1's result box (4d-R5), from the stored means test's route (R-ROUTE): box 1 for debts
+    not primarily consumer debts or the disabled veteran's exemption, box 3 for a line 3
+    exclusion (D1, B33), else line 12b against line 13 as line 14 says (box 2 above the median,
+    exactly when Form 122A-2 is in the packet). Blank before the means test runs.
+    """
+    means_test = getattr(session, "means_test", None)
+    if means_test is None:
+        return ""
+    if means_test.outcome == MILITARY_EXCLUSION:
+        return "box_3"
+    if means_test.outcome in SUPP_OUTCOMES:
+        return "box_1"
+    return "box_2" if _median_comparison(session) == "above" else "box_1"
+
+
+def _means_parts_1_and_2_print(session: IntakeSession, answer_cache=None) -> bool:
+    """122A-1's Parts 1-2 print unless the stored means test routed the filer to a Supp outcome,
+    whose boxes say to leave the rest of the form blank (4d-R6). With no means test they print."""
+    means_test = getattr(session, "means_test", None)
+    return means_test is None or means_test.outcome not in SUPP_OUTCOMES
 
 
 # ---------------------------------------------------------------------------
@@ -1198,7 +1227,27 @@ _register(
 )
 _register("debt_nature_16b_yes", _is(_asked("debt_nature"), "business"), _step_of("debt_nature"))
 _register("debt_nature_16b_no", _is(_asked("debt_nature"), "neither"), _step_of("debt_nature"))
+# 106Sum line 7 and Form 107 line 6 ask line 16a's question again, one box an answer (4d-R7):
+# each box's binding key names its meaning, as schedule_j_total_income names line 12's rule.
+_register(
+    "debt_nature_consumer", _PETITION_DERIVATIONS["debt_nature_16a_yes"], _step_of("debt_nature")
+)
+_register(
+    "debt_nature_not_consumer",
+    _PETITION_DERIVATIONS["debt_nature_16a_no"],
+    _step_of("debt_nature"),
+)
 _register("itin_answer_no", _is(_asked("itin_answer"), "no"), _step_of("itin_answer"))
+
+
+# Form 122A-1Supp line 3's category (4d-R26): the filer's own stored category, and blank for "none"
+# (D9, which claims no exclusion), so the box never ticks a category the filer didn't choose.
+def _supp_duty_category(session: IntakeSession) -> str:
+    category = _petition(session, "duty_category")
+    return category if category in ("1", "2", "3", "4") else ""
+
+
+_register("supp_duty_category", _supp_duty_category, _step_of("duty_category"))
 
 # The derived rules a legal_review box may print through (Ruling T4-legalreview): each ticks its
 # box only when the filer's own stored answer is exactly that box's choice, so it infers nothing.
@@ -1213,6 +1262,8 @@ ANSWER_BOX_RULES = frozenset(
         "not_required_disability",
         "not_required_active_duty",
         "debt_nature_16a_yes",
+        "debt_nature_consumer",
+        "supp_duty_category",
     }
 )
 
@@ -1278,9 +1329,68 @@ _PETITION_PREDICATES: dict[str, Callable[..., bool]] = {
         ("hazard_yes", "hazard_answer", "yes"),
         ("rents_yes", "rents_residence", "yes"),
         ("debt_nature_neither", "debt_nature", "neither"),
+        ("debt_nature_consumer", "debt_nature", "consumer"),
         ("credit_counseling_exigent", "credit_counseling", "exigent"),
         ("paid_preparer_yes", "paid_preparer", "yes"),
     )
+}
+
+# 106Sum line 7's not-consumer box says "You have nothing to report on this part of the form"
+# (D7): lines 8-9g print unless the filer's own line 16 answer is business or neither. No
+# `key == value` row says "anything but these two", so it has its own row.
+_DEBT_NATURE_PREDICATES: dict[str, Callable[..., bool]] = {
+    "debt_nature_consumer_or_unanswered": lambda s, answer_cache=None: (
+        _petition(s, "debt_nature") not in ("business", "neither")
+    ),
+}
+
+# Form 122A-1's Parts 1-2 go blank under a Supp outcome (4d-R6). 106Sum line 8 copies 122A-1 line
+# 11, so it prints only where line 11 does and D7's line 7 answer allows (D10).
+_MEANS_ROUTE_PREDICATES: dict[str, Callable[..., bool]] = {
+    "means_parts_1_and_2_print": _means_parts_1_and_2_print,
+    "summary_line_8_prints": lambda s, answer_cache=None: (
+        _DEBT_NATURE_PREDICATES["debt_nature_consumer_or_unanswered"](s)
+        and _means_parts_1_and_2_print(s)
+    ),
+}
+
+
+def _petition_answers(session: IntakeSession) -> dict:
+    """The session's stored petition answers as stored, {} with no record (Ruling I: no registry
+    import, which would be a cycle through fill_resolver)."""
+    record = getattr(session, "petition_answers", None)
+    return record.get_answers() if record is not None else {}
+
+
+def _supp_line_3_follow_up(answers) -> bool:
+    return supp_line_3_reached(answers) and answers.get("reservist") == "yes"
+
+
+def _supp_categories(answers) -> bool:
+    return _supp_line_3_follow_up(answers) and answers.get("called_to_duty") == "yes"
+
+
+# Form 122A-1Supp's Part 2 prints each answer only where the form reaches it (4d-R8, R-D2), under
+# consumer debts (line 2's gate is `petition_debt_nature_consumer`): line 2's follow-up under its
+# Yes, line 3 unless line 2 is Yes to both, line 3's follow-up under the Reservist Yes, the
+# categories under "called to duty" Yes and each date under its own category. Complete asks each
+# question exactly there (petition._SUPP_SHOWN); test_form_122a1_supp_schema.py pins the two.
+_SUPP_PREDICATES: dict[str, Callable[..., bool]] = {
+    "supp_line_2_follow_up": lambda s, answer_cache=None: (
+        (answers := _petition_answers(s)).get("debt_nature") == "consumer"
+        and answers.get("disabled_veteran") == "yes"
+    ),
+    "supp_line_3": lambda s, answer_cache=None: supp_line_3_reached(_petition_answers(s)),
+    "supp_line_3_follow_up": lambda s, answer_cache=None: (
+        _supp_line_3_follow_up(_petition_answers(s))
+    ),
+    "supp_categories": lambda s, answer_cache=None: _supp_categories(_petition_answers(s)),
+    "supp_date_1": lambda s, answer_cache=None: (
+        _supp_categories(answers := _petition_answers(s)) and answers.get("duty_category") == "2"
+    ),
+    "supp_date_2": lambda s, answer_cache=None: (
+        _supp_categories(answers := _petition_answers(s)) and answers.get("duty_category") == "4"
+    ),
 }
 
 # Schedule I's and Schedule J line 24's boxes print only what the step shows (4c-R5): your
@@ -1406,6 +1516,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "line12b_annualized_cmi": _line12b_annualized_cmi,
     "line13a_median_income": _line13a_median_income,
     "median_comparison": _median_comparison,
+    "means_result_box": _means_result_box,
     # Form 103B lines 1-3: the household list, Schedule I line 10 and 8f (3f spec §8.2)
     "fee_waiver_family_size": lambda s: str(_fee_waiver_family(s).total),
     "fee_waiver_spouse_counted": lambda s: "true" if _fee_waiver_family(s).spouse_counted else "",
@@ -1716,6 +1827,8 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     # No link. The district and its median income table come from DigniFi's own data.
     "district_name": {},
     "line13a_median_income": {},
+    # Form 122A-1's page-1 box: the result Complete works out on Review
+    "means_result_box": {"step": "review"},
     # Schedule H line 2: the spouse's name and address are entered on the Codebtors step
     "schedule_h_community_state": {"step": "codebtors"},
     "schedule_h_spouse_name": {"step": "codebtors"},
@@ -1801,5 +1914,8 @@ PREDICATES: dict[str, Callable[[IntakeSession], bool]] = {
         s, "address_history_gate", answer_cache
     ),
     **_PETITION_PREDICATES,
+    **_DEBT_NATURE_PREDICATES,
+    **_MEANS_ROUTE_PREDICATES,
+    **_SUPP_PREDICATES,
     **_SCHEDULE_I_PREDICATES,
 }

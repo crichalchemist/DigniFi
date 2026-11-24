@@ -7,6 +7,12 @@ import {
   DASHBOARD_GAPS_ONE,
   DASHBOARD_GATES_MANY,
   DASHBOARD_GATES_ONE,
+  PETITION_DETAIL_CALLED_TO_DUTY,
+  PETITION_DETAIL_DEBT_NATURE_TEXT,
+  PETITION_DETAIL_DEBTS_ON_DUTY,
+  PETITION_DETAIL_DUTY_CATEGORY,
+  PETITION_DETAIL_DUTY_ENDED,
+  PETITION_DETAIL_DUTY_RELEASED,
   PETITION_DETAIL_LANDLORD,
   PETITION_DETAIL_TOO_LONG,
   PETITION_DETAIL_TOO_LONG_101A,
@@ -172,6 +178,31 @@ describe('GapsNotice', () => {
     expect(within(notice).getByText(PETITION_DETAIL_LANDLORD)).toBeInTheDocument();
     expect(within(notice).getByRole('link', { name: /Contracts/ })).toBeInTheDocument();
     expect(notice).not.toHaveTextContent(/blank/i);
+  });
+
+  // 4d-R10: an open military follow-up keeps the Supp out of the packet (or holds 122A-2 above the
+  // median), and a claimed exclusion's missing date refuses the Supp whole, so none of the five ever
+  // leaves a blank box on a form the filer files. Line 16c's words do: Form 101 prints that box blank
+  it("doesn't count a military follow-up or a service date as a blank answer", () => {
+    const military = [
+      PETITION_DETAIL_DEBTS_ON_DUTY,
+      PETITION_DETAIL_CALLED_TO_DUTY,
+      PETITION_DETAIL_DUTY_CATEGORY,
+      PETITION_DETAIL_DUTY_RELEASED,
+      PETITION_DETAIL_DUTY_ENDED,
+    ];
+    renderNotice([
+      ...military.map((message) => ({ ...detail('debts', message), forms: ['form_122a1_supp'] })),
+      { ...detail('debts', PETITION_DETAIL_DEBT_NATURE_TEXT), forms: ['form_101'] },
+    ]);
+
+    const notice = screen.getByRole('status');
+    for (const message of military) {
+      expect(within(notice).getByText(message)).toBeInTheDocument();
+    }
+    // Only line 16c's words are counted
+    expect(within(notice).getByText(DASHBOARD_GAPS_ONE)).toBeInTheDocument();
+    expect(within(notice).getAllByRole('link', { name: /Amounts Owed/ })).toHaveLength(1);
   });
 
   it('with both kinds the missing sentence comes first', () => {

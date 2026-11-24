@@ -149,7 +149,9 @@ def _seeded():
 def _values(form_type):
     """
     The form's values for the first persona whose packet holds it: Maria's 103B, Priya's
-    122A-2. Form 122A-1Supp is in no packet until step 4, so it takes the first persona's.
+    122A-2. Form 122A-1Supp is in no persona's packet (each answers consumer debts and No to
+    both military questions, 4d-R23), so it takes the first persona's: line 1's Yes
+    (CheckBox2@1:T7) and the No of lines 2 and 3 (CheckBox3, CheckBox5).
     """
     seeded = _seeded()
     first = next(iter(seeded))

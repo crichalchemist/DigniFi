@@ -9,26 +9,36 @@ import {
   DASHBOARD_ERROR,
   DASHBOARD_GATES_ONE,
   FORM_103A_LINK,
+  PETITION_DETAIL_DUTY_ENDED,
+  PETITION_DETAIL_DUTY_RELEASED,
   PETITION_DETAIL_LANDLORD,
 } from '../../constants/copy';
 import { FORM_103A_URL } from '../../constants/copy';
 import {
+  MEANS_DEBTS_STEP_PHRASE,
   MEANS_FILED_BEFORE_122A1,
   MEANS_FILED_BEFORE_122A2,
+  MEANS_FILED_BOX_2_NOW_SUPP,
   MEANS_FILED_MISMATCH,
   MEANS_GAP_LINE_43,
   MEANS_LINE_MISSING,
   MEANS_LINE_43_LINK,
+  MEANS_OUTCOME_ANSWER_DEBTS,
   MEANS_OUTCOME_ANSWER_PAGE,
+  MEANS_OUTCOME_MILITARY,
+  MEANS_OUTCOME_NOT_CONSUMER,
+  MEANS_OUTCOME_NO_PRESUMPTION,
   MEANS_OUTCOME_PRESUMPTION,
+  MEANS_OUTCOME_VETERAN,
   MEANS_PAGE_PHRASE,
   MEANS_PAIR_MARK_ALONE,
   MEANS_PAIR_MARK_BOTH,
   MEANS_PAIR_NOTICE,
   MEANS_STALE_ANSWERS,
+  MEANS_SUPP_PAIR_NOTICE,
   MEANS_TABLE_MISSING,
 } from '../../constants/copy';
-import { PRESUMPTION_INSTRUCTIONS } from '../../constants/formText';
+import { FORM_122A1SUPP_AMENDED, PRESUMPTION_INSTRUCTIONS } from '../../constants/formText';
 
 /**
  * FormDashboard requires IntakeProvider with an active session.
@@ -2366,6 +2376,35 @@ describe('FormDashboard', () => {
       expect(refusal.closest('[role="status"]')).toBe(region);
     });
 
+    // T7-R2: below the median 122A-1 has no partner, so its refusal is an error like any other
+    it('puts a below-median 122A-1 refusal in the alert block, not the pair’s region', async () => {
+      const LETTER = 'The court form can’t print the letter “ą”. Change it.';
+      packetWith({ outcome: 'at_or_below_median', family_size: 4 }, [
+        'form_101',
+        'form_121',
+        'form_122a1',
+      ]);
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({
+            generated: [],
+            errors: [{ form_type: 'form_122a1', error: LETTER, step: 'debtor_info' }],
+            total_generated: 0,
+            total_errors: 1,
+          })
+        )
+      );
+      const { container } = renderFormDashboard();
+      await generateAll();
+
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent(/^1 form could not be generated\./);
+      expect(alert).toHaveTextContent('Form 122A-1 - Means Test');
+      expect(alert).toHaveTextContent(LETTER);
+      expect(container.querySelector('.form-dashboard-pair')).toBeEmptyDOMElement();
+      expect(resultRegion()?.textContent ?? '').not.toContain(LETTER);
+    });
+
     describe('marking the pair filed together', () => {
       const CARD_1 = 'Form 122A-1 - Means Test';
       const CARD_2 = 'Form 122A-2 - Means Test Expenses';
@@ -2726,6 +2765,298 @@ describe('FormDashboard', () => {
         name: 'Go to Form 122A-2: Chapter 7 Means Test Calculation',
       });
       expect(link).toHaveAttribute('href', '/means-test');
+    });
+
+    // Step 4d: Form 122A-1Supp takes Form 122A-2's place beside Form 122A-1 under the three
+    // routes the Supp gives (D1), and the two are filed together (D4)
+    describe('Form 122A-1 with the Supp', () => {
+      const SUPP_PACKET = ['form_101', 'form_121', 'form_122a1', 'form_122a1_supp'];
+      const CARD_1 = 'Form 122A-1 - Means Test';
+      const SUPP_CARD = 'Form 122A-1Supp - Statement of Exemption from Presumption of Abuse';
+
+      function renderWithWhere() {
+        localStorage.setItem('current_session_id', '1');
+        render(
+          <MemoryRouter>
+            <IntakeProvider>
+              <FormDashboard />
+              <WhereNow />
+            </IntakeProvider>
+          </MemoryRouter>
+        );
+      }
+
+      async function pressAndConfirmBoth(pressedCard: string) {
+        const card = await screen.findByRole('article', { name: pressedCard });
+        await userEvent.click(within(card).getByRole('button', { name: 'Mark as Filed' }));
+        await userEvent.click(within(card).getByRole('button', { name: MEANS_PAIR_MARK_BOTH }));
+      }
+
+      it('shows a not-consumer filer’s result and the Supp notice with no Form 122A-2', async () => {
+        packetWith(
+          { outcome: 'not_consumer', family_size: 4, tables_gap: null, open_on: null },
+          SUPP_PACKET
+        );
+        renderFormDashboard();
+
+        const region = await screen.findByRole('status', { name: RESULT });
+        const paragraphs = [...region.querySelectorAll('p')].map((p) => p.textContent);
+        expect(paragraphs).toEqual([MEANS_SUPP_PAIR_NOTICE, MEANS_OUTCOME_NOT_CONSUMER, CLOSING]);
+        expect(within(region).queryByText(MEANS_PAIR_NOTICE)).not.toBeInTheDocument();
+        expect(within(region).queryByRole('link')).not.toBeInTheDocument();
+        expect(await screen.findByRole('article', { name: SUPP_CARD })).toBeInTheDocument();
+        expect(screen.queryByText(/Form 122A-2/)).not.toBeInTheDocument();
+      });
+
+      it.each([
+        ['veteran_exemption', [MEANS_OUTCOME_VETERAN]],
+        ['military_exclusion', [MEANS_OUTCOME_MILITARY, FORM_122A1SUPP_AMENDED]],
+      ])('shows the %s result under the Supp notice', async (outcome, sentences) => {
+        packetWith({ outcome, family_size: 4, tables_gap: null, open_on: null }, SUPP_PACKET);
+        renderFormDashboard();
+
+        const region = await screen.findByRole('status', { name: RESULT });
+        const paragraphs = [...region.querySelectorAll('p')].map((p) => p.textContent);
+        expect(paragraphs).toEqual([MEANS_SUPP_PAIR_NOTICE, ...sentences, CLOSING]);
+      });
+
+      // The server ties the two (Task 6): a refusal lands on the form it names, and a press that
+      // succeeds files both and clears what either card showed
+      it('marks Form 122A-1 and the Supp together', async () => {
+        let presses = 0;
+        let markFiledCalls = 0;
+        packetWith(
+          { outcome: 'military_exclusion', family_size: 4, tables_gap: null, open_on: null },
+          SUPP_PACKET
+        );
+        server.use(
+          http.get('http://localhost:8000/api/forms/', () =>
+            HttpResponse.json(
+              presses >= 2
+                ? [
+                    storedForm('form_122a1', 7, { status: 'filed' }),
+                    storedForm('form_122a1_supp', 9, { status: 'filed' }),
+                  ]
+                : [storedForm('form_122a1', 7), storedForm('form_122a1_supp', 9)]
+            )
+          ),
+          http.post('http://localhost:8000/api/forms/:id/mark_filed/', () => {
+            markFiledCalls += 1;
+            return HttpResponse.json({ message: 'Marked as filed.' });
+          }),
+          http.post('http://localhost:8000/api/forms/mark_pair_filed/', () => {
+            presses += 1;
+            return presses === 1
+              ? HttpResponse.json(
+                  {
+                    form_type: 'form_122a1_supp',
+                    error: PETITION_DETAIL_DUTY_RELEASED,
+                    step: 'debts',
+                  },
+                  { status: 422 }
+                )
+              : HttpResponse.json({ forms: [], message: 'marked' });
+          })
+        );
+        renderFormDashboard();
+
+        // Pressed on Form 122A-1, refused for the Supp's date: the sentence shows on the Supp
+        await pressAndConfirmBoth(CARD_1);
+        const supp = screen.getByRole('article', { name: SUPP_CARD });
+        expect(await within(supp).findByText(PETITION_DETAIL_DUTY_RELEASED)).toBeInTheDocument();
+        const first = screen.getByRole('article', { name: CARD_1 });
+        expect(within(first).queryByText(PETITION_DETAIL_DUTY_RELEASED)).not.toBeInTheDocument();
+
+        await pressAndConfirmBoth(SUPP_CARD);
+
+        await waitFor(() => {
+          for (const name of [CARD_1, SUPP_CARD]) {
+            const card = screen.getByRole('article', { name });
+            expect(within(card).getByLabelText('Filed with court')).toBeInTheDocument();
+            expect(within(card).queryByText(PETITION_DETAIL_DUTY_RELEASED)).not.toBeInTheDocument();
+          }
+        });
+        expect(presses).toBe(2);
+        expect(markFiledCalls).toBe(0);
+      });
+
+      // The Supp has no /ask page: its questions are on the Amounts Owed step
+      it('sends a pending Supp card’s Answer Questions to Amounts Owed', async () => {
+        packetWith(
+          { outcome: 'military_exclusion', family_size: 4, tables_gap: null, open_on: null },
+          SUPP_PACKET
+        );
+        formsWith();
+        renderWithWhere();
+
+        const card = await screen.findByRole('article', { name: SUPP_CARD });
+        await userEvent.click(within(card).getByRole('button', { name: 'Answer Questions' }));
+        expect(screen.getByTestId('where-now')).toHaveTextContent('/intake?step=debts');
+      });
+
+      it('sends a refused Supp card to Amounts Owed', async () => {
+        packetWith(
+          { outcome: 'military_exclusion', family_size: 4, tables_gap: null, open_on: null },
+          SUPP_PACKET
+        );
+        formsWith();
+        server.use(
+          http.post('http://localhost:8000/api/forms/generate/', () =>
+            HttpResponse.json(
+              { form_type: 'form_122a1_supp', error: PETITION_DETAIL_DUTY_ENDED, step: 'debts' },
+              { status: 422 }
+            )
+          )
+        );
+        renderWithWhere();
+
+        const card = await screen.findByRole('article', { name: SUPP_CARD });
+        await userEvent.click(within(card).getByRole('button', { name: 'Generate' }));
+        await userEvent.click(screen.getByRole('checkbox'));
+        await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+        expect(await within(card).findByText(PETITION_DETAIL_DUTY_ENDED)).toBeInTheDocument();
+        await userEvent.click(within(card).getByRole('button', { name: 'Go to Amounts Owed' }));
+        expect(screen.getByTestId('where-now')).toHaveTextContent('/intake?step=debts');
+      });
+
+      it('keeps the 122A-2 pair’s notice unchanged', async () => {
+        packetWith({ outcome: 'no_presumption', family_size: 4, tables_gap: null, open_on: null });
+        renderFormDashboard();
+
+        const region = await screen.findByRole('status', { name: RESULT });
+        const paragraphs = [...region.querySelectorAll('p')].map((p) => p.textContent);
+        expect(paragraphs).toEqual([MEANS_PAIR_NOTICE, MEANS_OUTCOME_NO_PRESUMPTION, CLOSING]);
+        expect(within(region).queryByText(MEANS_SUPP_PAIR_NOTICE)).not.toBeInTheDocument();
+      });
+
+      // 4d-R27: an open answer on Amounts Owed holds the result; the Form 122A-2 page can't fix it
+      it('sends a result that waits on Amounts Owed to that step', async () => {
+        packetWith({
+          outcome: 'cannot_work_out',
+          family_size: 3,
+          tables_gap: null,
+          open_on: 'debts',
+        });
+        renderFormDashboard();
+
+        const region = await screen.findByRole('status', { name: RESULT });
+        const link = within(region).getByRole('link', { name: MEANS_DEBTS_STEP_PHRASE });
+        expect(link).toHaveAttribute('href', '/intake?step=debts');
+        // The link is a part of the sentence, which reads whole
+        expect(link.parentElement!.textContent).toBe(MEANS_OUTCOME_ANSWER_DEBTS);
+        expect(within(region).queryByText(MEANS_OUTCOME_ANSWER_PAGE)).not.toBeInTheDocument();
+        for (const each of within(region).getAllByRole('link')) {
+          expect(each).not.toHaveAttribute('href', '/means-test');
+        }
+        expect(within(region).getAllByRole('link')).toHaveLength(1);
+      });
+
+      // D11 (4d-R18): information, never a refusal
+      it('tells a filed Form 122A-1 with box 2 that its partner is now the Supp', async () => {
+        packetWith(
+          { outcome: 'not_consumer', family_size: 4, tables_gap: null, open_on: null },
+          SUPP_PACKET
+        );
+        formsWith(
+          storedForm('form_122a1', 7, {
+            status: 'filed',
+            filed_before_means_test: false,
+            stored_box_2: true,
+          })
+        );
+        renderFormDashboard();
+
+        const card = await screen.findByRole('article', { name: CARD_1 });
+        expect(within(card).getByText(MEANS_FILED_BOX_2_NOW_SUPP)).toHaveAttribute(
+          'role',
+          'status'
+        );
+        expect(screen.queryByText(MEANS_FILED_MISMATCH)).not.toBeInTheDocument();
+      });
+
+      it.each([
+        ['stored box 1', false, SUPP_PACKET, 'not_consumer'],
+        ['while Form 122A-2 is the partner', true, PAIR, 'presumption'],
+      ])(
+        'tells a filed Form 122A-1 nothing about the Supp when it %s',
+        async (_, stored, formTypes, outcome) => {
+          packetWith({ outcome, family_size: 4, tables_gap: null, open_on: null }, formTypes);
+          formsWith(
+            storedForm('form_122a1', 7, {
+              status: 'filed',
+              filed_before_means_test: false,
+              stored_box_2: stored,
+            })
+          );
+          renderFormDashboard();
+
+          await screen.findByRole('article', { name: CARD_1 });
+          expect(screen.queryByText(MEANS_FILED_BOX_2_NOW_SUPP)).not.toBeInTheDocument();
+        }
+      );
+
+      it('shows the filed-before notice instead when both apply', async () => {
+        packetWith(
+          { outcome: 'not_consumer', family_size: 4, tables_gap: null, open_on: null },
+          SUPP_PACKET
+        );
+        formsWith(
+          storedForm('form_122a1', 7, {
+            status: 'filed',
+            filed_before_means_test: true,
+            stored_box_2: true,
+          })
+        );
+        renderFormDashboard();
+
+        const card = await screen.findByRole('article', { name: CARD_1 });
+        expect(within(card).getByText(MEANS_FILED_BEFORE_122A1)).toBeInTheDocument();
+        expect(within(card).queryByText(MEANS_FILED_BOX_2_NOW_SUPP)).not.toBeInTheDocument();
+      });
+
+      // T7-H1: the filed 122A-1's notice is shown on the Supp's card before it marks alone
+      it('shows the box 2 notice before the Supp marks alone after a filed 122A-1', async () => {
+        const markedIds: string[] = [];
+        let pairCalls = 0;
+        packetWith(
+          { outcome: 'not_consumer', family_size: 4, tables_gap: null, open_on: null },
+          SUPP_PACKET
+        );
+        formsWith(
+          storedForm('form_122a1', 7, {
+            status: 'filed',
+            filed_before_means_test: false,
+            stored_box_2: true,
+          }),
+          storedForm('form_122a1_supp', 9)
+        );
+        server.use(
+          http.post('http://localhost:8000/api/forms/:id/mark_filed/', ({ params }) => {
+            markedIds.push(String(params.id));
+            return HttpResponse.json({ message: 'Marked as filed.' });
+          }),
+          http.post('http://localhost:8000/api/forms/mark_pair_filed/', () => {
+            pairCalls += 1;
+            return HttpResponse.json({ forms: [], message: 'marked' });
+          })
+        );
+        renderFormDashboard();
+
+        const card = await screen.findByRole('article', { name: SUPP_CARD });
+        await userEvent.click(within(card).getByRole('button', { name: 'Mark as Filed' }));
+
+        const group = within(card).getByRole('group', {
+          name: `${CARD_1} ${MEANS_FILED_BOX_2_NOW_SUPP}`,
+        });
+        expect(within(group).getByText(MEANS_FILED_BOX_2_NOW_SUPP)).toBeInTheDocument();
+
+        await userEvent.click(within(group).getByRole('button', { name: MEANS_PAIR_MARK_ALONE }));
+
+        // The Supp (id 9) is marked, never the filed 122A-1 (id 7)
+        await waitFor(() => expect(markedIds).toEqual(['9']));
+        expect(pairCalls).toBe(0);
+      });
     });
   });
 });

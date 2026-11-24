@@ -133,6 +133,18 @@ export const MEANS_OUTCOME_NO_PRESUMPTION =
 export const MEANS_OUTCOME_PRESUMPTION =
   "The form's arithmetic gives: There is a presumption of abuse.";
 
+// DRAFT: counsel C-39
+export const MEANS_OUTCOME_NOT_CONSUMER =
+  'You answered that your debts are not primarily consumer debts. Form 122A-1Supp says that a filer who answers this way checks box 1 on Form 122A-1, signs Part 3 and submits this supplement with it. Your packet follows the form.';
+
+// DRAFT: counsel C-39
+export const MEANS_OUTCOME_VETERAN =
+  'You answered Yes to both questions on line 2 of Form 122A-1Supp. The form says that a filer who answers this way checks box 1 on Form 122A-1, signs Part 3 and submits this supplement with it. Your packet follows the form.';
+
+// DRAFT: counsel C-39
+export const MEANS_OUTCOME_MILITARY =
+  "You chose one of the service categories on line 3 of Form 122A-1Supp. The form says that a filer who answers this way checks box 3 on Form 122A-1 and doesn't fill out the rest of that form during the exclusion period. The form counts back 540 days from the day you file; DigniFi doesn't check that. Your packet follows the form.";
+
 // DRAFT: counsel C-24
 export const MEANS_TABLE_MISSING =
   "DigniFi doesn't have the means test figures for today's date yet, so it can't work out Form 122A-2.";
@@ -143,6 +155,13 @@ export const MEANS_LINE_MISSING =
 
 // DRAFT: counsel C-24
 export const MEANS_PAIR_REFUSAL = 'File Form 122A-1 and Form 122A-2 together.';
+
+// DRAFT: counsel C-39
+export const MEANS_SUPP_PAIR_REFUSAL = 'File Form 122A-1 and Form 122A-1Supp together.';
+
+// DRAFT: counsel C-39
+export const MEANS_MILITARY_OPEN =
+  'Answer each question about military service on the Amounts Owed step. Form 122A-2 waits for those answers.';
 
 // DRAFT: counsel C-24
 export const MEANS_PAIR_CONFIRM = 'These two forms go together. Mark both as filed?';
@@ -160,6 +179,10 @@ export const MEANS_PAIR_CANCEL = 'Cancel';
 export const MEANS_PAIR_NOTICE =
   'Form 122A-1 says your result is worked out on Form 122A-2. File them together.';
 
+// DRAFT: counsel C-39
+export const MEANS_SUPP_PAIR_NOTICE =
+  'Form 122A-1Supp says to submit it with the signed Form 122A-1. File them together.';
+
 // DRAFT: counsel C-24
 export const MEANS_FILED_BEFORE_122A2 =
   'This copy was marked filed before DigniFi could fill in all of Form 122A-2. It shows what was stored then.';
@@ -171,6 +194,10 @@ export const MEANS_FILED_BEFORE_122A1 =
 // DRAFT: counsel C-24
 export const MEANS_FILED_MISMATCH =
   "This copy doesn't say its result is worked out on Form 122A-2. Form 122A-2 now applies to you.";
+
+// DRAFT: counsel C-39
+export const MEANS_FILED_BOX_2_NOW_SUPP =
+  'This filed copy has box 2 checked. With your current answers, your packet holds Form 122A-1Supp, and Form 122A-1 checks a different box.';
 
 // The Form 122A-2 page (3h2)
 
@@ -184,6 +211,13 @@ export const MEANS_OUTCOME_ANSWER_PAGE =
 
 // DRAFT: counsel C-24
 export const MEANS_PAGE_PHRASE = 'the Form 122A-2 page';
+
+// DRAFT: counsel C-39
+export const MEANS_OUTCOME_ANSWER_DEBTS =
+  "Its result can't be worked out until you answer the questions on the Amounts Owed step.";
+
+// DRAFT: counsel C-39
+export const MEANS_DEBTS_STEP_PHRASE = 'the Amounts Owed step';
 
 // DRAFT: counsel C-24
 export const MEANS_LINE_43_LINK = 'Go to line 43, special circumstances';
@@ -1652,6 +1686,16 @@ export const PETITION_GATE_HAZARD =
 export const PETITION_GATE_RENTS = 'Say whether you rent your residence.';
 export const PETITION_GATE_EVICTION =
   'Say whether your landlord has an eviction judgment against you.';
+// Amounts Owed's Form 101 line 16 and Form 122A-1Supp's military questions (4d, owner-approved
+// 2026-11-23 as drafted)
+// DRAFT: counsel C-39
+export const PETITION_GATE_DEBT_NATURE =
+  'Say whether your debts are primarily consumer debts, on the Amounts Owed step.';
+// DRAFT: counsel C-39
+export const PETITION_GATE_DISABLED_VETERAN = 'Say whether you are a disabled veteran.';
+// DRAFT: counsel C-39
+export const PETITION_GATE_RESERVIST =
+  'Say whether you are or have been a Reservist or member of the National Guard.';
 export const PETITION_DETAIL_VENUE = 'Choose why you are filing in this district.';
 // DRAFT: counsel C-40
 export const PETITION_DETAIL_VENUE_REASON = 'Explain your other reason for filing here.';
@@ -1678,6 +1722,23 @@ export const PETITION_DETAIL_PENDING_CASE =
   'Each pending case needs the name of the person who filed it.';
 export const PETITION_DETAIL_BUSINESS = "Add your business's name, or change your answer to No.";
 export const PETITION_DETAIL_HAZARD = 'Say what the hazard is, or change your answer to No.';
+// Amounts Owed's details (4d): line 16c's words, then the Supp's follow-ups and dates
+// DRAFT: counsel C-39
+export const PETITION_DETAIL_DEBT_NATURE_TEXT = 'Say what type of debts you owe.';
+// DRAFT: counsel C-39
+export const PETITION_DETAIL_DEBTS_ON_DUTY =
+  'Say whether most of your debts began while you were on active duty. Time doing a homeland defense activity counts too.';
+// DRAFT: counsel C-39
+export const PETITION_DETAIL_CALLED_TO_DUTY =
+  'Say whether you were called to active duty. Doing a homeland defense activity counts too.';
+// DRAFT: counsel C-39
+export const PETITION_DETAIL_DUTY_CATEGORY = 'Choose a category, or say that none applies.';
+// DRAFT: counsel C-39
+export const PETITION_DETAIL_DUTY_RELEASED =
+  'A date is written as MM/DD/YYYY. Type the date you were released from active duty.';
+// DRAFT: counsel C-39
+export const PETITION_DETAIL_DUTY_ENDED =
+  'A date is written as MM/DD/YYYY. Type the date your homeland defense activity ended.';
 // Templates the server fills in: {label} a box in plain words; {noun} and {n} a row (Q5);
 // {forms} the forms whose box refuses it: Form 101, Form 103B or Forms 101 and 103B (Q10)
 export const PETITION_DETAIL_TOO_LONG =
@@ -1735,6 +1796,34 @@ export const HIDDEN_ANSWERS =
   'Your earlier answers here are saved but hidden. Show them or delete them.';
 export const SHOW_HIDDEN = 'Show';
 export const DELETE_HIDDEN = 'Delete';
+
+// Amounts Owed's Form 101 line 16 and Form 122A-1Supp block (4d, owner approved 2026-11-23 as
+// drafted). The list beside line 16 has no sum, no count and no comparison (spec §6.6).
+// DRAFT: counsel C-39
+export const DEBT_NATURE_LIST_HEADING = 'Your amounts owed, by the kind you chose for each';
+// DRAFT: counsel C-39
+export const DEBT_NATURE_LIST_NOTE =
+  "The form asks you to say which kind your debts primarily are. It doesn't say how to measure that.";
+// DRAFT: counsel C-39
+export const DEBT_NATURE_LIST_EMPTY = "You haven't listed any amounts owed on this step.";
+// DRAFT: counsel C-39
+export const DEBT_NATURE_KIND_NOT_CHOSEN = 'Kind not chosen yet';
+// DRAFT: counsel C-39
+export const MILITARY_FRAMING =
+  'Form 122A-1Supp asks two questions about military service. The form asks these of everyone whose debts are mostly consumer debts.';
+// DRAFT: counsel C-39
+export const MILITARY_540_DAYS =
+  "The form counts back 540 days from the day you file. DigniFi doesn't know that day and doesn't check it; your tick is your statement.";
+// The fifth duty_category answer, "none" (D9): DigniFi's words, not the form's
+// DRAFT: counsel C-39
+export const DUTY_CATEGORY_NONE = 'None of these categories applies to me';
+// The two definitions' names, each the visible words of its summary (4d-R21, Ruling M)
+// DRAFT: counsel C-39
+export const WHAT_DOES_DISABLED_VETERAN_MEAN = 'What does “disabled veteran” mean?';
+// The owner's words of 2026-11-24, replacing the four-word label
+// DRAFT: counsel C-39
+export const WHAT_DOES_HOMELAND_DEFENSE_MEAN =
+  'What does “homeland defense activity” mean on this form?';
 
 // Schedule I lines 1, 11 and 13 and Schedule J line 24 (4c, words owner-approved 2026-11-22). The
 // gap sentences mirror apps/intake/schedule_i.py word for word; test_schedule_i_frontend_copy.py

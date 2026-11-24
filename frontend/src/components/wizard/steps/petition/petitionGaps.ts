@@ -1,11 +1,14 @@
 /**
  * Continue's copy of the gates in `petition_step_gaps` (apps/intake/petition.py): the first yes/no
  * a step asks that is still unanswered, in the server's words and order (step 1's seven, the Assets
- * step's hazard, Contracts & Leases' rent and eviction). Details never hold
+ * step's hazard, Amounts Owed's line 16 and Supp questions, Contracts & Leases' rent and eviction).
+ * Details never hold
  * Continue (spec §5.7), so only the gates are copied; Review lists the details from the server.
  * test_petition_frontend_copy.py pins the sentences and the row nouns.
  */
 import {
+  PETITION_GATE_DEBT_NATURE,
+  PETITION_GATE_DISABLED_VETERAN,
   PETITION_GATE_EVICTION,
   PETITION_GATE_HAZARD,
   PETITION_GATE_ITIN,
@@ -15,6 +18,7 @@ import {
   PETITION_GATE_PENDING_CASE,
   PETITION_GATE_PRIOR_BANKRUPTCY,
   PETITION_GATE_RENTS,
+  PETITION_GATE_RESERVIST,
   PETITION_GATE_SOLE_PROPRIETOR,
 } from '../../../../constants/copy';
 import type { PetitionAnswers } from '../../../../types/api';
@@ -95,6 +99,53 @@ export function rentGap(answers: PetitionAnswers): string | null {
   if (answers.rents_residence === 'yes' && !answered(answers.eviction_judgment)) {
     return PETITION_GATE_EVICTION;
   }
+  return null;
+}
+
+/**
+ * Amounts Owed's Form 101 line 16 and Form 122A-1Supp keys (4d), in PETITION_STEP_OF_KEY's order
+ * (E16): the step's body sends these, pinned to the server
+ */
+export const DEBT_NATURE_KEYS = [
+  'debt_nature',
+  'debt_nature_text',
+  'disabled_veteran',
+  'debts_on_duty',
+  'reservist',
+  'called_to_duty',
+  'duty_category',
+  'duty_released_on',
+  'duty_ended_on',
+] as const;
+/** Line 16's three answers, 16a, 16b and 16c, in the form's order; pinned to the server */
+export const DEBT_NATURE_CHOICES = ['consumer', 'business', 'neither'] as const;
+
+const open = (value: unknown) => value === null || value === undefined;
+
+/**
+ * Whether Form 122A-1Supp reaches line 3 (means_lines.py's supp_line_3_reached, R-D2): the debts
+ * are primarily consumer debts and line 2 isn't Yes to both questions. Line 2 Yes with its
+ * follow-up still open reaches it.
+ */
+export function supplementLineThreeReached(answers: PetitionAnswers): boolean {
+  return (
+    answers.debt_nature === 'consumer' &&
+    !(answers.disabled_veteran === 'yes' && answers.debts_on_duty === 'yes')
+  );
+}
+
+/**
+ * The first of Amounts Owed's gates still unanswered (petition.py's debt_nature_gaps): line 16,
+ * then line 2 under consumer debts, then line 3 where the Supp reaches it, in the server's words,
+ * or null. The details never hold Continue.
+ */
+export function debtNatureGap(answers: PetitionAnswers): string | null {
+  if (open(answers.debt_nature)) return PETITION_GATE_DEBT_NATURE;
+  if (answers.debt_nature === 'consumer' && open(answers.disabled_veteran)) {
+    return PETITION_GATE_DISABLED_VETERAN;
+  }
+  if (supplementLineThreeReached(answers) && open(answers.reservist))
+    return PETITION_GATE_RESERVIST;
   return null;
 }
 

@@ -39,9 +39,14 @@ from apps.intake.models import (
     Household,
     IncomeInfo,
     IntakeSession,
+    PetitionAnswers,
     SpouseIncome,
 )
-from apps.intake.tests.builders import answer_household, answer_income_detail
+from apps.intake.tests.builders import (
+    DEBT_NATURE_DEFAULTS,
+    answer_household,
+    answer_income_detail,
+)
 
 User = get_user_model()
 
@@ -96,7 +101,10 @@ def median_income(district):
 
 @pytest.fixture
 def session(user, district):
-    """Create intake session, whose household list answers that no one else lives there."""
+    """Create intake session, whose household list answers that no one else lives there, and
+    whose debts are mainly consumer debts with both military questions No (the builders' step 6
+    defaults, 4d), so an above-median result here waits on Form 122A-2's answers, not on line 16.
+    """
     s = IntakeSession.objects.create(
         user=user,
         district=district,
@@ -106,6 +114,7 @@ def session(user, district):
     household = Household(session=s, county="Cook")
     household.store_members([])
     household.save()
+    PetitionAnswers.objects.create(session=s, answers=json.dumps(dict(DEBT_NATURE_DEFAULTS)))
     return s
 
 
@@ -251,6 +260,30 @@ class TestAboveMedianIncomeCannotBeWorkedOutYet:
         assert result["cmi"] == Decimal("80000.00")
         assert result["median_income_threshold"] == Decimal("71304.00")
         assert result["family_size"] == 1
+        # It waits on the 122A-2 page's answers (the tables were read), not on Amounts Owed
+        assert result["details"]["open_on"] is None
+        assert [t["name"] for t in result["details"]["tables"]] == [
+            "IRS expense standards",
+            "Bankruptcy Code dollar amounts",
+        ]
+
+    def test_the_replies_say_when_the_result_waits_on_amounts_owed(self, session, median_income):
+        # 4d-R27: the calculate reply carries open_on, "debts" while line 16 is open above the
+        # median and null once the result waits on Form 122A-2's own answers.
+        _income(
+            session=session,
+            marital_status="not_married",
+            monthly_gross_wages=Decimal("80000.00"),
+        )
+        assert MeansTestCalculator(session).calculate()["open_on"] is None
+
+        record = session.petition_answers
+        record.merge({"debt_nature": None, "disabled_veteran": None, "reservist": None})
+        record.save()
+        assert "debt_nature" not in record.get_answers()
+        waiting = MeansTestCalculator(IntakeSession.objects.get(pk=session.pk)).calculate()
+
+        assert (waiting["outcome"], waiting["open_on"]) == ("cannot_work_out", "debts")
 
     def test_a_spouse_living_apart_isnt_counted_but_children_at_home_are(
         self, session, median_income

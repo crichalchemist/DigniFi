@@ -730,7 +730,7 @@ export interface PetitionAnswers {
   debts_on_duty?: YesNo | null;
   reservist?: YesNo | null;
   called_to_duty?: YesNo | null;
-  duty_category?: '1' | '2' | '3' | '4' | null;
+  duty_category?: '1' | '2' | '3' | '4' | 'none' | null;
   duty_released_on?: string | null;
   duty_ended_on?: string | null;
   rents_residence?: YesNo | null;
@@ -821,7 +821,10 @@ export type MeansOutcome =
   | 'at_or_below_median'
   | 'cannot_work_out'
   | 'no_presumption'
-  | 'presumption';
+  | 'presumption'
+  | 'not_consumer'
+  | 'veteran_exemption'
+  | 'military_exclusion';
 
 // `passes_means_test` is null while the result can't be worked out, and the words come from
 // `outcome` (see utils/meansOutcome.ts), never from it
@@ -833,6 +836,8 @@ export interface MeansTestResult {
   outcome: MeansOutcome | null;
   /** The name of the table the means test needs and DigniFi doesn't have, else null */
   tables_gap: string | null;
+  /** "debts" while the result waits on an answer on the Amounts Owed step, else null (4d-R27) */
+  open_on: 'debts' | null;
   details: {
     cmi: number;
     annualized_cmi: number;
@@ -1002,6 +1007,8 @@ export interface MeansPage {
   outcome: MeansOutcome | null;
   family_size: number | null;
   tables_gap: string | null;
+  /** "debts" while the result waits on an answer on the Amounts Owed step, else null (4d-R27) */
+  open_on: 'debts' | null;
   /** The server's first gap, null when none */
   gap: string | null;
   /** True when an AI service is set up to rewrite a line 43 explanation */
@@ -1201,8 +1208,9 @@ export const FORM_TYPE_METADATA: Record<
     description: 'Chapter 7 means test calculation',
     order: 8,
   },
+  // DRAFT: counsel C-39
   form_122a1_supp: {
-    label: 'Form 122A-1 Supp - Means Test Supplement',
+    label: 'Form 122A-1Supp - Statement of Exemption from Presumption of Abuse',
     description: 'Supplement to the Chapter 7 means test',
     order: 9,
   },
@@ -1367,6 +1375,8 @@ export interface FormPacketResponse {
   outcome?: MeansOutcome | null;
   family_size?: number | null;
   tables_gap?: string | null;
+  /** "debts" while the result waits on an answer on the Amounts Owed step (4d-R27) */
+  open_on?: 'debts' | null;
   /** When the secured-debt answers were last changed, and today; null before they were */
   means_debts_answered?: MeansDebtsAnswered | null;
 }
@@ -1380,6 +1390,7 @@ export interface Packet {
   outcome: MeansOutcome | null;
   family_size: number | null;
   tables_gap: string | null;
+  open_on: 'debts' | null;
   means_debts_answered: MeansDebtsAnswered | null;
 }
 

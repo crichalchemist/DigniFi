@@ -1,6 +1,9 @@
 import type { Ref } from 'react';
+import { Link } from 'react-router-dom';
 import {
+  MEANS_DEBTS_STEP_PHRASE,
   MEANS_LINE_43_LINK,
+  MEANS_OUTCOME_ANSWER_DEBTS,
   MEANS_STALE_ANSWERS,
   MEANS_TEST_PREVIEW_TITLE,
 } from '../../constants/copy';
@@ -16,12 +19,22 @@ interface MeansResultProps {
   ref?: Ref<HTMLElement>;
 }
 
+// The sentence that points to Amounts Owed, with the step's name as the link (4d-R27)
+const [debtsBefore, debtsAfter] = MEANS_OUTCOME_ANSWER_DEBTS.split(MEANS_DEBTS_STEP_PHRASE);
+
 /**
  * The result at the top of the page (F13, H21): the stale-answers notice, the outcome's sentences
- * in plain text, under a presumption the link to line 43, then the court sentence once, last.
+ * in plain text (the one that waits on Amounts Owed links that step), under a presumption the link
+ * to line 43, then the court sentence once, last.
  */
 export function MeansResult({ page, linkToLine43, ref }: MeansResultProps) {
-  const sentences = meansOutcomeSentences(page.outcome, page.family_size, page.tables_gap, 'page');
+  const sentences = meansOutcomeSentences(
+    page.outcome,
+    page.family_size,
+    page.tables_gap,
+    page.open_on,
+    'page'
+  );
   const answered = page.debts_answered_on;
   // The month of both dates, read from the ISO text (never through a Date and its time zone)
   const stale = answered !== null && answered.slice(0, 7) !== page.fill_date.slice(0, 7);
@@ -29,9 +42,17 @@ export function MeansResult({ page, linkToLine43, ref }: MeansResultProps) {
   return (
     <section role="status" aria-label={MEANS_TEST_PREVIEW_TITLE} tabIndex={-1} ref={ref}>
       {stale && <p>{MEANS_STALE_ANSWERS.replace('{month}', formatMonthYear(answered))}</p>}
-      {sentences.map((sentence) => (
-        <p key={sentence}>{sentence}</p>
-      ))}
+      {sentences.map((sentence) =>
+        sentence === MEANS_OUTCOME_ANSWER_DEBTS ? (
+          <p key={sentence}>
+            {debtsBefore}
+            <Link to="/intake?step=debts">{MEANS_DEBTS_STEP_PHRASE}</Link>
+            {debtsAfter}
+          </p>
+        ) : (
+          <p key={sentence}>{sentence}</p>
+        )
+      )}
       {page.outcome === 'presumption' && (
         <p>
           <a

@@ -82,8 +82,8 @@ def test_only_the_list_of_creditors_stores_fixes():
     covered = set()
     for persona in PERSONAS:
         session = IntakeSession.objects.get(user__username=f"demo_{persona}")
-        # A form outside the packet (122A-1Supp, until step 4) is built directly: it is no
-        # persona's packet, but it must not store "fixes" either.
+        # A form outside the packet (122A-1Supp, which no persona's answers route to) is built
+        # directly: it is in no persona's packet, but it must not store "fixes" either.
         for form_type in {*packet(session), *get_all_form_types()} - {"list_of_creditors"}:
             try:
                 parts = build_parts(form_type, session)["parts"]

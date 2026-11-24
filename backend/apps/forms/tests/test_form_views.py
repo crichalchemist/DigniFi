@@ -56,6 +56,7 @@ from apps.intake.tests.builders import (
     answer_asset_lines,
     answer_household,
     answer_means_test,
+    answer_petition,
     complete_debt,
     finish_intake,
 )
@@ -1020,11 +1021,37 @@ class TestPacketEndpoint:
             "outcome",
             "family_size",
             "tables_gap",
+            "open_on",
             "means_debts_answered",
         }
         assert resp.data["form_types"][:3] == ["form_101", "form_106dec", "form_106sum"]
         assert "form_103b" not in resp.data["form_types"]
         assert len(resp.data["form_types"]) == 15
+
+    def test_the_replies_say_when_the_result_waits_on_amounts_owed(
+        self, api_client, session_with_debtor
+    ):
+        # 4d-R27: while line 16 is open above the median, the result waits on Amounts Owed and the
+        # packet reply names that step; a result worked out names none, nor a row saved before 4d.
+        session = session_with_debtor
+        _set_wages(session, "9000.00")
+        answered = api_client.get(self.URL, {"session": session.id}).data
+        assert (answered["outcome"], answered["open_on"]) == ("cannot_work_out", None)
+
+        answer_petition(session, debt_nature=None, disabled_veteran=None, reservist=None)
+        assert "debt_nature" not in session.petition_answers.get_answers()
+        waiting = api_client.get(self.URL, {"session": session.id}).data
+        assert (waiting["outcome"], waiting["open_on"]) == ("cannot_work_out", "debts")
+
+        # an unfinished intake's packet reads the stored row, here one saved before 4d
+        IntakeSession.objects.filter(pk=session.pk).update(status="in_progress")
+        row = MeansTest.objects.get(session=session)
+        details = row.get_calculation_details()
+        del details["open_on"]
+        row.set_calculation_details(details)
+        row.save()
+        before_4d = api_client.get(self.URL, {"session": session.id}).data
+        assert (before_4d["outcome"], before_4d["open_on"]) == ("cannot_work_out", None)
 
     def test_answers_saved_in_an_earlier_month_show_a_notice(self, api_client, session_with_debtor):
         session = session_with_debtor

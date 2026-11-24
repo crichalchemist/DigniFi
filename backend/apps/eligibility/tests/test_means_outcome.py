@@ -19,12 +19,18 @@ from apps.eligibility.means_lines import SKIPPED, work_out
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.eligibility.tests.test_means_inputs import PRIYAS_ANSWERS
-from apps.intake.models import DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
-from apps.intake.tests.builders import answer_household
+from apps.intake.models import (
+    DebtorInfo,
+    ExpenseInfo,
+    IncomeInfo,
+    IntakeSession,
+    PetitionAnswers,
+)
+from apps.intake.tests.builders import answer_household, answer_petition
 from apps.users.models import User
 
 
-def _session(wages):
+def _session(wages, **household):
     call_command("loaddata", "ilnd_2025_data", verbosity=0)
     user = User.objects.create_user(username=f"outcome{wages}", password="pw")
     session = IntakeSession.objects.create(user=user, district=District.objects.get(code="ilnd"))
@@ -35,7 +41,7 @@ def _session(wages):
             "monthly_gross_wages": D(wages),
         },
     )
-    answer_household(session)
+    answer_household(session, **household)
     DebtorInfo.objects.create(
         session=session,
         first_name="Demo",
@@ -184,6 +190,7 @@ def test_the_calculate_reply_carries_the_outcome_and_no_sentence(session_at_3000
         "means_test_id",
         "outcome",
         "tables_gap",
+        "open_on",
     }
 
 
@@ -239,3 +246,114 @@ def test_a_household_row_left_unanswered_is_refused_in_the_income_steps_words_be
     assert response.data["error"] == sentence
     # The first gap is the row's own, not some other gap that happened to come first
     assert sentence == MEMBER_UNANSWERED
+
+
+# Form 122A-1Supp's answers (4d), over the builder's consumer, No, No.
+VETERAN = {"disabled_veteran": "yes", "debts_on_duty": "yes"}
+EXCLUSION = {"reservist": "yes", "called_to_duty": "yes", "duty_category": "2"}
+
+
+def _presumption_reader(monkeypatch):
+    # The session boundary only, as in the worked-out test above: Priya's 122A-2 answers with a
+    # line 16 that works out a presumption.
+    def reader(session):
+        return replace(read_inputs(session), **{**PRIYAS_ANSWERS, "line_16": D("2300.00")})
+
+    monkeypatch.setattr("apps.eligibility.models.read_inputs", reader)
+
+
+def _open_on(session):
+    return MeansTest.objects.get(session=session).get_calculation_details()["open_on"]
+
+
+def test_a_business_filer_above_the_median_is_not_consumer_and_passes(session_at_9000):
+    # Form 122A-1Supp line 1: debts not primarily consumer debts tick box 1 on 122A-1, whatever
+    # the income, so no 122A-2 figure is worked out (D1).
+    answer_petition(session_at_9000, debt_nature="business")
+    result = MeansTestCalculator(session_at_9000).calculate()
+    assert (result["outcome"], result["passes_means_test"]) == ("not_consumer", True)
+    row = MeansTest.objects.get(session=session_at_9000)
+    assert (row.outcome, row.passes_means_test) == ("not_consumer", True)
+    # The figures stay stored: 106Sum line 8 goes blank with 122A-1 line 11, not by an empty row.
+    assert row.calculated_cmi == D("9000.00")
+    assert row.median_income_threshold == result["median_income_threshold"] > 0
+
+
+@pytest.mark.parametrize(
+    ("answers", "outcome", "passes"),
+    [(VETERAN, "veteran_exemption", True), (EXCLUSION, "military_exclusion", None)],
+)
+def test_a_veteran_exemption_passes_and_a_military_exclusion_is_neither(
+    session_at_9000, answers, outcome, passes
+):
+    # Box 1 is "no presumption"; box 3 says the test doesn't apply now but could later (4d-R1).
+    answer_petition(session_at_9000, **answers)
+    result = MeansTestCalculator(session_at_9000).calculate()
+    assert (result["outcome"], result["passes_means_test"]) == (outcome, passes)
+
+
+def test_an_unanswered_line_16_above_the_median_cannot_be_worked_out(db):
+    # D3: an answer that could take the filer off 122A-2 is still open, so no figure is shown.
+    session = _session("9000.00", debt_nature=None)
+    assert not PetitionAnswers.objects.filter(session=session).exists()
+    result = MeansTestCalculator(session).calculate()
+    assert (result["outcome"], result["passes_means_test"]) == ("cannot_work_out", None)
+    assert result["details"]["tables"] == []
+
+
+def test_an_unanswered_line_16_below_the_median_stays_below(db):
+    session = _session("3000.00", debt_nature=None)
+    assert not PetitionAnswers.objects.filter(session=session).exists()
+    result = MeansTestCalculator(session).calculate()
+    assert (result["outcome"], result["passes_means_test"]) == ("at_or_below_median", True)
+
+
+def test_the_builder_default_keeps_todays_presumption(session_at_9000, monkeypatch):
+    # The builder answers consumer, No, No, so a test built before 4d works 122A-2 out as it did.
+    assert session_at_9000.petition_answers.get_answers() == {
+        "debt_nature": "consumer",
+        "disabled_veteran": "no",
+        "reservist": "no",
+    }
+    _presumption_reader(monkeypatch)
+    result = MeansTestCalculator(session_at_9000).calculate()
+    assert (result["outcome"], result["passes_means_test"]) == ("presumption", False)
+
+
+def test_a_result_that_waits_on_amounts_owed_says_so(db, monkeypatch):
+    # 4d-R27: open_on names the step whose answer the result waits on, and only then.
+    unanswered = _session("9000.00", debt_nature=None)
+    MeansTestCalculator(unanswered).calculate()
+    assert _open_on(unanswered) == "debts"
+
+    session = _session("9001.00")
+    answer_petition(session, disabled_veteran=None, reservist=None)
+    MeansTestCalculator(session).calculate()
+    assert _open_on(session) == "debts"
+
+    for answers, outcome in (
+        ({"debt_nature": "business"}, "not_consumer"),
+        (VETERAN, "veteran_exemption"),
+        (EXCLUSION, "military_exclusion"),
+    ):
+        answer_petition(session, **{"disabled_veteran": "no", "reservist": "no", **answers})
+        assert MeansTestCalculator(session).calculate()["outcome"] == outcome, answers
+        assert _open_on(session) is None, answers
+        answer_petition(
+            session,
+            debt_nature="consumer",
+            disabled_veteran="no",
+            debts_on_duty=None,
+            reservist="no",
+            called_to_duty=None,
+            duty_category=None,
+        )
+
+    _presumption_reader(monkeypatch)
+    assert MeansTestCalculator(session).calculate()["outcome"] == "presumption"
+    assert _open_on(session) is None
+
+    monkeypatch.setattr("apps.districts.dated_tables._today", lambda: date(2026, 7, 14))
+    result = MeansTestCalculator(session).calculate()
+    assert (result["outcome"], result["tables_gap"]) == ("cannot_work_out", "IRS expense standards")
+    assert _open_on(session) is None

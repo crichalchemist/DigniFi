@@ -297,12 +297,17 @@ export interface PersonaPetition {
   // then the landlord's name typed over the copy
   landlord_pick?: string;
   landlord_name?: string;
+  // Amounts Owed (4d): Form 101 line 16 and Form 122A-1Supp's two military questions
+  debt_nature: 'consumer' | 'business' | 'neither';
+  disabled_veteran: 'yes' | 'no';
+  reservist: 'yes' | 'no';
 }
 
 /**
  * A persona's Form 101 answers on every step that asks them: step 1's seven gates No (a persona
  * with a business sets line 12's Yes and its block over these), the venue "lived here", the
- * Assets step's hazard No, and Contracts & Leases' rent answer (an eviction No under a rent Yes)
+ * Assets step's hazard No, Amounts Owed's line 16 consumer with both military questions No (D18),
+ * and Contracts & Leases' rent answer (an eviction No under a rent Yes)
  */
 function gates(rents_residence: 'yes' | 'no'): PersonaPetition {
   return {
@@ -315,6 +320,9 @@ function gates(rents_residence: 'yes' | 'no'): PersonaPetition {
     pending_case_answer: 'no',
     sole_proprietor_answer: 'no',
     hazard_answer: 'no',
+    debt_nature: 'consumer',
+    disabled_veteran: 'no',
+    reservist: 'no',
     rents_residence,
     ...(rents_residence === 'yes' ? { eviction_judgment: 'no' as const } : {}),
   };

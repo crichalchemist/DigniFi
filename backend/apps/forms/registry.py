@@ -20,7 +20,12 @@ from apps.districts.dated_tables import fill_date
 from apps.districts.exemptions import exemption_catalog_in_force
 from apps.eligibility.cmi import MARRIAGE_UNANSWERED, is_above_median
 from apps.eligibility.means_inputs import page_answers, read_inputs, read_tables
-from apps.eligibility.means_lines import missing_line, work_out
+from apps.eligibility.means_lines import (
+    SUPP_OUTCOMES,
+    military_question_open,
+    missing_line,
+    work_out,
+)
 from apps.forms.schema import load_schema
 from apps.forms.services.answer_records import evicted_renter, landlord_missing
 from apps.forms.services.exemption_items import exemption_items
@@ -57,11 +62,6 @@ class PacketForm:
 
 def _always(session: IntakeSession) -> bool:
     return True
-
-
-def _never(session: IntakeSession) -> bool:
-    # 122A-1Supp: nothing collects a claimed exemption from the presumption yet (step 4).
-    return False
 
 
 def payment_choice(session: IntakeSession) -> str | None:
@@ -105,6 +105,15 @@ def _above_median(session: IntakeSession) -> bool:
     if means_test is None:
         return False
     return is_above_median(means_test.calculated_cmi, means_test.median_income_threshold)
+
+
+def _122a2_applies(session: IntakeSession) -> bool:
+    """
+    Form 122A-2 is in the packet above the median unless the stored means test routed the filer
+    to one of Form 122A-1Supp's three outcomes, where the Supp takes its place (R-ROUTE, D1): the
+    two are never in one packet. A row saved before 3h1 has no outcome, so it routes as before.
+    """
+    return _above_median(session) and session.means_test.outcome not in SUPP_OUTCOMES
 
 
 def _nothing(session: IntakeSession) -> None:
@@ -221,9 +230,25 @@ FORM_122A2_LINE_MISSING = (
 )
 
 
+# DRAFT: counsel C-39
+FORM_122A2_MILITARY_OPEN = (
+    "Answer each question about military service on the Amounts Owed step. "
+    "Form 122A-2 waits for those answers."
+)
+
+
 def _needs_the_122a2_questions(session: IntakeSession) -> None:
-    """Form 122A-2's questions: a missing table, the Income step, the page's first gap, then a
-    line the calculator can't work out (§6). The last refusal links nowhere."""
+    """Form 122A-2's questions: Form 101 line 16 and an open military question on Amounts Owed
+    (B32, D3), a missing table, the Income step, the page's first gap, then a line the calculator
+    can't work out (§6). The last refusal links nowhere."""
+    # Imported here: apps.intake.petition imports this module (FORM_101A_LANDLORD), 4d-R4.
+    from apps.intake.petition import GATE_DEBT_NATURE
+
+    answers = petition_answers_of(session)
+    if answers.get("debt_nature") is None:
+        raise PreconditionMissing(GATE_DEBT_NATURE, step="debts")
+    if military_question_open(answers):
+        raise PreconditionMissing(FORM_122A2_MILITARY_OPEN, step="debts")
     tables, _ = read_tables(fill_date())
     inputs = read_inputs(session)
     if inputs.marital_status is None:
@@ -239,10 +264,35 @@ def _needs_the_122a2_questions(session: IntakeSession) -> None:
 
 
 def _needs_means_test_and_form_122a2(session: IntakeSession) -> None:
-    """122A-1 says its result is worked out on 122A-2, so above the median it waits for it."""
+    """122A-1 waits for its partner, 122A-2 or the Supp: 122A-1 says its result is worked out on
+    122A-2, and the Supp says to submit it with the signed 122A-1 (D4), so whichever the packet
+    holds must print first."""
     _needs_means_test(session)
-    if _above_median(session):
+    if _122a2_applies(session):
         PDFFormFiller().check("form_122a2", build_parts("form_122a2", session))
+    elif _supp_applies(session):
+        PDFFormFiller().check("form_122a1_supp", build_parts("form_122a1_supp", session))
+
+
+def _supp_applies(session: IntakeSession) -> bool:
+    """
+    Form 122A-1Supp is in the packet exactly when the stored means test routed the filer to one of
+    its three outcomes (R-ROUTE): not consumer debts, the disabled veteran's exemption or a line 3
+    exclusion. A row saved before 3h1 has no outcome, so it routes as before. Never raises.
+    """
+    means_test = getattr(session, "means_test", None)
+    return means_test is not None and means_test.outcome in SUPP_OUTCOMES
+
+
+def _needs_supp_answers(session: IntakeSession) -> None:
+    """The Supp's first open question or unreadable date, in Complete's own words, fixed on the
+    Amounts Owed step: a gate, or one of the Supp's details (never Form 101 line 16c's words)."""
+    # Imported here: apps.intake.petition imports this module (FORM_101A_LANDLORD).
+    from apps.intake.petition import SUPP_DETAILS, debt_nature_gaps
+
+    for gap in debt_nature_gaps(petition_answers_of(session)):
+        if gap.kind == gap.GATE or gap.message in SUPP_DETAILS:
+            raise PreconditionMissing(gap.message, step="debts")
 
 
 # form_type → PacketForm. Every key must match a GeneratedForm.FORM_TYPE_CHOICES value.
@@ -256,8 +306,8 @@ FORM_REGISTRY: dict[str, PacketForm] = {
     "form_121": PacketForm(_always, _needs_ssn),
     "list_of_creditors": PacketForm(_always, _nothing),
     "form_122a1": PacketForm(_always, _needs_means_test_and_form_122a2),
-    "form_122a1_supp": PacketForm(_never, _nothing),
-    "form_122a2": PacketForm(_above_median, _needs_the_122a2_questions),
+    "form_122a1_supp": PacketForm(_supp_applies, _needs_supp_answers),
+    "form_122a2": PacketForm(_122a2_applies, _needs_the_122a2_questions),
     "schedule_a_b": PacketForm(_always, _nothing),
     "schedule_c": PacketForm(_always, _needs_exemption_answers),
     "schedule_d": PacketForm(_always, _nothing),

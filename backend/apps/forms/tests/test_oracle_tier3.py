@@ -20,6 +20,7 @@ import pytest
 from django.core.management import call_command
 
 from apps.districts.models import District
+from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import build_field_values, build_parts, packet
 from apps.forms.schema import load_schema
 from apps.forms.services.pdf_filler import PDFFormFiller
@@ -191,11 +192,13 @@ def _petition_boxes(rents, business=None):
     """
     Form 101's boxes for the answers every persona is seeded with on steps 1, 5 and 7 (4b-ii,
     worked out from seed_demo_data._petition): line 9 and line 10 No, filing here for the
-    180 days (line 6), line 13 No unless a business is named, line 24's hazard No, and line 11's
-    rent answer with No to an eviction judgment under a Yes. Radio states are the index's own
-    names for each group.
+    180 days (line 6), line 13 No unless a business is named, line 24's hazard No, line 11's
+    rent answer with No to an eviction judgment under a Yes, and (4d, step 6) line 16a Yes,
+    consumer debts. Radio states are the index's own names for each group.
     """
     boxes = {
+        "Yes Go to line 17": "/On",
+        "No Go to line 16b": "",
         "bankruptcy within the": "/No",
         "filed by a spouse who is": "/No_2",
         "Go to line 12": "/Yes_3" if rents else "/No_3",
@@ -350,6 +353,8 @@ EXPECTED = {
             "7": "",
         },
         "form_106sum": {
+            "check7@2:T5": "/consumer",
+            "check7@2:T6": "",
             "1b": "7930.00",
             "1c": "7930.00",
             "2": "0.00",
@@ -540,6 +545,8 @@ EXPECTED = {
             "7": "",
         },
         "form_106sum": {
+            "check7@2:T5": "/consumer",
+            "check7@2:T6": "",
             "1b": "16440.00",
             "1c": "16440.00",
             "2": "8500.00",
@@ -731,6 +738,8 @@ EXPECTED = {
             "5": "",
         },
         "form_106sum": {
+            "check7@2:T5": "/consumer",
+            "check7@2:T6": "",
             "1b": "67900.00",
             "1c": "67900.00",
             "2": "14900.00",
@@ -1114,6 +1123,8 @@ EXPECTED = {
             "5": "",
         },
         "form_106sum": {
+            "check7@2:T5": "/consumer",
+            "check7@2:T6": "",
             "1a": "180000.00",
             "1b": "23500.00",
             "1c": "203500.00",
@@ -1283,6 +1294,8 @@ EXPECTED = {
             "2.1": "",
         },
         "form_106sum": {
+            "check7@2:T5": "/consumer",
+            "check7@2:T6": "",
             "2": "0.00",
             "3b": "31400.00",
             "3c": "31400.00",
@@ -1501,6 +1514,8 @@ EXPECTED = {
             "9": "",
         },
         "form_106sum": {
+            "check7@2:T5": "/consumer",
+            "check7@2:T6": "",
             "1a": "0.00",
             "1b": "7217.00",
             "1c": "7217.00",
@@ -1853,3 +1868,87 @@ def test_a_renter_with_an_eviction_judgment_gets_form_101a_with_the_landlord():
     for box in ("undefined_38", "undefined_39", "Date", "Date_2", "Debtor 2", "Case number"):
         assert shown[box], box
         assert all(v == "" and s in ("", "/Off") for v, s in shown[box]), box
+
+
+# No persona answers line 16 other than consumer or claims a military route (D18, 4d-R23), so the
+# Supp's three routes are answered inside the tests (B39). The stored means test decides the
+# packet (R-ROUTE) and packet() never works it out, so each test works it out after answering.
+def _routed(persona, **answers):
+    if not District.objects.filter(code="ilnd").exists():
+        call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", "--reset", persona=persona, verbosity=0)
+    session = IntakeSession.objects.filter(user__username=f"demo_{persona}").latest("id")
+    answer_petition(session, **answers)
+    MeansTestCalculator(session).calculate()
+    return IntakeSession.objects.get(pk=session.pk)
+
+
+def _ticks(form_type, session):
+    """Box (or `<name>@<page>:<tag>` for a widget the schema binds by its tag) → the states its
+    drawn widgets tick, an empty set for a box that ticks nothing."""
+    schema = load_schema(form_type)
+    tagged = {(f.pdf_field, f.page, f.tag) for f in schema.fields if f.tag}
+    drawn = {(w.page, w.tag) for w in template_widgets(schema.template_filename) if w.drawn}
+    values = build_field_values(form_type, session)
+    ticks = {}
+    for w in read_drawn(form_type, PDFFormFiller().fill(form_type, values)):
+        if not w.state or (w.page, w.tag) not in drawn:
+            continue
+        box = w.full_name
+        if (w.full_name, w.page, w.tag) in tagged:
+            box = f"{w.full_name}@{w.page}:{w.tag}"
+        ticks.setdefault(box, set()).update({w.state} - {"/Off"})
+    return ticks
+
+
+@pytest.mark.django_db
+def test_a_non_consumer_filer_gets_the_supp_and_box_1():
+    # Priya is above the median: answering business sends her to box 1 (D1), and the Supp takes
+    # 122A-2's place, so her packet stays at 16 forms.
+    session = _routed("priya", debt_nature="business")
+
+    forms = packet(session)
+    assert len(forms) == 16
+    assert "form_122a1_supp" in forms and "form_122a2" not in forms
+    assert _ticks("form_122a1", session)["CheckBox1"] == {"/No Abuse"}
+    supp = _ticks("form_122a1_supp", session)
+    assert (supp["CheckBox2@1:T7"], supp["CheckBox2@1:T6"]) == (set(), {"/no"})
+    for box in ("CheckBox3", "CheckBox4", "CheckBox5", "CheckBox6", "CheckBox7"):
+        assert supp[box] == set(), box
+
+
+@pytest.mark.django_db
+def test_a_disabled_veteran_gets_the_supp_and_box_1():
+    # James is below the median: line 2 Yes to both questions is the veteran's exemption (D1),
+    # which skips line 3, and the Supp joins his packet.
+    session = _routed("james", disabled_veteran="yes", debts_on_duty="yes")
+
+    forms = packet(session)
+    assert len(forms) == 16
+    assert "form_122a1_supp" in forms and "form_122a2" not in forms
+    assert _ticks("form_122a1", session)["CheckBox1"] == {"/No Abuse"}
+    supp = _ticks("form_122a1_supp", session)
+    assert (supp["CheckBox2@1:T7"], supp["CheckBox2@1:T6"]) == ({"/Yes"}, set())
+    assert (supp["CheckBox3"], supp["CheckBox4"]) == ({"/Yes"}, {"/Yes"})
+    for box in ("CheckBox5", "CheckBox6", "CheckBox7"):
+        assert supp[box] == set(), box
+
+
+@pytest.mark.django_db
+def test_a_reservist_gets_the_supp_and_box_3():
+    # Priya, above the median, claims line 3's category 3 with line 2 settled No (D1, B33): box 3,
+    # and the Supp in 122A-2's place. Category 3 needs no date.
+    session = _routed("priya", reservist="yes", called_to_duty="yes", duty_category="3")
+
+    forms = packet(session)
+    assert len(forms) == 16
+    assert "form_122a1_supp" in forms and "form_122a2" not in forms
+    assert _ticks("form_122a1", session)["CheckBox1"] == {"/Does not apply"}
+    supp = _ticks("form_122a1_supp", session)
+    assert (supp["CheckBox2@1:T7"], supp["CheckBox2@1:T6"]) == ({"/Yes"}, set())
+    assert (supp["CheckBox3"], supp["CheckBox4"]) == ({"/no"}, set())
+    assert (supp["CheckBox5"], supp["CheckBox6"], supp["CheckBox7"]) == (
+        {"/Yes"},
+        {"/Yes"},
+        {"/3"},
+    )

@@ -71,9 +71,16 @@ vi.mock('../../components/wizard/WizardLayout', async (importOriginal) => {
 // Shared fixtures
 // ---------------------------------------------------------------------------
 
-// Form 101's gates on Assets (line 14) and Contracts & Leases (line 11), answered No, so a session
-// past those steps can continue from them as it could before 4b asked them (PF2-T9-6)
-const LATER_PETITION_GATES = { hazard_answer: 'no' as const, rents_residence: 'no' as const };
+// Form 101's gates on Assets (line 14), Amounts Owed (line 16 and Form 122A-1Supp's two military
+// questions, 4d) and Contracts & Leases (line 11), answered, so a session past those steps can
+// continue from them as it could before 4b and 4d asked them (PF2-T9-6)
+const LATER_PETITION_GATES = {
+  hazard_answer: 'no' as const,
+  debt_nature: 'consumer' as const,
+  disabled_veteran: 'no' as const,
+  reservist: 'no' as const,
+  rents_residence: 'no' as const,
+};
 
 const sessionAtStep9 = {
   id: 1,
@@ -1744,7 +1751,12 @@ describe.each([
     fill,
     stored,
   }) => {
-    const onStep = { ...sessionAtStep1, current_step: step };
+    // Amounts Owed's Continue also waits for line 16 and the Supp's gates (4d), answered here
+    const onStep = {
+      ...sessionAtStep1,
+      current_step: step,
+      ...(list === 'debts' && { petition_answers: LATER_PETITION_GATES }),
+    };
     const rowsSent = (body: Record<string, unknown>) => body[list] as Record<string, unknown>[];
     const idsSent = (bodies: Record<string, unknown>[]) =>
       bodies.map((body) => rowsSent(body).map((row) => row.id));
@@ -1993,7 +2005,12 @@ describe('IntakeWizard the priority answers on the Amounts Owed step', () => {
   };
 
   async function continueWith(debt: Record<string, unknown>) {
-    const { bodies } = serveSessionSaves({ ...sessionAtStep1, current_step: 6, debts: [debt] });
+    const { bodies } = serveSessionSaves({
+      ...sessionAtStep1,
+      current_step: 6,
+      debts: [debt],
+      petition_answers: LATER_PETITION_GATES,
+    });
     renderWizard();
     await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
@@ -5320,6 +5337,18 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     typeof value === 'object' && value !== null
       ? Object.entries(value).some(([key, inner]) => key.startsWith('_') || hasBrowserKey(inner))
       : false;
+  /** Step 6's Form 101 line 16 and Supp keys with nothing answered, as its body sends them */
+  const NO_DEBT_NATURE_ANSWER = {
+    debt_nature: null,
+    debt_nature_text: null,
+    disabled_veteran: null,
+    debts_on_duty: null,
+    reservist: null,
+    called_to_duty: null,
+    duty_category: null,
+    duty_released_on: null,
+    duty_ended_on: null,
+  };
 
   it('saves a half-filled debt two seconds after typing stops, with its amount as 0', async () => {
     const { bodies } = serveSessionSaves({ ...sessionAtStep1, current_step: 6 });
@@ -5433,7 +5462,11 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       fireEvent.click(screen.getByRole('button', { name: 'I have no amounts owed' }));
       await waitSeconds(3);
       expect(bodies).toHaveLength(1);
-      expect(bodies[0]).toEqual({ debts: [], claim_answers: { no_debts: true } });
+      expect(bodies[0]).toEqual({
+        debts: [],
+        claim_answers: { no_debts: true },
+        petition_answers: NO_DEBT_NATURE_ANSWER,
+      });
 
       fireEvent.change(field('creditor_name_0'), { target: { value: 'Demo Clinic' } });
       await waitSeconds(3);
@@ -5485,6 +5518,8 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       current_step: 6,
       debts: [storedDebt],
       claim_answers: { no_debts: true },
+      // Line 16 and the Supp's gates answered, so the status speaks only to the rows (4d)
+      petition_answers: LATER_PETITION_GATES,
     });
     renderWizard();
     await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
@@ -5495,6 +5530,205 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     ).not.toBeInTheDocument();
     // The answer is not read as a contradiction the filer can't undo
     expect(document.querySelector('.debts-step [role="status"]')).toBeEmptyDOMElement();
+  });
+
+  // Form 101 line 16 and Form 122A-1Supp's questions ride in step 6's session PATCH, each key as
+  // its answer or null, so a stored answer reaches the body as it was loaded (4d)
+  const sentPetition = (body: unknown) =>
+    (body as { petition_answers: Record<string, unknown> }).petition_answers;
+  const choose = (name: string, value: string) =>
+    fireEvent.click(document.querySelector(`input[name="${name}"][value="${value}"]`)!);
+
+  it('step 6 sends every line 16 and military key, null while unanswered', async () => {
+    const { bodies } = serveSessionSaves({
+      ...onStep6,
+      petition_answers: { hazard_answer: 'no', rents_residence: 'no' },
+    });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      choose('debt_nature', 'consumer');
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toHaveLength(1);
+    // The step's nine keys and no other petition key: the hazard and rent answers are other steps'
+    expect(sentPetition(bodies[0])).toEqual({ ...NO_DEBT_NATURE_ANSWER, debt_nature: 'consumer' });
+  });
+
+  it('step 6 still sends military answers kept under business', async () => {
+    const military = {
+      disabled_veteran: 'yes',
+      debts_on_duty: 'no',
+      reservist: 'yes',
+      called_to_duty: 'yes',
+      duty_category: '2',
+      duty_released_on: '01/15/2025',
+    };
+    const { bodies } = serveSessionSaves({
+      ...onStep6,
+      petition_answers: { ...LATER_PETITION_GATES, debt_nature: 'consumer', ...military },
+    });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      choose('debt_nature', 'business');
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    // Business hides the military block but deletes nothing: the answers stay behind Show and
+    // Delete, and a null would remove them on the server (4d-R15)
+    expect(bodies).toHaveLength(1);
+    expect(sentPetition(bodies[0])).toEqual({
+      ...NO_DEBT_NATURE_ANSWER,
+      debt_nature: 'business',
+      ...military,
+    });
+  });
+
+  it('autosave on step 6 sends nothing more after a save', async () => {
+    const { bodies } = serveSessionSaves({
+      ...onStep6,
+      petition_answers: { hazard_answer: 'no', rents_residence: 'no' },
+    });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      // A new row, not saved yet: the reply writes its id into the row, so the step's body is
+      // built again after the save, and must equal the saved copy, petition answers included
+      fireEvent.click(screen.getByRole('button', { name: /add another amount owed/i }));
+      fireEvent.change(field('creditor_name_1'), { target: { value: 'Demo Clinic' } });
+      choose('debt_nature', 'consumer');
+      await waitSeconds(3);
+      expect(bodies).toHaveLength(1);
+      expect(sentDebts(bodies[0])[1].id).toBeUndefined();
+      expect(sentPetition(bodies[0]).debt_nature).toBe('consumer');
+      // The row now holds the id the reply gave it
+      await waitSeconds(6);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toHaveLength(1);
+  });
+
+  // F0: once a step 6 save that changed line 16's or the Supp's answers has landed, the sidebar
+  // works the means test out again, and that call saves the row an unfinished intake's dashboard
+  // reads, so a presumption worked out before a business answer, or before an open military
+  // question, never stays on show
+  /** Records each means test call as the number of session PATCHes the server had by then */
+  function serveCalculates(bodies: unknown[]) {
+    const calls: number[] = [];
+    server.use(
+      http.post('http://localhost:8000/api/intake/sessions/:id/calculate_means_test/', () => {
+        calls.push(bodies.length);
+        return HttpResponse.json({
+          means_test_result: {
+            passes_means_test: true,
+            cmi: 1000,
+            median_income_threshold: 5000,
+            outcome: 'at_or_below_median',
+            tables_gap: null,
+          },
+          session_id: 1,
+        });
+      })
+    );
+    return calls;
+  }
+
+  it('works the means test out again once a save that changes line 16 has landed', async () => {
+    const { bodies } = serveSessionSaves({
+      ...onStep6,
+      petition_answers: { hazard_answer: 'no', rents_residence: 'no' },
+    });
+    const calls = serveCalculates(bodies);
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    // The sidebar's own first call, when the step shows
+    await waitFor(() => expect(calls).toEqual([0]));
+
+    vi.useFakeTimers();
+    try {
+      choose('debt_nature', 'business');
+      await waitSeconds(4);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toHaveLength(1);
+    // Exactly one more call, made after the PATCH
+    expect(calls).toEqual([0, 1]);
+  });
+
+  it('judges a line 16 change against the newest save, not a reply it overtook', async () => {
+    const saves = serveSessionSaves({ ...onStep6, petition_answers: LATER_PETITION_GATES });
+    const calls = serveCalculates(saves.bodies);
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    await waitFor(() => expect(calls).toEqual([0]));
+
+    vi.useFakeTimers();
+    try {
+      // Business goes out on a slow link; consumer again, sent after it, lands first and is
+      // what the server holds, so the slow reply, landing last, changes nothing
+      const landFirstSave = saves.holdNextReply();
+      choose('debt_nature', 'business');
+      await waitSeconds(3);
+      choose('debt_nature', 'consumer');
+      await waitSeconds(3);
+      await act(async () => landFirstSave());
+      await waitSeconds(2);
+      expect(saves.bodies).toHaveLength(2);
+      expect(calls).toEqual([0]);
+
+      // Business once more is a change from what the server holds
+      choose('debt_nature', 'business');
+      await waitSeconds(4);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(saves.bodies).toHaveLength(3);
+    expect(calls).toEqual([0, 3]);
+  });
+
+  it('works nothing out again on a visit alone, or a save that changes no line 16 answer', async () => {
+    const { bodies } = serveSessionSaves({
+      ...onStep6,
+      petition_answers: LATER_PETITION_GATES,
+    });
+    const calls = serveCalculates(bodies);
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    await waitFor(() => expect(calls).toEqual([0]));
+
+    vi.useFakeTimers();
+    try {
+      // A visit alone saves nothing and works nothing out
+      await waitSeconds(4);
+      expect(bodies).toHaveLength(0);
+      expect(calls).toEqual([0]);
+
+      // A save of a row alone sends line 16's answers as loaded
+      fireEvent.change(field('creditor_name_0'), { target: { value: 'Northwind Bank' } });
+      await waitSeconds(4);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toHaveLength(1);
+    expect(calls).toEqual([0]);
   });
 
   it('sends a new debt that has a number but no name', async () => {
@@ -5842,6 +6076,41 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       vi.useRealTimers();
     }
     expect(sessionPatches).toEqual([]);
+  });
+
+  // Line 16's and the Supp's nine keys, every one loaded (a full military chain, a category, its
+  // date, and 16c's words kept under consumer): showing the step builds the body it loaded, so a
+  // completed intake stays completed (4d)
+  it('sends nothing on a visit alone to step 6 with every line 16 and military key loaded', async () => {
+    const { bodies, stored } = serveSessionSaves({
+      ...onStep6,
+      status: 'completed',
+      petition_answers: {
+        hazard_answer: 'no',
+        rents_residence: 'no',
+        debt_nature: 'consumer',
+        debt_nature_text: 'Demo words kept from an earlier answer',
+        disabled_veteran: 'yes',
+        debts_on_duty: 'no',
+        reservist: 'yes',
+        called_to_duty: 'yes',
+        duty_category: '2',
+        duty_released_on: '01/15/2025',
+      },
+    });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    expect(document.querySelector('input[name="duty_released_on"]')).toHaveValue('01/15/2025');
+
+    vi.useFakeTimers();
+    try {
+      await waitSeconds(6);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toEqual([]);
+    expect(stored().status).toBe('completed');
   });
 
   it.each([

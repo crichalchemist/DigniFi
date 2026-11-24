@@ -10,7 +10,7 @@
 - **Tags.** `[Qn]` is one of the owner's five decisions (§2). `[SF]` is one of the settled facts under them. `C-n` is a counsel item; step 4's start at C-36, since C-35 is the highest number used (3H:1015). `Bn` is a builder's call. `DIG-n` is a Plane ticket. `[UPL]` is the rule that DigniFi gives information, never advice.
 - **People.** Filers are "they". The owner is "he".
 
-<!-- prettier-ignore-end -->
+
 
 ## 1. Why
 
@@ -1095,3 +1095,57 @@ Three rulings by the controller on what the fold left open, each recorded where 
 - **"Nothing is missing." is about the intake list.** A form's own precondition can still refuse on the dashboard; a counsel note in the C-40 family. **4i.**
 - **Mark as Filed on a generated form outside the 122A pair is ungated by design** (a filed form keeps what it was filed with, DIG-155). Recorded in CLAUDE.md; no later PR.
 - **Recorded, not changed:** `test_the_gap_list_is_what_complete_refuses_in_the_same_order` is tautological by construction; the order pin is `test_complete_lists_every_gap_in_wizard_order`.
+
+## Spec amendment, 4d (2026-11-23, owner decisions)
+
+PR 4d (§19 row 4) was planned in `docs/superpowers/plans/2026-11-23-forms-step4d.md` and built on `feat/forms-step4d`. The owner's decisions are recorded in `.superpowers/plan-4d/owner-decisions.md`, and the approved words in `.superpowers/plan-4d/owner-copy.md`. This block supersedes the spec lines it names (`S:<line>`, this file's lines above the block). No line above it is changed: where a line above disagrees with this block, this block wins, and later plans read both.
+
+### Owner decisions
+
+- **D1, follow the form: three outcomes.** Supersedes S:575, S:578, S:584 and S:591, which fold line 2 Yes/Yes and line 3's categories into one `military_exclusion` and box 3. Also supersedes B31 (S:909, "Two new means-test outcomes"), B33 (S:911), "the two outcomes" in S:784 and S:810, and "the two outcome sentences" in S:587 and S:863. The form sends line 2 Yes/Yes to box 1 ("check box 1, There is no presumption of abuse"); only line 3's categories send the filer to box 3. So there are three outcomes: `not_consumer` and `veteran_exemption` tick Form 122A-1 box 1, and `military_exclusion` ticks box 3. 122A-1's Parts 1–2 print blank for all three. Each outcome has its own sentence: `MEANS_OUTCOME_NOT_CONSUMER`, `MEANS_OUTCOME_VETERAN` and `MEANS_OUTCOME_MILITARY`.
+- **D3, an open military question waits above the median.** Supersedes S:207, which makes all four of the Supp's military yes/noes gates, and S:575, which makes only an unanswered `debt_nature` wait. Under D3 the two gates are line 2's and line 3's own questions (`disabled_veteran`, `reservist`), and the three follow-ups (`debts_on_duty`, `called_to_duty`, `duty_category`) are details; D3's own two cases are `debts_on_duty` and `duty_category` (4d-R3 widens them). The details hold nothing at Complete, and above the median an open one gives `cannot_work_out`, with Form 122A-2 refused with `step="debts"` (`FORM_122A2_MILITARY_OPEN`). A line 3 claim counts only once line 2 is settled (F2). So line 2 open with line 3 fully claimed is `cannot_work_out` above the median and `at_or_below_median` below it. Below the median nothing waits.
+- **D4, the Supp and Form 122A-1 are tied.** Supersedes S:577, S:592 and S:594 ("122A-1 prints at once, with the Supp"). 122A-1's `requires` runs the Supp's whole path when the Supp applies, as it runs 122A-2's when 122A-2 applies. Mark as Filed ties the two (`MEANS_SUPP_PAIR_REFUSAL`), and `mark_pair_filed` files 122A-1 with whichever partner the packet holds, never both.
+- **D7, 106Sum lines 8–9g blank under not consumer.** Supersedes S:638, which binds only `check7`. Under `business` or `neither`, 106Sum lines 8, 9a–9d and 9g print blank, as the form's "not consumer" box says ("You have nothing to report on this part of the form").
+- **D8, the military sentence.** Supersedes S:584's words. The sentence covers line 3 only and gains "during the exclusion period". It is followed by the form's own amended-form sentence (`FORM_122A1SUPP_AMENDED`: "If your exclusion period ends before your case is closed, you may have to file an amended form later."). The veteran route has its own sentence (D1).
+- **D9, "none applies".** Supersedes S:303's list of four categories and S:305. `duty_category` takes a fifth answer, `"none"` ("None of these categories applies to me"). It claims no exclusion: the Supp stays out, `CheckBox7` prints blank and the means test is worked out as usual. `DETAIL_DUTY_CATEGORY` ("Choose a category, or say that none applies.") presumes nothing.
+- **D10, 106Sum line 8 follows 122A-1 line 11.** Supersedes S:638, which leaves line 8 printing CMI on the veteran and reservist routes. Line 8 prints only where 122A-1 line 11 prints (`summary_line_8_prints`).
+- **D11, the filed box 2 notice.** New; nothing is superseded. A filed 122A-1 with box 2 checked shows `MEANS_FILED_BOX_2_NOW_SUPP` once its partner is the Supp.
+- **D18, Andrés answers consumer.** Supersedes S:754's "an inference from his debt rows". All six personas answer `consumer`, with No to both military questions, so no persona carries the Supp (S:550 holds). Synthetic tests cover the Supp's printing.
+- **The Supp's card label (4d-R20).** It is the form's own title, "Form 122A-1Supp - Statement of Exemption from Presumption of Abuse".
+- **The homeland defense link (owner, 2026-11-24).** `WHAT_DOES_HOMELAND_DEFENSE_MEAN` reads "What does “homeland defense activity” mean on this form?". It replaces the drafted "What’s “homeland defense activity”?", which the reading-level test scored at grade 12.3. With controller Ruling M, each definition's visible summary is its own question, in place of S:305's "What does this mean?".
+
+The controller's rulings recorded beside the owner's decisions:
+
+- **R-D2.** Supersedes S:305's "Both gates are required", which holds only where the form reaches line 3, and S:593's single `consumer` condition, which becomes one predicate per question (4d-R8). Under line 2 Yes/Yes, `reservist` is no gate, the Supp's line 3 boxes print blank, and the step hides line 3.
+- **R-D5.** Supersedes S:790's last clause ("below the median with `business` → below-median outcome"): B53 holds, `not_consumer` whatever the income. B53 (S:931, "then `military_exclusion` whatever the income") is now read with F2's line 2 condition (D3).
+- **R-D6.** Supersedes S:176 and S:593, which ask for one derived binding per box. 106Sum `check7`, Form 107 `check6` and the Supp's `CheckBox2` are each two tagged bindings. The consumer widget's rule, `debt_nature_consumer`, is in `ANSWER_BOX_RULES`.
+- **R-ROUTE.** Settles S:575–579's readers, whose source the spec left unsaid. The routing readers read one stored outcome, after recalculation, and `route_outcome` is called only by `calculate()`. The printing readers read `PetitionAnswers`.
+
+### Plan rulings (4d plan, recorded for the owner)
+
+- **4d-R3 (accepted by the controller, Ruling L).** D3's two named cases (`debts_on_duty`, `duty_category`) widen to every open question the Supp reaches: both gates, `debts_on_duty`, `called_to_duty` and `duty_category`. It supersedes S:207 and S:575 with D3.
+- **4d-R4.** Supersedes S:576's sentence. B32's sentence becomes the gate's, one string: `GATE_DEBT_NATURE`, "Say whether your debts are primarily consumer debts, on the Amounts Owed step."
+- **4d-R12.** Supersedes S:579's "shows the outcome's sentence and continues". The page keeps its redirect to `/sofa`, and the outcome's sentence shows in the sidebar and on the dashboard.
+- **4d-R14 (narrowed) and 4d-R27.** Supersede S:585's sidebar gap line, which is not built (B34): the sidebar names no Amounts Owed dependency. The dashboard and the 122A-2 page say instead that the result waits on Amounts Owed (`MEANS_OUTCOME_ANSWER_DEBTS`), and link there: the 122A-2 page takes `open_on` from its own calculation's result (`means_page.py`), the dashboard from the stored row (`calculation_details["open_on"]`, read by the packet reply).
+- **4d-R15.** Supersedes S:298's "disappear". A hidden answer stays behind `HiddenLine` with Show and Delete (S:177's pattern).
+- **4d-R26 (accepted by the controller, Ruling L).** Supersedes S:177's and S:593's direct `duty_category` binding. `CheckBox7` prints through the rule `supp_duty_category`, not `petition.duty_category`, and `RADIO_KEYS` gains the four military yes/no keys.
+- **Counts (S:593, S:767).** "Its 19 unbound widgets all bind" is 8 names over 16 widgets; `CheckBox1`, `Debtor2.Name` and `Case number1` stay blank. Tier 2's 4d total is +11: the Supp +9 (the line 1 pair counts two), and 106Sum and 107 +1 each. `ASSERTED_CASES` goes from 1877 to 1888, not S:767's "the Supp 9" alone.
+- **The packet range (S:550, S:810).** The Supp and 122A-2 are never in one packet, so 4d's range stays 15–18. The spec's 15–19 waits for 4e and 4h.
+- **S:760.** The scanned-bill journey isn't untouched: it answers line 16.
+- **S:303.** The dates are checked for shape (a detail) and print blank when malformed (B47). Nothing checks the 540 days.
+- **S:575's precedence position (4d-R2).** The route runs after the median lookup. So a not-consumer or excluded filer is still refused by `NoTableInForce` when no median table is in force, a follow-up for Plane.
+- **S:806 and S:810.** Form 101 16a–c were bound in 4b, so 4d only asks line 16.
+
+### Counsel
+
+- **C-39, widened.** Beyond S:863, counsel sees:
+  - the three outcomes and their sentences (D1, D8);
+  - D7's and D10's blanking of 106Sum lines 8–9g;
+  - the tagged split (R-D6);
+  - D3's hold and the Amounts Owed sentence (4d-R27);
+  - D9's "none applies" label;
+  - D11's notice;
+  - the list's adjacency to "Total Amounts Owed". The list of the filer's amounts owed by kind sits inside the line 16 block, one disclaimer above the step's existing "Total Amounts Owed" (F11, 4d-R16). S:296 gives the reason no total sits beside the question: "a total beside the question would adopt the by-amount reading of "primarily", one of several".
+- **The 540 days (owner 2026-11-24).** S:584's "counts 540 days from the day you file" read as a window opening at filing; Form 122A-1Supp looks back from filing. `MEANS_OUTCOME_MILITARY` and `MILITARY_540_DAYS` now say "The form counts back 540 days from the day you file".
+
+<!-- prettier-ignore-end -->

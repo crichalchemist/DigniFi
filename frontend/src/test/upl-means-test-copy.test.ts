@@ -219,6 +219,16 @@ const NAMES = [
   'MEANS_PAIR_MARK_BOTH',
   'MEANS_PAIR_NOTICE',
   'MEANS_PAIR_REFUSAL',
+  // Step 4d's, in copy.ts's order
+  'MEANS_OUTCOME_NOT_CONSUMER',
+  'MEANS_OUTCOME_VETERAN',
+  'MEANS_OUTCOME_MILITARY',
+  'MEANS_SUPP_PAIR_REFUSAL',
+  'MEANS_MILITARY_OPEN',
+  'MEANS_SUPP_PAIR_NOTICE',
+  'MEANS_FILED_BOX_2_NOW_SUPP',
+  'MEANS_OUTCOME_ANSWER_DEBTS',
+  'MEANS_DEBTS_STEP_PHRASE',
   'MEANS_TABLE_MISSING',
   'MEANS_TEST_CALCULATING',
   'MEANS_TEST_INCOME_LABEL',
@@ -284,6 +294,15 @@ describe('the means test gives information, never advice', () => {
   it.each(STRINGS)('%s says "presumption" only where the owner ruled it may', (name, sentence) => {
     expect(/presumption/i.test(sentence)).toBe(SAYS_PRESUMPTION.includes(name));
   });
+
+  // S:587: Form 122A-1Supp's outcomes state the form's routing in its words, never that a test
+  // doesn't apply (MEANS_OUTCOME_BELOW, C-24, says so of Form 122A-2 below the median)
+  it.each(['MEANS_OUTCOME_NOT_CONSUMER', 'MEANS_OUTCOME_VETERAN', 'MEANS_OUTCOME_MILITARY'])(
+    '%s never says a test does not apply',
+    (name) => {
+      expect(held[name]).not.toMatch(/(doesn't|doesn’t|does not) apply/i);
+    }
+  );
 
   it.each(['MEANS_LINE_MISSING', 'MEANS_TABLE_MISSING'])(
     '%s says neither presumption nor abuse',
@@ -370,6 +389,36 @@ const EXACT_WORDS: [string, string][] = [
     'Form 122A-1 says your result is worked out on Form 122A-2. File them together.',
   ],
   ['MEANS_PAIR_REFUSAL', 'File Form 122A-1 and Form 122A-2 together.'],
+  ['MEANS_SUPP_PAIR_REFUSAL', 'File Form 122A-1 and Form 122A-1Supp together.'],
+  [
+    'MEANS_MILITARY_OPEN',
+    'Answer each question about military service on the Amounts Owed step. Form 122A-2 waits for those answers.',
+  ],
+  [
+    'MEANS_SUPP_PAIR_NOTICE',
+    'Form 122A-1Supp says to submit it with the signed Form 122A-1. File them together.',
+  ],
+  [
+    'MEANS_FILED_BOX_2_NOW_SUPP',
+    'This filed copy has box 2 checked. With your current answers, your packet holds Form 122A-1Supp, and Form 122A-1 checks a different box.',
+  ],
+  [
+    'MEANS_OUTCOME_NOT_CONSUMER',
+    'You answered that your debts are not primarily consumer debts. Form 122A-1Supp says that a filer who answers this way checks box 1 on Form 122A-1, signs Part 3 and submits this supplement with it. Your packet follows the form.',
+  ],
+  [
+    'MEANS_OUTCOME_VETERAN',
+    'You answered Yes to both questions on line 2 of Form 122A-1Supp. The form says that a filer who answers this way checks box 1 on Form 122A-1, signs Part 3 and submits this supplement with it. Your packet follows the form.',
+  ],
+  [
+    'MEANS_OUTCOME_MILITARY',
+    "You chose one of the service categories on line 3 of Form 122A-1Supp. The form says that a filer who answers this way checks box 3 on Form 122A-1 and doesn't fill out the rest of that form during the exclusion period. The form counts back 540 days from the day you file; DigniFi doesn't check that. Your packet follows the form.",
+  ],
+  [
+    'MEANS_OUTCOME_ANSWER_DEBTS',
+    "Its result can't be worked out until you answer the questions on the Amounts Owed step.",
+  ],
+  ['MEANS_DEBTS_STEP_PHRASE', 'the Amounts Owed step'],
   ['MEANS_PAIR_CONFIRM', 'These two forms go together. Mark both as filed?'],
   ['MEANS_PAIR_MARK_BOTH', 'Mark both as filed'],
   ['MEANS_PAIR_MARK_ALONE', 'Mark as filed'],
@@ -764,8 +813,22 @@ describe('the means test sentences keep their words exactly', () => {
   });
 });
 
+// Step 4d's sentences (consumer debts and Form 122A-1Supp) wait on counsel draft C-39
+const COUNSEL_C39 = new Set([
+  'MEANS_MILITARY_OPEN',
+  'MEANS_SUPP_PAIR_REFUSAL',
+  'MEANS_SUPP_PAIR_NOTICE',
+  'MEANS_FILED_BOX_2_NOW_SUPP',
+  'MEANS_OUTCOME_NOT_CONSUMER',
+  'MEANS_OUTCOME_VETERAN',
+  'MEANS_OUTCOME_MILITARY',
+  'MEANS_OUTCOME_ANSWER_DEBTS',
+  'MEANS_DEBTS_STEP_PHRASE',
+]);
+
 // The counsel draft each sentence waits on (the plan's Global Constraints), read from the source
 function counselMark(name: string): string {
+  if (COUNSEL_C39.has(name)) return 'C-39';
   if (name === 'MEANS_LINE_43_LINK') return 'C-24';
   if (name === 'MEANS_LINE_43_OWN_WORDS') return 'C-30';
   if (/^(MEANS_LINE_43_|MEANS_EXPLANATION_)/.test(name)) return 'C-31';

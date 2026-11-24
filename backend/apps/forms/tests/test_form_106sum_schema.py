@@ -7,6 +7,8 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
+from apps.eligibility.means_lines import OUTCOMES, SUPP_OUTCOMES
+from apps.eligibility.models import MeansTest
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
@@ -19,7 +21,7 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
-from apps.intake.tests.builders import answer_household
+from apps.intake.tests.builders import answer_household, answer_petition
 
 User = get_user_model()
 
@@ -181,3 +183,90 @@ class TestForm106SumSchema:
         field_map = resolve(load_schema("form_106sum"), session)
         assert field_map["1a"] == "0.00"
         assert field_map["8"] == "0.00"
+
+
+# Line 7 asks Form 101 line 16a again, one box an answer (4d-R7): the filer's own line 16 answer
+# ticks exactly one of its two boxes, and an unanswered line 16 ticks neither.
+LINE_7_TICKED = {
+    "consumer": {"T5": "/consumer"},
+    "business": {"T6": "/not consumer"},
+    "neither": {"T6": "/not consumer"},
+    None: {},
+}
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("answer", LINE_7_TICKED)
+def test_each_debt_nature_answer_ticks_exactly_one_box_on_the_page(populated_session, answer):
+    answer_petition(populated_session, debt_nature=answer)
+    if answer is None:
+        assert "debt_nature" not in populated_session.petition_answers.get_answers()
+    values = resolve(load_schema("form_106sum"), populated_session)
+    widgets = read_drawn("form_106sum", PDFFormFiller().fill("form_106sum", values))
+    line_7 = [w for w in widgets if w.full_name == "check7"]
+    assert sorted(w.tag for w in line_7) == ["T5", "T6"]
+    ticked = {w.tag: w.state for w in line_7 if w.state not in ("", "/Off")}
+    assert ticked == LINE_7_TICKED[answer]
+
+
+# Line 7's not-consumer box says "You have nothing to report on this part of the form" (D7): a
+# business or neither filer's 106Sum prints no figure on lines 8 to 9g. A consumer filer, or one
+# who has not answered line 16, prints them as before.
+LINES_8_TO_9G = ("8", "9a", "9b", "9c", "9d", "9g")
+REPORTED = {
+    "8": "1200.00",
+    "9a": "0.00",
+    "9b": "5000.00",
+    "9c": "0.00",
+    "9d": "0.00",
+    "9g": "5000.00",
+}
+
+
+@pytest.mark.parametrize(
+    "answer,printed",
+    [
+        ("business", dict.fromkeys(LINES_8_TO_9G)),
+        ("neither", dict.fromkeys(LINES_8_TO_9G)),
+        ("consumer", REPORTED),
+        (None, REPORTED),
+    ],
+)
+def test_a_business_or_neither_filer_reports_nothing_on_lines_8_to_9g(
+    populated_session, answer, printed
+):
+    answer_petition(populated_session, debt_nature=answer)
+    if answer is None:
+        assert "debt_nature" not in populated_session.petition_answers.get_answers()
+    field_map = resolve(load_schema("form_106sum"), populated_session)
+    assert {line: field_map.get(line) for line in LINES_8_TO_9G} == printed
+
+
+@pytest.mark.parametrize("answer", ["consumer", "business", None])
+@pytest.mark.parametrize("outcome", [*OUTCOMES, "no means test"])
+def test_106sum_line_8_is_blank_whenever_122a1_line_11_is(populated_session, outcome, answer):
+    # Line 8 says "Copy your total current monthly income from Official Form 122A-1 Line 11"
+    # (D10): where 122A-1 leaves line 11 blank (a Supp outcome, 4d-R6), 106Sum leaves line 8
+    # blank too. One-directional on purpose: a stored non-Supp row beside business, which
+    # recalculation never leaves, prints line 11 while D7 blanks line 8.
+    answer_petition(populated_session, debt_nature=answer)
+    if outcome != "no means test":
+        MeansTest.objects.create(
+            session=populated_session,
+            district=populated_session.district,
+            calculated_cmi=Decimal("1200.00"),
+            median_income_threshold=Decimal("71304.00"),
+            outcome=outcome,
+        )
+    session = IntakeSession.objects.get(pk=populated_session.pk)
+    if answer is None:
+        assert "debt_nature" not in session.petition_answers.get_answers()
+
+    line_11 = resolve(load_schema("form_122a1"), session).get("Debto1.Quest11")
+    line_8 = resolve(load_schema("form_106sum"), session).get("8")
+
+    assert (line_11 is None) is (outcome in SUPP_OUTCOMES)
+    if line_11 is None:
+        assert line_8 is None
+    if answer == "consumer":
+        assert (line_8 is None) is (line_11 is None)

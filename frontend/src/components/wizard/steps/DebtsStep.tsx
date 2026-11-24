@@ -9,8 +9,9 @@
  * - Privacy-conscious (account numbers encrypted)
  *
  * Each row asks what Schedules D and E/F ask of one claim, in the forms' words (3c3 §7.2).
- * Continue waits on the server's gaps (claims/debtGaps.ts), and the first one shows in a status
- * region, so a disabled Continue never says nothing.
+ * Continue waits on the server's gaps (claims/debtGaps.ts), then on Form 101 line 16's and Form
+ * 122A-1Supp's gates (petition/petitionGaps.ts), and the first one shows in a status region, so a
+ * disabled Continue never says nothing.
  */
 
 import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -98,6 +99,7 @@ import {
 } from './claims/claimNames';
 import { firstDebtGap } from './claims/debtGaps';
 import type { LegacyGap } from './claims/legacyGaps';
+import { anyAnswerIn, DEBT_NATURE_KEYS, DebtNatureQuestion, debtNatureGap } from './petition';
 import type {
   AssetInfo,
   AssetWho,
@@ -108,6 +110,7 @@ import type {
   LegacyField,
   LienKind,
   NoticeParty,
+  PetitionAnswers,
   PriorityAnswer,
   PriorityType,
   WizardRow,
@@ -127,6 +130,9 @@ interface DebtsStepProps {
   /** Stored payments the links don't cover (3c4 R6, R15): shown with Remove, never a gap (B46) */
   legacyGaps?: LegacyGap[];
   onRemoveLegacy?: (field: LegacyField) => Promise<void>;
+  /** Form 101's answers, of which this step asks line 16 and Form 122A-1Supp's questions (4d) */
+  petition: PetitionAnswers;
+  onPetitionChange: (next: PetitionAnswers) => void;
 }
 
 // Debt categories matching backend DEBT_TYPE_CHOICES
@@ -351,6 +357,8 @@ export function DebtsStep({
   onValidationChange,
   legacyGaps = [],
   onRemoveLegacy,
+  petition,
+  onPetitionChange,
 }: DebtsStepProps) {
   // Each field whose Remove failed, with the sentence it failed under; the figure stays and that
   // box says it was not saved. A changed sentence or a gone gap ends the entry (see below).
@@ -382,7 +390,16 @@ export function DebtsStep({
 
   const kept = keptRows(rows, isBlankDebt);
   const gap = firstDebtGap(rows, noDebts, assets);
-  const isValid = gap === null && partialBoxes === 0;
+  // Touched once an answer in the block is set, focus has left it, or the rows' own gap is gone
+  // (PF2-T8-10, as Contracts & Leases does for line 11): Continue held for line 16 or a military
+  // gate always has a sentence saying why
+  const [natureLeft, setNatureLeft] = useState(false);
+  const natureTouched = natureLeft || anyAnswerIn(petition, DEBT_NATURE_KEYS) || gap === null;
+
+  const natureGate = debtNatureGap(petition);
+  const isValid = gap === null && partialBoxes === 0 && natureGate === null;
+  // One status region for the step: the rows' own gap first, then line 16's and the Supp's gates
+  const shownGap = gap ?? (natureTouched ? natureGate : null);
 
   // Tell the parent whether the step can be saved
   useEffect(() => {
@@ -964,16 +981,6 @@ export function DebtsStep({
         )}
       </div>
 
-      {/* A status, not an alert: a sentence can quote a row's name while it's typed. It stays
-          mounted because a screen reader may not read a status region that arrives with its text. */}
-      <div role="status">
-        {gap !== null && (
-          <div className="info-box">
-            <p className="info-message">{gap}</p>
-          </div>
-        )}
-      </div>
-
       {legacyGaps.map(({ field, sentence }) => (
         <div className="info-box" key={field}>
           <div>
@@ -996,6 +1003,29 @@ export function DebtsStep({
           </div>
         </div>
       ))}
+
+      {/* Form 101 line 16 and Form 122A-1Supp's questions, after the rows, with the rows listed by
+          kind beside them (forms step 4 spec §6.6, 4d-R16). Form 101 prints line 16 for every
+          filer, so "I have no amounts owed" still asks it. */}
+      <DebtNatureQuestion
+        answers={petition}
+        onChange={onPetitionChange}
+        rows={rows}
+        touched={natureTouched}
+        onLeave={() => setNatureLeft(true)}
+      />
+
+      {/* A status, not an alert: a sentence can quote a row's name while it's typed. It stays
+          mounted because a screen reader may not read a status region that arrives with its text.
+          It follows line 16's block, so a filer held at Continue reads the questions before the
+          sentence naming them, as on Contracts & Leases (T9-R1). */}
+      <div role="status">
+        {shownGap !== null && (
+          <div className="info-box">
+            <p className="info-message">{shownGap}</p>
+          </div>
+        )}
+      </div>
 
       <UPLDisclaimer text={UPL_EXEMPTION_DISCLAIMER} variant="inline" />
 

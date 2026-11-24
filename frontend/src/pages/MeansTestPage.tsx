@@ -434,6 +434,7 @@ export function MeansTestPage() {
         outcome: reply.outcome,
         family_size: reply.family_size,
         tables_gap: reply.tables_gap,
+        open_on: reply.open_on,
         gap: reply.gap,
         debts_answered_on: reply.debts_answered_on,
       };

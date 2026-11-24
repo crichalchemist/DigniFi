@@ -631,14 +631,27 @@ export class WizardPage {
     await this.page.getByRole('button', { name: 'I have no amounts owed', exact: true }).click();
   }
 
-  /** The whole Amounts Owed step: "I have no amounts owed", or each row, then Continue. */
-  async walkDebts(persona: Pick<PersonaData, 'debts'>) {
+  /** Form 101 line 16 and, under consumer debts, Form 122A-1Supp's line 2 and line 3 gates (4d).
+   * Public: the scanned-bill journey answers it beside its scanned row. */
+  async answerDebtNature(petition: PersonaPetition) {
+    await this.page.locator(`input[name="debt_nature"][value="${petition.debt_nature}"]`).check();
+    if (petition.debt_nature !== 'consumer') return;
+    await this.page
+      .locator(`input[name="disabled_veteran"][value="${petition.disabled_veteran}"]`)
+      .check();
+    await this.page.locator(`input[name="reservist"][value="${petition.reservist}"]`).check();
+  }
+
+  /** The whole Amounts Owed step: "I have no amounts owed", or each row, then line 16 and the
+   * military questions, then Continue. */
+  async walkDebts(persona: Pick<PersonaData, 'debts' | 'petition'>) {
     if (persona.debts.length === 0) {
       await this.answerNoDebts();
     }
     for (const debt of persona.debts) {
       await this.addDebt(debt);
     }
+    await this.answerDebtNature(persona.petition);
     await this.nextStep();
   }
 

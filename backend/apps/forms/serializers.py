@@ -11,7 +11,7 @@ from rest_framework import serializers
 from .models import GeneratedForm
 from .services.pdf_filler import parts_of
 
-# Form 122A-1's CheckBox1 choice for "above" in form_122a1.json; box 1 is "/No Abuse".
+# Form 122A-1's CheckBox1 choice for "box_2" in form_122a1.json; box 1 is "/No Abuse".
 PRESUMPTION_BOX = "/Presumption of abuse applies"
 
 
