@@ -329,6 +329,16 @@ describe('DebtsStep asks every question', () => {
     expect(lastValidity(third)).toBe(true);
   });
 
+  // T9-R1: a filer held at Continue reads line 16's questions before the sentence naming them,
+  // as on Contracts & Leases
+  it("puts the status after line 16's questions", () => {
+    render(<Harness />);
+    const lineSixteen = document.querySelector('input[name="debt_nature"]')!.closest('fieldset')!;
+    const order = lineSixteen.compareDocumentPosition(status());
+    expect(order & Node.DOCUMENT_POSITION_FOLLOWING).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(order & Node.DOCUMENT_POSITION_CONTAINED_BY).toBe(0);
+  });
+
   it('lets a scanned draft with no other gap press Continue', () => {
     const onValidity = vi.fn();
     render(

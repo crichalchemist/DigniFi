@@ -981,16 +981,6 @@ export function DebtsStep({
         )}
       </div>
 
-      {/* A status, not an alert: a sentence can quote a row's name while it's typed. It stays
-          mounted because a screen reader may not read a status region that arrives with its text. */}
-      <div role="status">
-        {shownGap !== null && (
-          <div className="info-box">
-            <p className="info-message">{shownGap}</p>
-          </div>
-        )}
-      </div>
-
       {legacyGaps.map(({ field, sentence }) => (
         <div className="info-box" key={field}>
           <div>
@@ -1024,6 +1014,18 @@ export function DebtsStep({
         touched={natureTouched}
         onLeave={() => setNatureLeft(true)}
       />
+
+      {/* A status, not an alert: a sentence can quote a row's name while it's typed. It stays
+          mounted because a screen reader may not read a status region that arrives with its text.
+          It follows line 16's block, so a filer held at Continue reads the questions before the
+          sentence naming them, as on Contracts & Leases (T9-R1). */}
+      <div role="status">
+        {shownGap !== null && (
+          <div className="info-box">
+            <p className="info-message">{shownGap}</p>
+          </div>
+        )}
+      </div>
 
       <UPLDisclaimer text={UPL_EXEMPTION_DISCLAIMER} variant="inline" />
 
