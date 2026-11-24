@@ -5604,10 +5604,16 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
 
     vi.useFakeTimers();
     try {
+      // A new row, not saved yet: the reply writes its id into the row, so the step's body is
+      // built again after the save, and must equal the saved copy, petition answers included
+      fireEvent.click(screen.getByRole('button', { name: /add another amount owed/i }));
+      fireEvent.change(field('creditor_name_1'), { target: { value: 'Demo Clinic' } });
       choose('debt_nature', 'consumer');
       await waitSeconds(3);
       expect(bodies).toHaveLength(1);
-      // The saved copy keeps the petition answers sent, so the next body equals it
+      expect(sentDebts(bodies[0])[1].id).toBeUndefined();
+      expect(sentPetition(bodies[0]).debt_nature).toBe('consumer');
+      // The row now holds the id the reply gave it
       await waitSeconds(6);
     } finally {
       vi.useRealTimers();
@@ -6038,6 +6044,41 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       vi.useRealTimers();
     }
     expect(sessionPatches).toEqual([]);
+  });
+
+  // Line 16's and the Supp's nine keys, every one loaded (a full military chain, a category, its
+  // date, and 16c's words kept under consumer): showing the step builds the body it loaded, so a
+  // completed intake stays completed (4d)
+  it('sends nothing on a visit alone to step 6 with every line 16 and military key loaded', async () => {
+    const { bodies, stored } = serveSessionSaves({
+      ...onStep6,
+      status: 'completed',
+      petition_answers: {
+        hazard_answer: 'no',
+        rents_residence: 'no',
+        debt_nature: 'consumer',
+        debt_nature_text: 'Demo words kept from an earlier answer',
+        disabled_veteran: 'yes',
+        debts_on_duty: 'no',
+        reservist: 'yes',
+        called_to_duty: 'yes',
+        duty_category: '2',
+        duty_released_on: '01/15/2025',
+      },
+    });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    expect(document.querySelector('input[name="duty_released_on"]')).toHaveValue('01/15/2025');
+
+    vi.useFakeTimers();
+    try {
+      await waitSeconds(6);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toEqual([]);
+    expect(stored().status).toBe('completed');
   });
 
   it.each([
