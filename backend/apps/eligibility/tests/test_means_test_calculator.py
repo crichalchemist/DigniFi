@@ -267,6 +267,24 @@ class TestAboveMedianIncomeCannotBeWorkedOutYet:
             "Bankruptcy Code dollar amounts",
         ]
 
+    def test_the_replies_say_when_the_result_waits_on_amounts_owed(self, session, median_income):
+        # 4d-R27: the calculate reply carries open_on, "debts" while line 16 is open above the
+        # median and null once the result waits on Form 122A-2's own answers.
+        _income(
+            session=session,
+            marital_status="not_married",
+            monthly_gross_wages=Decimal("80000.00"),
+        )
+        assert MeansTestCalculator(session).calculate()["open_on"] is None
+
+        record = session.petition_answers
+        record.merge({"debt_nature": None, "disabled_veteran": None, "reservist": None})
+        record.save()
+        assert "debt_nature" not in record.get_answers()
+        waiting = MeansTestCalculator(IntakeSession.objects.get(pk=session.pk)).calculate()
+
+        assert (waiting["outcome"], waiting["open_on"]) == ("cannot_work_out", "debts")
+
     def test_a_spouse_living_apart_isnt_counted_but_children_at_home_are(
         self, session, median_income
     ):

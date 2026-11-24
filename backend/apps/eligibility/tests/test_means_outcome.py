@@ -190,6 +190,7 @@ def test_the_calculate_reply_carries_the_outcome_and_no_sentence(session_at_3000
         "means_test_id",
         "outcome",
         "tables_gap",
+        "open_on",
     }
 
 

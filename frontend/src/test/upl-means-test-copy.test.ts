@@ -219,6 +219,7 @@ const NAMES = [
   'MEANS_PAIR_MARK_BOTH',
   'MEANS_PAIR_NOTICE',
   'MEANS_PAIR_REFUSAL',
+  'MEANS_MILITARY_OPEN',
   'MEANS_TABLE_MISSING',
   'MEANS_TEST_CALCULATING',
   'MEANS_TEST_INCOME_LABEL',
@@ -370,6 +371,10 @@ const EXACT_WORDS: [string, string][] = [
     'Form 122A-1 says your result is worked out on Form 122A-2. File them together.',
   ],
   ['MEANS_PAIR_REFUSAL', 'File Form 122A-1 and Form 122A-2 together.'],
+  [
+    'MEANS_MILITARY_OPEN',
+    'Answer each question about military service on the Amounts Owed step. Form 122A-2 waits for those answers.',
+  ],
   ['MEANS_PAIR_CONFIRM', 'These two forms go together. Mark both as filed?'],
   ['MEANS_PAIR_MARK_BOTH', 'Mark both as filed'],
   ['MEANS_PAIR_MARK_ALONE', 'Mark as filed'],
@@ -764,8 +769,12 @@ describe('the means test sentences keep their words exactly', () => {
   });
 });
 
+// Step 4d's sentences (consumer debts and Form 122A-1Supp) wait on counsel draft C-39
+const COUNSEL_C39 = new Set(['MEANS_MILITARY_OPEN']);
+
 // The counsel draft each sentence waits on (the plan's Global Constraints), read from the source
 function counselMark(name: string): string {
+  if (COUNSEL_C39.has(name)) return 'C-39';
   if (name === 'MEANS_LINE_43_LINK') return 'C-24';
   if (name === 'MEANS_LINE_43_OWN_WORDS') return 'C-30';
   if (/^(MEANS_LINE_43_|MEANS_EXPLANATION_)/.test(name)) return 'C-31';

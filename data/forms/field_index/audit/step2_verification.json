@@ -1912,12 +1912,12 @@
   {
     "schema": "form_122a1",
     "pdf_field": "CheckBox1",
-    "producer": "derived:median_comparison",
+    "producer": "derived:means_result_box",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "CheckBox1",
-    "evidence": "Field index: CheckBox1 p1, three widgets (adjudicated): top box 1, state /No Abuse, 'There is no presumption of abuse.'; top box 2, state /Presumption of abuse applies, 'The calculation to determine if a presumption of abuse applies will be made under Chapter 7 Means Test Calculation (Official Form 122A-2).'; top box 3, state /Does not apply (qualified military service). Owner's answer Q5 (DIG-65; step 2 spec §3, §6.3): at or below the median, box 1; above, box 2; box 3 is never ticked."
+    "evidence": "Field index: CheckBox1 p1, three widgets (adjudicated): top box 1, state /No Abuse, 'There is no presumption of abuse.'; top box 2, state /Presumption of abuse applies, 'The calculation to determine if a presumption of abuse applies will be made under Chapter 7 Means Test Calculation (Official Form 122A-2).'; top box 3, state /Does not apply (qualified military service). Owner's answer Q5 (DIG-65; step 2 spec §3, §6.3): at or below the median, box 1; above, box 2. Step 4d (D1, B33): box 1 for debts not primarily consumer debts or the disabled veteran's exemption, box 3 for a line 3 exclusion, from the stored means test's outcome."
   },
   {
     "schema": "form_122a1",

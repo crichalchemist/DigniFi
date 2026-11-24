@@ -26,7 +26,11 @@ from apps.eligibility.cmi import (
     is_above_median,
     spouse_monthly_income,
 )
-from apps.eligibility.means_lines import supp_line_3_reached
+from apps.eligibility.means_lines import (
+    MILITARY_EXCLUSION,
+    SUPP_OUTCOMES,
+    supp_line_3_reached,
+)
 from apps.forms.services.answer_records import PETITION_STEP_OF_KEY, is_itin, record_value
 from apps.intake.asset_lines import (
     LINE_BY_KEY,
@@ -609,6 +613,30 @@ def _median_comparison(session: IntakeSession) -> str:
     if is_above_median(means_test.calculated_cmi, means_test.median_income_threshold):
         return "above"
     return "below"
+
+
+def _means_result_box(session: IntakeSession) -> str:
+    """
+    Page 1's result box (4d-R5), from the stored means test's route (R-ROUTE): box 1 for debts
+    not primarily consumer debts or the disabled veteran's exemption, box 3 for a line 3
+    exclusion (D1, B33), else line 12b against line 13 as line 14 says (box 2 above the median,
+    exactly when Form 122A-2 is in the packet). Blank before the means test runs.
+    """
+    means_test = getattr(session, "means_test", None)
+    if means_test is None:
+        return ""
+    if means_test.outcome == MILITARY_EXCLUSION:
+        return "box_3"
+    if means_test.outcome in SUPP_OUTCOMES:
+        return "box_1"
+    return "box_2" if _median_comparison(session) == "above" else "box_1"
+
+
+def _means_parts_1_and_2_print(session: IntakeSession, answer_cache=None) -> bool:
+    """122A-1's Parts 1-2 print unless the stored means test routed the filer to a Supp outcome,
+    whose boxes say to leave the rest of the form blank (4d-R6). With no means test they print."""
+    means_test = getattr(session, "means_test", None)
+    return means_test is None or means_test.outcome not in SUPP_OUTCOMES
 
 
 # ---------------------------------------------------------------------------
@@ -1316,6 +1344,16 @@ _DEBT_NATURE_PREDICATES: dict[str, Callable[..., bool]] = {
     ),
 }
 
+# Form 122A-1's Parts 1-2 go blank under a Supp outcome (4d-R6). 106Sum line 8 copies 122A-1 line
+# 11, so it prints only where line 11 does and D7's line 7 answer allows (D10).
+_MEANS_ROUTE_PREDICATES: dict[str, Callable[..., bool]] = {
+    "means_parts_1_and_2_print": _means_parts_1_and_2_print,
+    "summary_line_8_prints": lambda s, answer_cache=None: (
+        _DEBT_NATURE_PREDICATES["debt_nature_consumer_or_unanswered"](s)
+        and _means_parts_1_and_2_print(s)
+    ),
+}
+
 
 def _petition_answers(session: IntakeSession) -> dict:
     """The session's stored petition answers as stored, {} with no record (Ruling I: no registry
@@ -1478,6 +1516,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "line12b_annualized_cmi": _line12b_annualized_cmi,
     "line13a_median_income": _line13a_median_income,
     "median_comparison": _median_comparison,
+    "means_result_box": _means_result_box,
     # Form 103B lines 1-3: the household list, Schedule I line 10 and 8f (3f spec §8.2)
     "fee_waiver_family_size": lambda s: str(_fee_waiver_family(s).total),
     "fee_waiver_spouse_counted": lambda s: "true" if _fee_waiver_family(s).spouse_counted else "",
@@ -1788,6 +1827,8 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     # No link. The district and its median income table come from DigniFi's own data.
     "district_name": {},
     "line13a_median_income": {},
+    # Form 122A-1's page-1 box: the result Complete works out on Review
+    "means_result_box": {"step": "review"},
     # Schedule H line 2: the spouse's name and address are entered on the Codebtors step
     "schedule_h_community_state": {"step": "codebtors"},
     "schedule_h_spouse_name": {"step": "codebtors"},
@@ -1874,6 +1915,7 @@ PREDICATES: dict[str, Callable[[IntakeSession], bool]] = {
     ),
     **_PETITION_PREDICATES,
     **_DEBT_NATURE_PREDICATES,
+    **_MEANS_ROUTE_PREDICATES,
     **_SUPP_PREDICATES,
     **_SCHEDULE_I_PREDICATES,
 }

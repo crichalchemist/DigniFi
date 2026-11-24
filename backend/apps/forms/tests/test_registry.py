@@ -160,9 +160,31 @@ def test_no_means_test_means_no_122a2(session):
     assert "form_122a2" not in packet(session)
 
 
-def test_122a1_supplement_waits_for_its_questions(session):
-    # Nothing collects a claimed exemption from the presumption until step 4.
-    _means_test(session, "12000.00", "134366.00")
+@pytest.mark.parametrize(
+    "outcome,in_packet",
+    [
+        ("not_consumer", True),
+        ("veteran_exemption", True),
+        ("military_exclusion", True),
+        ("at_or_below_median", False),
+        ("presumption", False),
+        (None, False),  # a row saved before 3h1 routes as before
+    ],
+)
+def test_122a1_supplement_follows_the_supp_outcomes(session, outcome, in_packet):
+    # The Supp joins the packet exactly when the stored means test routed the filer to one of its
+    # three outcomes (R-ROUTE, E2), and 122A-2 then leaves it: never both.
+    means_test = _means_test(session, "12000.00", "134366.00")
+    means_test.outcome = outcome
+    means_test.save()
+
+    forms = packet(IntakeSession.objects.get(pk=session.pk))
+
+    assert ("form_122a1_supp" in forms) is in_packet
+    assert ("form_122a2" in forms) is not in_packet
+
+
+def test_no_means_test_leaves_the_supplement_out(session):
     assert "form_122a1_supp" not in packet(session)
 
 

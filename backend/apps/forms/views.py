@@ -215,9 +215,10 @@ def _means_reply(session: IntakeSession) -> dict:
     """What the packet list says of the stored means test, from one read (3h1 R14).
 
     `tables` is the median table the means test recorded, then every table it read for Form
-    122A-2; `outcome`, `family_size` and `tables_gap` are None when there is no means test. A
-    row saved before 3h1 replies with `outcome` and `tables_gap` None and its stored
-    `family_size` (calculation_details has held it since 3e1).
+    122A-2; `outcome`, `family_size`, `tables_gap` and `open_on` are None when there is no means
+    test. A row saved before 3h1 replies with `outcome` and `tables_gap` None and its stored
+    `family_size` (calculation_details has held it since 3e1). `open_on` is "debts" while the
+    result waits on the Amounts Owed step (4d-R27), and None for a row saved before 4d.
     """
     means_test = MeansTest.objects.filter(session=session).first()
     details = means_test.get_calculation_details() if means_test else {}
@@ -227,6 +228,7 @@ def _means_reply(session: IntakeSession) -> dict:
         "outcome": means_test.outcome if means_test else None,
         "family_size": details.get("family_size"),
         "tables_gap": details.get("tables_gap"),
+        "open_on": details.get("open_on"),
     }
 
 
@@ -377,8 +379,8 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         test recorded, and is `[]` when there is no means test or it recorded none. `income_period` says which six
         months the filer last confirmed on the Income step and which are in force now.
         `payment_choice` is the Form 101 line 8 answer, or null before the filer chooses.
-        `outcome`, `family_size` and `tables_gap` are the stored means test's result (3h1 R14);
-        `tables` also lists the tables Form 122A-2's figures were read from.
+        `outcome`, `family_size` and `tables_gap` are the stored means test's result (3h1 R14),
+        and `open_on` names the step the result waits on (4d-R27); `tables` also lists the tables Form 122A-2's figures were read from.
         """
         session, err = _session_or_error(request, request.query_params.get("session"), "session")
         if err:

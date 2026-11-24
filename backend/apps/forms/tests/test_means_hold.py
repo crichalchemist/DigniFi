@@ -24,6 +24,7 @@ from apps.eligibility.means_inputs import read_inputs, read_tables
 from apps.eligibility.means_lines import MeansRow, line_30_cap, work_out
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services import MeansTestCalculator
+from apps.forms import registry
 from apps.forms.models import GeneratedForm
 from apps.forms.registry import (
     FORM_122A2_LINE_MISSING,
@@ -36,6 +37,7 @@ from apps.forms.registry import (
     packet,
 )
 from apps.forms.schema import load_schema
+from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
 from apps.forms.tests.means_pair import box_1_state, stored_check_box_1
 from apps.forms.tests.means_rows import POLISH_DEMO_EXPLANATION
@@ -52,11 +54,13 @@ from apps.intake.means_test import (
     MEANS_GAP_PAYMENTS_LEFT,
 )
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
+from apps.intake.petition import DETAIL_DUTY_RELEASED, GATE_DEBT_NATURE
 from apps.intake.tests import polish_builders
 from apps.intake.tests.builders import (
     answer_asset_lines,
     answer_household,
     answer_means_test,
+    answer_petition,
     finish_intake,
     linked_loan,
     linked_row,
@@ -238,6 +242,30 @@ def _printed_values(form_type, pdf, document):
     return {w.full_name: w.value for w in read_drawn(form_type, pdf, document["parts"])}
 
 
+# 122A-1's page-1 header and result box; every other box is Parts 1-2, which a Supp outcome leaves
+# blank (4d-R6). Box 3's state is the template's "/Does not apply" (the index, adjudicated).
+HEADER_AND_BOX = {"Debtor1.Name", "Bankruptcy District Information", "CheckBox1"}
+PARTS_1_AND_2 = {f.pdf_field for f in load_schema("form_122a1").fields} - HEADER_AND_BOX
+BOX_2 = "/Presumption of abuse applies"
+BOX_3 = "/Does not apply"
+
+
+def _not_in_packet(api_client, session, form_type):
+    refused = _generate(api_client, session, form_type)
+    assert (refused.status_code, refused.data) == (
+        422,
+        {"form_type": form_type, "error": _FAILURE_SENTENCES[NotInPacket]},
+    )
+
+
+def _generated_122a1(api_client, session):
+    """Generate 122A-1 through the view and return the values its stored form part holds."""
+    single = _generate(api_client, session, "form_122a1")
+    assert single.status_code == 200, single.data
+    row = GeneratedForm.objects.get(session=session, form_type="form_122a1")
+    return json.loads(row.field_values)["parts"][0]["values"]
+
+
 @pytest.mark.django_db
 def test_an_above_median_filers_122a1_and_122a2_never_print_incomplete(
     api_client, above, monkeypatch
@@ -301,6 +329,48 @@ def test_an_above_median_filers_122a1_and_122a2_never_print_incomplete(
     with monkeypatch.context() as patched:
         patched.setattr("apps.forms.registry.means_test_gaps", lambda *args: [])
         _both_forms_refuse(api_client, above, FORM_122A2_LINE_MISSING)
+
+    # debts not primarily consumer debts (D1): 122A-2 leaves the packet and 122A-1 prints box 1
+    # with Parts 1-2 blank, so no box 2 stands without a complete 122A-2
+    answer_petition(above, debt_nature="business")
+    _not_in_packet(api_client, above, "form_122a2")
+    values = _generated_122a1(api_client, above)
+    assert values["CheckBox1"] == box_1_state()
+    assert sorted(set(values) & PARTS_1_AND_2) == []
+
+    # a line 3 exclusion (D1, B33): box 3, and still no 122A-2
+    answer_petition(
+        above,
+        debt_nature="consumer",
+        disabled_veteran="no",
+        reservist="yes",
+        called_to_duty="yes",
+        duty_category="3",
+    )
+    _not_in_packet(api_client, above, "form_122a2")
+    values = _generated_122a1(api_client, above)
+    assert values["CheckBox1"] == BOX_3
+    assert sorted(set(values) & PARTS_1_AND_2) == []
+
+    # line 16 unanswered on a session completed before 4d (the fixture's finish_intake answered
+    # it, so the keys come off by hand and the status stays completed): Complete's own gate
+    # refuses the pair, linked to Amounts Owed (B32, 4d-R4)
+    answer_petition(
+        above,
+        debt_nature=None,
+        disabled_veteran=None,
+        reservist=None,
+        called_to_duty=None,
+        duty_category=None,
+    )
+    assert "debt_nature" not in above.petition_answers.get_answers()
+    assert _fresh(above).status == "completed"
+    MeansTestCalculator(_fresh(above)).calculate()
+    for form_type in PAIR:
+        with pytest.raises(PreconditionMissing) as refused:
+            build_parts(form_type, _fresh(above))
+        assert (str(refused.value), refused.value.step) == (GATE_DEBT_NATURE, "debts")
+    answer_petition(above, debt_nature="consumer", disabled_veteran="no", reservist="no")
 
     # a line 3 total at the spouse's Column B figure prints; one cent above is a page gap (R7)
     _marry(above)
@@ -1396,3 +1466,164 @@ def test_the_pair_action_is_idempotent(api_client, above):
         (t, "filed") for t in PAIR
     ]
     assert _as_stored(above) == filed
+
+
+# Form 122A-1Supp's three routes off 122A-2 (D1), each as the filer answers Amounts Owed.
+SUPP_ROUTES = {
+    "not_consumer": ({"debt_nature": "business"}, box_1_state()),
+    "veteran_exemption": (
+        {"debt_nature": "consumer", "disabled_veteran": "yes", "debts_on_duty": "yes"},
+        box_1_state(),
+    ),
+    "military_exclusion": (
+        {
+            "debt_nature": "consumer",
+            "disabled_veteran": "no",
+            "reservist": "yes",
+            "called_to_duty": "yes",
+            "duty_category": "1",
+        },
+        BOX_3,
+    ),
+}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("wages", ["3000.00", "9000.00"], ids=["below", "above"])
+@pytest.mark.parametrize("outcome", list(SUPP_ROUTES))
+def test_a_supp_outcome_never_ticks_box_2_and_never_holds_for_122a2(
+    api_client, session_with_debtor, outcome, wages
+):
+    # The Supp takes 122A-2's place (D4): 122A-1 prints at once, with no 122A-2 answer given, and
+    # its box is the Supp's, never box 2, on either side of the median.
+    session = session_with_debtor
+    _set_wages(session, wages)
+    answers, box = SUPP_ROUTES[outcome]
+    answer_petition(session, **answers)
+
+    values = _generated_122a1(api_client, session)
+    generated = {f["form_type"] for f in _generate_all(api_client, session)["generated"]}
+
+    assert _fresh(session).means_test.outcome == outcome
+    assert values["CheckBox1"] == box != BOX_2
+    assert "form_122a1_supp" in generated
+    assert "form_122a2" not in generated
+    _not_in_packet(api_client, session, "form_122a2")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "line_3",
+    [
+        {"reservist": "no"},
+        # a full line 3 claim waits for line 2 to settle (F2): the form takes line 2 first
+        {"reservist": "yes", "called_to_duty": "yes", "duty_category": "3"},
+    ],
+    ids=["line_3_no", "line_3_claimed"],
+)
+def test_an_open_military_question_holds_both_forms_in_its_own_sentence(api_client, above, line_3):
+    # Line 2 Yes with its follow-up unanswered could still turn the result into box 1 (D3): the
+    # pair refuses in its own words, linked to Amounts Owed, and no figure is worked out.
+    answer_petition(above, debt_nature="consumer", disabled_veteran="yes", **line_3)
+    assert "debts_on_duty" not in above.petition_answers.get_answers()
+
+    _both_forms_refuse(api_client, above, registry.FORM_122A2_MILITARY_OPEN, step="debts")
+
+    forms = api_client.get("/api/forms/packet/", {"session": above.pk}).data["form_types"]
+    assert "form_122a2" in forms
+    assert "form_122a1_supp" not in forms
+
+
+@pytest.mark.django_db
+def test_122a1_waits_for_the_supp_in_the_supps_own_words(api_client, above):
+    # Form 122A-1Supp says to submit it with the signed 122A-1 (D4): while the Supp can't print (a
+    # category-2 claim with no release date), 122A-1 refuses in the Supp's words.
+    answer_petition(
+        above,
+        debt_nature="consumer",
+        disabled_veteran="no",
+        reservist="yes",
+        called_to_duty="yes",
+        duty_category="2",
+    )
+
+    refused = _generate(api_client, above, "form_122a1")
+    assert (refused.status_code, refused.data) == (
+        422,
+        {"form_type": "form_122a1", "error": DETAIL_DUTY_RELEASED, "step": "debts"},
+    )
+
+    answer_petition(above, duty_released_on="01/15/2026")
+    assert _generated_122a1(api_client, above)["CheckBox1"] == BOX_3
+
+
+def _stale_presumption(session):
+    """A presumption worked out before the filer changed an answer: the stored row says so."""
+    MeansTest.objects.update_or_create(
+        session=session,
+        defaults={
+            "district": session.district,
+            "calculated_cmi": Decimal("9000.00"),
+            "median_income_threshold": Decimal("71304.00"),
+            "outcome": "presumption",
+            "passes_means_test": False,
+        },
+    )
+
+
+@pytest.mark.django_db
+def test_a_stale_presumption_row_routes_by_the_recalculated_outcome(api_client, above):
+    # R-ROUTE: the forms views work the means test out again before the packet is read, so a
+    # presumption stored before the filer answered business never keeps 122A-2 or box 2.
+    _stale_presumption(above)
+    # never a session PATCH, which reopens the intake
+    answer_petition(above, debt_nature="business")
+    assert _fresh(above).status == "completed"
+
+    forms = api_client.get("/api/forms/packet/", {"session": above.pk}).data["form_types"]
+    assert "form_122a1_supp" in forms
+    assert "form_122a2" not in forms
+
+    # the packet list worked the row out again: make it stale once more, so Generate All's own
+    # recalculation is what decides its packet
+    _stale_presumption(above)
+    assert MeansTest.objects.get(session=above).outcome == "presumption"
+    generated = {f["form_type"] for f in _generate_all(api_client, above)["generated"]}
+    assert "form_122a1_supp" in generated
+    assert "form_122a2" not in generated
+    row = GeneratedForm.objects.get(session=above, form_type="form_122a1")
+    assert stored_check_box_1(row) == box_1_state()
+
+
+@pytest.mark.django_db
+def test_an_unfinished_intakes_packet_reads_the_stored_row(api_client, above):
+    # The packet list of an unfinished intake reads the stored row and recalculates nothing, as
+    # today: the stale presumption still holds 122A-2.
+    _stale_presumption(above)
+    answer_petition(above, debt_nature="business")
+    IntakeSession.objects.filter(pk=above.pk).update(status="in_progress")
+
+    forms = api_client.get("/api/forms/packet/", {"session": above.pk}).data["form_types"]
+
+    assert "form_122a2" in forms
+    assert "form_122a1_supp" not in forms
+
+
+@pytest.mark.django_db
+def test_a_row_saved_before_3h1_routes_as_today(above):
+    # A row with no outcome is none of the Supp's three (R-ROUTE): above the median, 122A-2
+    # applies and 122A-1 ticks box 2, as before 4d.
+    MeansTest.objects.create(
+        session=above,
+        district=above.district,
+        calculated_cmi=Decimal("9000.00"),
+        median_income_threshold=Decimal("71304.00"),
+    )
+    session = _fresh(above)
+    assert session.means_test.outcome is None
+
+    forms = packet(session)
+
+    assert "form_122a2" in forms
+    assert "form_122a1_supp" not in forms
+    assert resolve(load_schema("form_122a1"), session)["CheckBox1"] == BOX_2

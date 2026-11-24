@@ -60,7 +60,8 @@ class MeansTestCalculator:
                     "details": dict,
                     "means_test_id": int,
                     "outcome": str,
-                    "tables_gap": str | None
+                    "tables_gap": str | None,
+                    "open_on": "debts" | None (the result waits on Amounts Owed, 4d-R27)
                 }
 
         Raises:
@@ -106,4 +107,5 @@ class MeansTestCalculator:
             "means_test_id": means_test.id,
             "outcome": means_test.outcome,
             "tables_gap": details["tables_gap"],
+            "open_on": details["open_on"],
         }
