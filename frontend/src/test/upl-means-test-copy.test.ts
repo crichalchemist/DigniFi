@@ -219,13 +219,14 @@ const NAMES = [
   'MEANS_PAIR_MARK_BOTH',
   'MEANS_PAIR_NOTICE',
   'MEANS_PAIR_REFUSAL',
+  // Step 4d's, in copy.ts's order
+  'MEANS_OUTCOME_NOT_CONSUMER',
+  'MEANS_OUTCOME_VETERAN',
+  'MEANS_OUTCOME_MILITARY',
   'MEANS_SUPP_PAIR_REFUSAL',
   'MEANS_MILITARY_OPEN',
   'MEANS_SUPP_PAIR_NOTICE',
   'MEANS_FILED_BOX_2_NOW_SUPP',
-  'MEANS_OUTCOME_NOT_CONSUMER',
-  'MEANS_OUTCOME_VETERAN',
-  'MEANS_OUTCOME_MILITARY',
   'MEANS_OUTCOME_ANSWER_DEBTS',
   'MEANS_DEBTS_STEP_PHRASE',
   'MEANS_TABLE_MISSING',
@@ -293,6 +294,15 @@ describe('the means test gives information, never advice', () => {
   it.each(STRINGS)('%s says "presumption" only where the owner ruled it may', (name, sentence) => {
     expect(/presumption/i.test(sentence)).toBe(SAYS_PRESUMPTION.includes(name));
   });
+
+  // S:587: Form 122A-1Supp's outcomes state the form's routing in its words, never that a test
+  // doesn't apply (MEANS_OUTCOME_BELOW, C-24, says so of Form 122A-2 below the median)
+  it.each(['MEANS_OUTCOME_NOT_CONSUMER', 'MEANS_OUTCOME_VETERAN', 'MEANS_OUTCOME_MILITARY'])(
+    '%s never says a test does not apply',
+    (name) => {
+      expect(held[name]).not.toMatch(/(doesn't|doesn’t|does not) apply/i);
+    }
+  );
 
   it.each(['MEANS_LINE_MISSING', 'MEANS_TABLE_MISSING'])(
     '%s says neither presumption nor abuse',
