@@ -191,7 +191,7 @@ The constraints in full:
 
 ## Rulings this plan makes (decided here, recorded for the owner)
 
-`OD` settles D1, D3, D4, D7, D8, D9, D10, D11, D18, R-D2, R-D5, R-D6 and R-ROUTE. These are the rest, including the critic's §7 items 9–20 and the controller's rulings on the two plan reviews (F4 → 4d-R27, F11 → 4d-R16). 4d-R26 is new and waits for the controller.
+`OD` settles D1, D3, D4, D7, D8, D9, D10, D11, D18, R-D2, R-D5, R-D6 and R-ROUTE. These are the rest, including the critic's §7 items 9–20 and the controller's rulings on the two plan reviews (F4 → 4d-R27, F11 → 4d-R16). 4d-R26 is new; the controller accepted it and 4d-R3 (Ruling L).
 
 - **4d-R1 Outcome names, `OUTCOMES` and `PASSES`** (`SC` 10).
   - `NOT_CONSUMER = "not_consumer"` (12 characters).
@@ -208,7 +208,7 @@ The constraints in full:
   - `details["open_on"] = "debts"` exactly when `routed == CANNOT_WORK_OUT` (route_outcome returns it only for an absent `debt_nature` or an open military question), and `details.setdefault("open_on", None)` beside `tables_gap`'s (`:200`), so a tables gap and every other outcome carry null (4d-R27).
   - The cost: a not-consumer or excluded filer is still refused by an Income-step gap (a Complete gate anyway) and by `NoTableInForce` from 2027-04-01, as every filer is. Task 11 files that in Plane.
   - `answers` is `self.session.petition_answers.get_answers()` through `getattr` (`{}` with no record). Importing `forms.registry.petition_answers_of` from `eligibility` would be a cycle.
-- **4d-R3 What counts as an open military question** (D3, widened; for the owner).
+- **4d-R3 What counts as an open military question** (D3, widened; accepted, Ruling L).
   - `military_question_open(answers)` is true under `debt_nature == "consumer"` when any question the Supp reaches is unanswered:
     - `disabled_veteran`;
     - `debts_on_duty` under its Yes;
@@ -314,7 +314,7 @@ The constraints in full:
 - **4d-R23 The one-step D18 personas.** All six are `consumer`, line 2 No, line 3 No, written in `_petition` (`seed_demo_data.py:177-191`) and `gates()` (`personas.ts:307-321`). No persona gets the Supp. Tier 3's synthetic sessions cover it (B39).
 - **4d-R24 `test_coverage.py`'s dead row** (`SC` §2.4). Its `FormAnswer(form_type="form_101", field_key="primarily_consumer_debts")` (`:24-28`) feeds nothing after Task 3. It is dropped, and the comment says Maria's step 1 answers print.
 - **4d-R25 Housekeeping.** DIG-72 (the Supp's unbound Parts 1 and 2) and DIG-121 ("Consumer vs business debts never asked") close with 4d. The PR body says so.
-- **4d-R26 `CheckBox7` through a rule, and `RADIO_KEYS` (new, pending the controller; found while applying D9).**
+- **4d-R26 `CheckBox7` through a rule, and `RADIO_KEYS` (new, accepted by the controller, Ruling L; found while applying D9).**
   - D9 puts `"none"` in `CHOICE_KEYS["duty_category"]`. A direct `petition.duty_category` binding can't then print it blank: `test_petition_radio_keys.py:37-46` requires a `petition.` radio's `choices` to equal `CHOICE_KEYS[key]`, and a `"none": ""` entry fails E005 (`schema.py:368-370`: no widget has a `""` state). `_emit` does leave a `""` answer blank (`fill_resolver.py:690-703`), so a rule returning `""` works.
   - So `CheckBox7` binds `derived:supp_duty_category` (the category for `"1"`–`"4"`, else `""`; `_step_of("duty_category")`), choices `"1"`–`"4"`, `legal_review: true`, in `ANSWER_BOX_RULES`. It leaves the petition-radio walk.
   - Found outside the dispositions: `test_the_save_guards_exactly_the_keys_a_radio_prints` (`test_petition_radio_keys.py:49-51`) walks every non-single-box `petition.` binding, so `CheckBox3`–`CheckBox6` need `disabled_veteran`, `debts_on_duty`, `reservist` and `called_to_duty` in `RADIO_KEYS` (`models.py:942-949`). All four are `YES_NO_KEYS` (`:861-864`), so the save's guard already holds them. Task 4.
@@ -992,7 +992,7 @@ The gate lands with the journeys (`SC` §3.7).
     - R-D5: S:790's last clause; B53 (S:931, "then `military_exclusion` whatever the income", now read with F2's line 2 condition);
     - R-D6: S:176, S:593;
     - R-ROUTE: S:575–579's readers.
-  - **Plan rulings** under their own heading, "Plan rulings (4d plan, recorded for the owner)", each naming what it supersedes: 4d-R3 (D3 widened to every open question; plan ruling, pending the owner); 4d-R4 (S:576's sentence); 4d-R12 (S:579); 4d-R14 narrowed (S:585: the sidebar names no Amounts Owed dependency) and 4d-R27 (the dashboard and page name Amounts Owed); 4d-R15 (S:298's "disappear"); 4d-R26 (`CheckBox7` through a rule); S:593 and S:767 (counts: 8 names over 16 widgets; tier 2 +11, 1877 → 1888); S:550 and S:810 (packet range 15–18); S:760 (the scanned-bill journey answers line 16); S:303 (dates checked for shape); S:575's precedence position (after the median lookup, 4d-R2); S:806 and S:810 (Form 101 16a–c already bound in 4b; 4d only asks line 16).
+  - **Plan rulings** under their own heading, "Plan rulings (4d plan, recorded for the owner)", each naming what it supersedes: 4d-R3 (D3 widened to every open question; plan ruling, accepted, Ruling L); 4d-R4 (S:576's sentence); 4d-R12 (S:579); 4d-R14 narrowed (S:585: the sidebar names no Amounts Owed dependency) and 4d-R27 (the dashboard and page name Amounts Owed); 4d-R15 (S:298's "disappear"); 4d-R26 (`CheckBox7` through a rule); S:593 and S:767 (counts: 8 names over 16 widgets; tier 2 +11, 1877 → 1888); S:550 and S:810 (packet range 15–18); S:760 (the scanned-bill journey answers line 16); S:303 (dates checked for shape); S:575's precedence position (after the median lookup, 4d-R2); S:806 and S:810 (Form 101 16a–c already bound in 4b; 4d only asks line 16).
   - **A C-39 line** naming the widened scope for counsel: three outcomes and their sentences (D1, D8), D7's and D10's blanking, the tagged split (R-D6), D3's hold and the Amounts Owed sentence (4d-R27), D9's "none applies" label, D11's notice, and the list's adjacency to "Total Amounts Owed" with S:296's reason quoted (F11, 4d-R16).
 - [ ] **Step 3: Check.** `pt.sh apps/intake/tests/test_claude_md_asset_order.py --ds=config.settings.test -q` passes, and prettier `--check` passes on both files.
 - [ ] **Step 4: The PR gate.** It runs here, and again after the final-review fix wave:
@@ -1031,12 +1031,12 @@ The gate lands with the journeys (`SC` §3.7).
 
 Plan rulings (not owner decisions; for the owner to see):
 
-- **4d-R3.** D3's two named cases widen to every open question the Supp reaches (pending the owner).
+- **4d-R3.** D3's two named cases widen to every open question the Supp reaches (accepted, Ruling L).
 - **4d-R4.** S:576's B32 sentence becomes the gate's sentence, one string.
 - **4d-R12.** S:579's "shows the outcome's sentence and continues" becomes the existing redirect.
 - **4d-R14 and 4d-R27.** S:585's sidebar gap line is not built (B34). The dashboard and the 122A-2 page say instead that the result waits on Amounts Owed, and link there.
 - **4d-R15.** S:298's "disappear" becomes `HiddenLine` Show/Delete (S:177's pattern).
-- **4d-R26.** `CheckBox7` prints through `supp_duty_category`, not `petition.duty_category` (S:177, S:593), and `RADIO_KEYS` gains the four military keys (pending the controller).
+- **4d-R26.** `CheckBox7` prints through `supp_duty_category`, not `petition.duty_category` (S:177, S:593), and `RADIO_KEYS` gains the four military keys (accepted, Ruling L).
 - **S:593 and S:767.** "19 unbound widgets all bind" is 8 names over 16 widgets (`CheckBox1`, `Debtor2.Name` and `Case number1` stay blank). Tier 2's 4d total is +11: the Supp +9 (the line 1 pair counts two), and 106Sum and 107 +1 each. 1877 → **1888**, not S:767's "the Supp 9" alone.
 - **S:550 and S:810's packet range.** The Supp and 122A-2 are exclusive, so 4d's range stays 15–18. The spec's 15–19 waits for 4e/4h.
 - **S:806 and S:810.** Form 101 16a–c were bound in 4b, so 4d only asks line 16.
