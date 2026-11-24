@@ -20,7 +20,7 @@ from apps.districts.dated_tables import fill_date
 from apps.districts.exemptions import exemption_catalog_in_force
 from apps.eligibility.cmi import MARRIAGE_UNANSWERED, is_above_median
 from apps.eligibility.means_inputs import page_answers, read_inputs, read_tables
-from apps.eligibility.means_lines import missing_line, work_out
+from apps.eligibility.means_lines import SUPP_OUTCOMES, missing_line, work_out
 from apps.forms.schema import load_schema
 from apps.forms.services.answer_records import evicted_renter, landlord_missing
 from apps.forms.services.exemption_items import exemption_items
@@ -245,6 +245,27 @@ def _needs_means_test_and_form_122a2(session: IntakeSession) -> None:
         PDFFormFiller().check("form_122a2", build_parts("form_122a2", session))
 
 
+def _supp_applies(session: IntakeSession) -> bool:
+    """
+    Form 122A-1Supp is in the packet exactly when the stored means test routed the filer to one of
+    its three outcomes (R-ROUTE): not consumer debts, the disabled veteran's exemption or a line 3
+    exclusion. A row saved before 3h1 has no outcome, so it routes as before. Never raises.
+    """
+    means_test = getattr(session, "means_test", None)
+    return means_test is not None and means_test.outcome in SUPP_OUTCOMES
+
+
+def _needs_supp_answers(session: IntakeSession) -> None:
+    """The Supp's first open question or unreadable date, in Complete's own words, fixed on the
+    Amounts Owed step: a gate, or one of the Supp's details (never Form 101 line 16c's words)."""
+    # Imported here: apps.intake.petition imports this module (FORM_101A_LANDLORD).
+    from apps.intake.petition import SUPP_DETAILS, debt_nature_gaps
+
+    for gap in debt_nature_gaps(petition_answers_of(session)):
+        if gap.kind == gap.GATE or gap.message in SUPP_DETAILS:
+            raise PreconditionMissing(gap.message, step="debts")
+
+
 # form_type → PacketForm. Every key must match a GeneratedForm.FORM_TYPE_CHOICES value.
 FORM_REGISTRY: dict[str, PacketForm] = {
     "form_101": PacketForm(_always, _needs_debtor_info_county_and_fee_choice),
@@ -256,7 +277,7 @@ FORM_REGISTRY: dict[str, PacketForm] = {
     "form_121": PacketForm(_always, _needs_ssn),
     "list_of_creditors": PacketForm(_always, _nothing),
     "form_122a1": PacketForm(_always, _needs_means_test_and_form_122a2),
-    "form_122a1_supp": PacketForm(_never, _nothing),
+    "form_122a1_supp": PacketForm(_never, _needs_supp_answers),
     "form_122a2": PacketForm(_above_median, _needs_the_122a2_questions),
     "schedule_a_b": PacketForm(_always, _nothing),
     "schedule_c": PacketForm(_always, _needs_exemption_answers),

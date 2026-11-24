@@ -11,23 +11,28 @@ from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 
 from apps.districts.models import District
 from apps.eligibility.models import MeansTest
+from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.field_index import load_index
 from apps.forms.models import GeneratedForm
 from apps.forms.registry import (
     FORM_101A_LANDLORD,
     FORM_REGISTRY,
     PreconditionMissing,
+    _needs_supp_answers,
+    _supp_applies,
     build_field_values,
     build_parts,
     get_all_form_types,
     packet,
 )
 from apps.forms.schema import load_schema
-from apps.intake.models import DebtorInfo, FilingFee, Household, IntakeSession
-from apps.intake.tests.builders import answer_petition
+from apps.intake.models import DebtorInfo, FilingFee, Household, IncomeInfo, IntakeSession
+from apps.intake.petition import DETAIL_DUTY_RELEASED
+from apps.intake.tests.builders import answer_household, answer_petition
 
 User = get_user_model()
 
@@ -154,6 +159,98 @@ def test_122a1_supplement_waits_for_its_questions(session):
     # Nothing collects a claimed exemption from the presumption until step 4.
     _means_test(session, "12000.00", "134366.00")
     assert "form_122a1_supp" not in packet(session)
+
+
+@pytest.mark.parametrize(
+    "outcome,applies",
+    [
+        ("not_consumer", True),
+        ("veteran_exemption", True),
+        ("military_exclusion", True),
+        ("at_or_below_median", False),
+        ("presumption", False),
+        (None, False),
+    ],
+)
+def test_supp_applies_reads_the_stored_outcome(session, outcome, applies):
+    # The Supp takes 122A-2's place exactly when the stored means test routed the filer to one
+    # of its three outcomes (R-ROUTE); a row saved before 3h1 (no outcome) routes as before.
+    means_test = _means_test(session, "12000.00", "134366.00")
+    means_test.outcome = outcome
+    means_test.save()
+
+    assert _supp_applies(IntakeSession.objects.get(pk=session.pk)) is applies
+
+
+def test_supp_applies_needs_a_means_test(session):
+    assert _supp_applies(session) is False
+
+
+def test_the_supp_refuses_its_first_open_question_on_the_amounts_owed_step(session):
+    # A category-2 claim with no release date: the Supp would print a claim the filer can't date,
+    # so it refuses in the gap's own words and links to Amounts Owed.
+    answer_petition(
+        session,
+        debt_nature="consumer",
+        disabled_veteran="no",
+        reservist="yes",
+        called_to_duty="yes",
+        duty_category="2",
+    )
+
+    with pytest.raises(PreconditionMissing) as refused:
+        _needs_supp_answers(session)
+
+    assert (str(refused.value), refused.value.step, refused.value.page) == (
+        DETAIL_DUTY_RELEASED,
+        "debts",
+        None,
+    )
+
+    answer_petition(session, duty_released_on="03/14/2026")
+    assert _needs_supp_answers(session) is None
+
+
+def _supp_session(wages, debt_nature):
+    """A session the means test can work out, with income of `wages` a month (test_means_outcome's
+    shape) and the given Amounts Owed answers."""
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    user = User.objects.create_user(username=f"supp{wages}", password="pw")
+    session = IntakeSession.objects.create(user=user, district=District.objects.get(code="ilnd"))
+    IncomeInfo.objects.create(
+        session=session,
+        **{
+            **dict.fromkeys(IncomeInfo.SOURCE_FIELDS, Decimal("0.00")),
+            "monthly_gross_wages": Decimal(wages),
+        },
+    )
+    answer_household(session, debt_nature=debt_nature)
+    _debtor(session)
+    return IntakeSession.objects.get(pk=session.pk)
+
+
+@pytest.mark.parametrize(
+    "wages,outcome",
+    [("9000.00", "cannot_work_out"), ("3000.00", "at_or_below_median")],
+)
+def test_a_line_3_claim_with_line_2_open_keeps_the_supp_out(db, wages, outcome):
+    # R-D2's boundary (F2): line 2 Yes with its follow-up open still reaches line 3, but the form
+    # takes line 2 first, so a whole line 3 claim can't route to box 3 while line 2 is open.
+    answers = {
+        "debt_nature": "consumer",
+        "disabled_veteran": "yes",
+        "reservist": "yes",
+        "called_to_duty": "yes",
+        "duty_category": "3",
+    }
+    session = _supp_session(wages, answers)
+    assert "debts_on_duty" not in session.petition_answers.get_answers()
+
+    MeansTestCalculator(session).calculate()
+
+    session = IntakeSession.objects.get(pk=session.pk)
+    assert session.means_test.outcome == outcome
+    assert _supp_applies(session) is False
 
 
 def test_petition_needs_the_filers_name_and_address(session):

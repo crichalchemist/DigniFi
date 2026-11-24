@@ -26,6 +26,7 @@ from apps.eligibility.cmi import (
     is_above_median,
     spouse_monthly_income,
 )
+from apps.eligibility.means_lines import supp_line_3_reached
 from apps.forms.services.answer_records import PETITION_STEP_OF_KEY, is_itin, record_value
 from apps.intake.asset_lines import (
     LINE_BY_KEY,
@@ -1210,6 +1211,16 @@ _register(
 )
 _register("itin_answer_no", _is(_asked("itin_answer"), "no"), _step_of("itin_answer"))
 
+
+# Form 122A-1Supp line 3's category (4d-R26): the filer's own stored category, and blank for "none"
+# (D9, which claims no exclusion), so the box never ticks a category the filer didn't choose.
+def _supp_duty_category(session: IntakeSession) -> str:
+    category = _petition(session, "duty_category")
+    return category if category in ("1", "2", "3", "4") else ""
+
+
+_register("supp_duty_category", _supp_duty_category, _step_of("duty_category"))
+
 # The derived rules a legal_review box may print through (Ruling T4-legalreview): each ticks its
 # box only when the filer's own stored answer is exactly that box's choice, so it infers nothing.
 # fill_resolver's UPL guard keeps every other derived legal_review box blank.
@@ -1224,6 +1235,7 @@ ANSWER_BOX_RULES = frozenset(
         "not_required_active_duty",
         "debt_nature_16a_yes",
         "debt_nature_consumer",
+        "supp_duty_category",
     }
 )
 
@@ -1301,6 +1313,45 @@ _PETITION_PREDICATES: dict[str, Callable[..., bool]] = {
 _DEBT_NATURE_PREDICATES: dict[str, Callable[..., bool]] = {
     "debt_nature_consumer_or_unanswered": lambda s, answer_cache=None: (
         _petition(s, "debt_nature") not in ("business", "neither")
+    ),
+}
+
+
+def _petition_answers(session: IntakeSession) -> dict:
+    """The session's stored petition answers as stored, {} with no record (Ruling I: no registry
+    import, which would be a cycle through fill_resolver)."""
+    record = getattr(session, "petition_answers", None)
+    return record.get_answers() if record is not None else {}
+
+
+def _supp_line_3_follow_up(answers) -> bool:
+    return supp_line_3_reached(answers) and answers.get("reservist") == "yes"
+
+
+def _supp_categories(answers) -> bool:
+    return _supp_line_3_follow_up(answers) and answers.get("called_to_duty") == "yes"
+
+
+# Form 122A-1Supp's Part 2 prints each answer only where the form reaches it (4d-R8, R-D2), under
+# consumer debts (line 2's gate is `petition_debt_nature_consumer`): line 2's follow-up under its
+# Yes, line 3 unless line 2 is Yes to both, line 3's follow-up under the Reservist Yes, the
+# categories under "called to duty" Yes and each date under its own category. Complete asks each
+# question exactly there (petition._SUPP_SHOWN); test_form_122a1_supp_schema.py pins the two.
+_SUPP_PREDICATES: dict[str, Callable[..., bool]] = {
+    "supp_line_2_follow_up": lambda s, answer_cache=None: (
+        (answers := _petition_answers(s)).get("debt_nature") == "consumer"
+        and answers.get("disabled_veteran") == "yes"
+    ),
+    "supp_line_3": lambda s, answer_cache=None: supp_line_3_reached(_petition_answers(s)),
+    "supp_line_3_follow_up": lambda s, answer_cache=None: (
+        _supp_line_3_follow_up(_petition_answers(s))
+    ),
+    "supp_categories": lambda s, answer_cache=None: _supp_categories(_petition_answers(s)),
+    "supp_date_1": lambda s, answer_cache=None: (
+        _supp_categories(answers := _petition_answers(s)) and answers.get("duty_category") == "2"
+    ),
+    "supp_date_2": lambda s, answer_cache=None: (
+        _supp_categories(answers := _petition_answers(s)) and answers.get("duty_category") == "4"
     ),
 }
 
@@ -1823,5 +1874,6 @@ PREDICATES: dict[str, Callable[[IntakeSession], bool]] = {
     ),
     **_PETITION_PREDICATES,
     **_DEBT_NATURE_PREDICATES,
+    **_SUPP_PREDICATES,
     **_SCHEDULE_I_PREDICATES,
 }

@@ -160,6 +160,8 @@ def is_mm_dd_yyyy(value) -> bool:
 
 # The petition record's row lists whose `filed_on` prints only as a real MM/DD/YYYY date (PF2-2).
 _DATED_ROW_LISTS = ("prior_cases", "pending_cases")
+# The petition record's dates that print only as a real MM/DD/YYYY date (4d-R9).
+_DATED_KEYS = ("duty_released_on", "duty_ended_on")
 
 
 def _unrecognized(binding: str) -> ValueError:
@@ -204,7 +206,11 @@ def record_value(session, binding: str) -> str | list[str]:
         return [] if is_list else ""
     answers = record.get_answers()
     if not is_list:
-        return _text(answers.get(key))
+        value = _text(answers.get(key))
+        if namespace == "petition." and key in _DATED_KEYS and value.strip():
+            # A date the form can't read prints blank; the stored value stays as typed.
+            return value if is_mm_dd_yyyy(value) else ""
+        return value
     rows = answers.get(key)
     if not isinstance(rows, list):
         return []

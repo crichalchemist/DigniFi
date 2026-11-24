@@ -939,7 +939,7 @@ class PetitionAnswers(models.Model):
     # The keys a {no, yes} radio prints: a stored stranger would make `_emit` raise
     # UnmappedChoice (a 422). Each is in YES_NO_KEYS, so the save's own guard
     # (`_petition_value_ok`) refuses any other value. prior_bankruptcy_answer also feeds 103B's
-    # check_20.
+    # check_20. The four military questions print on Form 122A-1Supp's Part 2 (4d-R26).
     RADIO_KEYS: ClassVar[tuple[str, ...]] = (
         "prior_bankruptcy_answer",
         "pending_case_answer",
@@ -947,6 +947,10 @@ class PetitionAnswers(models.Model):
         "hazard_answer",
         "aware_consequences",
         "aware_fraud",
+        "disabled_veteran",
+        "debts_on_duty",
+        "reservist",
+        "called_to_duty",
     )
     TEXT_CEILING: ClassVar[int] = 500
     ROW_CEILING: ClassVar[int] = 20

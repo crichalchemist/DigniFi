@@ -2150,6 +2150,96 @@
     "evidence": "Field index: Debto2.Quest11 p2 line 11, column 'Column B (Debtor 2 or non-filing spouse)', 'Calculate your total current monthly income - add lines 2 through 10 for the column (monthly)' (adjudicated). 3e1 spec §10.1 [Q2]: the spouse's current monthly income, without Social Security; Debto1.Quest11 + Debto2.Quest11 = Quest11."
   },
   {
+    "schema": "form_122a1_supp",
+    "pdf_field": "CheckBox2",
+    "producer": "derived:debt_nature_consumer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox2",
+    "evidence": "Field index: CheckBox2 p1 T7 line 1 'Are your debts primarily consumer debts?', state /Yes ('Yes. Go to Part 2.') (adjudicated). Bound @1:T7; T6 is the other box. Step 4 spec §5.3: line 1 prints Form 101 line 16's answer (debt_nature). Ruling R-D6 and 4d-R7: the name is drawn twice, each widget its own box, so each answer has its own tagged binding through the line 16a rules' aliases. The Yes box prints only for the filer's own `consumer`, marked for legal review, its rule in ANSWER_BOX_RULES; an unanswered line 16 ticks neither box. Written by build_form_122a1_supp.py; read by test_form_122a1_supp_schema.py and tier 1."
+  },
+  {
+    "schema": "form_122a1_supp",
+    "pdf_field": "CheckBox2",
+    "producer": "derived:debt_nature_not_consumer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox2",
+    "evidence": "Field index: CheckBox2 p1 T6 line 1 'Are your debts primarily consumer debts?', state /no ('No. Go to Form 122A-1; on the top of page 1 of that form, check box 1, There is no presumption of abuse, and sign Part 3. Then submit this supplement with the signed Form 122A-1.') (adjudicated). Bound @1:T6; T7 is the other box. Step 4 spec §5.3: line 1 prints Form 101 line 16's answer (debt_nature). Ruling R-D6 and 4d-R7: the name is drawn twice, each widget its own box, so each answer has its own tagged binding through the line 16a rules' aliases. The No box prints only for the filer's own `business` or `neither`, not marked for legal review; an unanswered line 16 ticks neither box. Written by build_form_122a1_supp.py; read by test_form_122a1_supp_schema.py and tier 1."
+  },
+  {
+    "schema": "form_122a1_supp",
+    "pdf_field": "CheckBox3",
+    "producer": "asked:petition.disabled_veteran",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox3",
+    "evidence": "Field index: CheckBox3 p1 T8, T9 line 2 'Are you a disabled veteran (as defined in 38 U.S.C. 3741(1))?', state /no ('No. Go to line 3.'); state /Yes ('Yes. Did you incur debts mostly while you were on active duty or while you were performing a homeland defense activity?') (adjudicated). 4d-R8: line 2 prints the filer's own answer, only under consumer debts (line 1's No goes to Form 122A-1 instead). Written by build_form_122a1_supp.py; read by test_form_122a1_supp_schema.py and tier 1."
+  },
+  {
+    "schema": "form_122a1_supp",
+    "pdf_field": "CheckBox4",
+    "producer": "asked:petition.debts_on_duty",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox4",
+    "evidence": "Field index: CheckBox4 p1 T10, T11 line 2 '(Disabled veteran) Did you incur debts mostly while on active duty or performing a homeland defense activity?', state /no ('No. Go to line 3.'); state /Yes ('Yes. Go to Form 122A-1; on the top of page 1 of that form, check box 1, There is no presumption of abuse, and sign Part 3. Then submit this supplement with the signed Form 122A-1.') (adjudicated). 4d-R8: line 2's follow-up prints the filer's own answer, only under consumer debts and line 2's Yes. Written by build_form_122a1_supp.py; read by test_form_122a1_supp_schema.py and tier 1."
+  },
+  {
+    "schema": "form_122a1_supp",
+    "pdf_field": "CheckBox5",
+    "producer": "asked:petition.reservist",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox5",
+    "evidence": "Field index: CheckBox5 p1 T12, T13 line 3 'Are you or have you been a Reservist or member of the National Guard?', state /no ('No. Complete Form 122A-1. Do not submit this supplement.'); state /Yes ('Yes. Were you called to active duty or did you perform a homeland defense activity?') (adjudicated). 4d-R8 and R-D2: line 3 prints the filer's own answer only where the form reaches it, under consumer debts unless line 2 is Yes to both questions (supp_line_3_reached). Written by build_form_122a1_supp.py; read by test_form_122a1_supp_schema.py and tier 1."
+  },
+  {
+    "schema": "form_122a1_supp",
+    "pdf_field": "CheckBox6",
+    "producer": "asked:petition.called_to_duty",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox6",
+    "evidence": "Field index: CheckBox6 p1 T14, T15 line 3 '(Reservist/National Guard) Were you called to active duty or did you perform a homeland defense activity?', state /no ('No. Complete Form 122A-1. Do not submit this supplement.'); state /Yes ('Yes. Check any one of the following categories that applies:') (adjudicated). 4d-R8: line 3's follow-up prints the filer's own answer where line 3 is reached and its answer is Yes. Written by build_form_122a1_supp.py; read by test_form_122a1_supp_schema.py and tier 1."
+  },
+  {
+    "schema": "form_122a1_supp",
+    "pdf_field": "CheckBox7",
+    "producer": "derived:supp_duty_category",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox7",
+    "evidence": "Field index: CheckBox7 p1 T16, T17, T19, T20 line 3 'Active-duty / homeland-defense category (check one)', state /1 ('I was called to active duty after September 11, 2001, for at least 90 days and remain on active duty.'); state /2 ('I was called to active duty after September 11, 2001, for at least 90 days and was released from active duty on ___, which is fewer than 540 days before I file this bankruptcy case.'); state /3 ('I am performing a homeland defense activity for at least 90 days.'); state /4 ('I performed a homeland defense activity for at least 90 days, ending on ___, which is fewer than 540 days before I file this bankruptcy case.') (adjudicated). 4d-R8 and 4d-R26: the category prints through the rule supp_duty_category, which returns the filer's own stored category 1 to 4 and blank otherwise, so 'none applies' (D9) ticks no box; marked for legal review, its rule in ANSWER_BOX_RULES. It prints only under the follow-up's Yes. Written by build_form_122a1_supp.py; read by test_form_122a1_supp_schema.py and tier 1."
+  },
+  {
+    "schema": "form_122a1_supp",
+    "pdf_field": "Date1",
+    "producer": "asked:petition.duty_released_on",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Date1",
+    "evidence": "Field index: Date1 p1 T18 line 3 'Date released from active duty (category 2; fewer than 540 days before filing)', a text box (Date released (format mm/dd/yyyy)) (adjudicated). 4d-R8 and 4d-R9: the filer's own date, only under category 2's whole chain, and only as MM/DD/YYYY (record_value blanks any other). Written by build_form_122a1_supp.py; read by test_form_122a1_supp_schema.py and tier 1."
+  },
+  {
+    "schema": "form_122a1_supp",
+    "pdf_field": "Date2",
+    "producer": "asked:petition.duty_ended_on",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Date2",
+    "evidence": "Field index: Date2 p1 T21 line 3 'Date homeland defense activity ended (category 4; fewer than 540 days before filing)', a text box (Date ending (format mm/dd/yyyy)) (adjudicated). 4d-R8 and 4d-R9: the filer's own date, only under category 4's whole chain, and only as MM/DD/YYYY (record_value blanks any other). Written by build_form_122a1_supp.py; read by test_form_122a1_supp_schema.py and tier 1."
+  },
+  {
     "schema": "schedule_i",
     "pdf_field": "Amount 3 Debtor 1",
     "producer": "derived:schedule_i_overtime_debtor1",
