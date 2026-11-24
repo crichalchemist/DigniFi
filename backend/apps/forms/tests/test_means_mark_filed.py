@@ -253,6 +253,28 @@ def test_marking_an_already_filed_122a1_filed_again_keeps_what_it_was_filed_with
 
 
 @pytest.mark.django_db
+def test_a_stale_122a2_row_under_a_supp_outcome_is_not_in_the_packet(
+    api_client, session_with_debtor
+):
+    session = session_with_debtor
+    _set_wages(session, "9000.00")
+    answer_means_test(session)
+    row = _generate(api_client, session, "form_122a2")
+    stored = row.field_values
+    answer_petition(session, debt_nature="business")  # a Supp outcome: 122A-2 leaves the packet
+
+    resp = _mark_filed(api_client, row)
+
+    assert resp.status_code == 422
+    assert resp.data == {
+        "form_type": "form_122a2",
+        "error": "This form isn't part of your packet, based on the answers you've given.",
+    }
+    row.refresh_from_db()
+    assert (row.status, row.field_values) == ("generated", stored)
+
+
+@pytest.mark.django_db
 def test_a_122a1_filed_with_box_1_still_downloads_as_stored_above_the_median(
     api_client, session_with_debtor
 ):
