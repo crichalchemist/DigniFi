@@ -89,6 +89,6 @@ test.describe('DeShawn Mitchell — Assets', () => {
     // He pays in installments, so no Form 103B; his mortgage brings Form 108
     await dashboard.generateAllForms(16);
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(15);
+    expect(count).toBe(16);
   });
 });

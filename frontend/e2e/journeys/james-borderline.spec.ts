@@ -84,6 +84,6 @@ test.describe('James Washington — Borderline', () => {
     // packet; his car loan brings Form 108.
     await dashboard.generateAllForms(16);
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(15);
+    expect(count).toBe(16);
   });
 });

@@ -107,6 +107,6 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
     // and his car lease bring Form 108
     await dashboard.generateAllForms(16);
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(15);
+    expect(count).toBe(16);
   });
 });

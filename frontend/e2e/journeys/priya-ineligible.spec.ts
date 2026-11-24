@@ -120,7 +120,7 @@ test.describe('Priya Sharma — Above the Median', () => {
     // Above the median, her packet holds Form 122A-2, and her car loan Form 108: 15 forms plus
     // those two
     await dashboard.generateAllForms(17);
-    expect(await dashboard.getGeneratedCount()).toBe(16);
+    expect(await dashboard.getGeneratedCount()).toBe(17);
     await expect(
       page.getByRole('article', { name: /122A-2/ }).getByRole('button', { name: 'Download' })
     ).toBeVisible();
