@@ -24,6 +24,7 @@ from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import DebtorInfo, IntakeSession, SOFAReport
+from apps.intake.tests.builders import answer_petition
 
 User = get_user_model()
 
@@ -114,3 +115,25 @@ def test_a_fourth_sofa_row_no_longer_keeps_form_107_from_printing(session, kind)
     _sofa(session, **{kind: 4})
 
     assert resolve(load_schema("form_107"), session)["Debtor 1"] == "Jane Q Doe"
+
+
+# Line 6 asks Form 101 line 16a again, one box an answer (4d-R7): the filer's own line 16 answer
+# ticks exactly one of its two boxes, and an unanswered line 16 ticks neither.
+LINE_6_TICKED = {
+    "consumer": {"T6": "/yes"},
+    "business": {"T3": "/no"},
+    "neither": {"T3": "/no"},
+    None: {},
+}
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("answer", LINE_6_TICKED)
+def test_each_debt_nature_answer_ticks_exactly_one_line_6_box(session, answer):
+    answer_petition(session, debt_nature=answer)
+    if answer is None:
+        assert "debt_nature" not in session.petition_answers.get_answers()
+    line_6 = [w for w in read_drawn("form_107", _fill(session)) if w.full_name == "check6"]
+    assert sorted(w.tag for w in line_6) == ["T3", "T6"]
+    ticked = {w.tag: w.state for w in line_6 if w.state not in ("", "/Off")}
+    assert ticked == LINE_6_TICKED[answer]

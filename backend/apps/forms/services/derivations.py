@@ -1198,6 +1198,16 @@ _register(
 )
 _register("debt_nature_16b_yes", _is(_asked("debt_nature"), "business"), _step_of("debt_nature"))
 _register("debt_nature_16b_no", _is(_asked("debt_nature"), "neither"), _step_of("debt_nature"))
+# 106Sum line 7 and Form 107 line 6 ask line 16a's question again, one box an answer (4d-R7):
+# each box's binding key names its meaning, as schedule_j_total_income names line 12's rule.
+_register(
+    "debt_nature_consumer", _PETITION_DERIVATIONS["debt_nature_16a_yes"], _step_of("debt_nature")
+)
+_register(
+    "debt_nature_not_consumer",
+    _PETITION_DERIVATIONS["debt_nature_16a_no"],
+    _step_of("debt_nature"),
+)
 _register("itin_answer_no", _is(_asked("itin_answer"), "no"), _step_of("itin_answer"))
 
 # The derived rules a legal_review box may print through (Ruling T4-legalreview): each ticks its
@@ -1213,6 +1223,7 @@ ANSWER_BOX_RULES = frozenset(
         "not_required_disability",
         "not_required_active_duty",
         "debt_nature_16a_yes",
+        "debt_nature_consumer",
     }
 )
 
@@ -1278,9 +1289,19 @@ _PETITION_PREDICATES: dict[str, Callable[..., bool]] = {
         ("hazard_yes", "hazard_answer", "yes"),
         ("rents_yes", "rents_residence", "yes"),
         ("debt_nature_neither", "debt_nature", "neither"),
+        ("debt_nature_consumer", "debt_nature", "consumer"),
         ("credit_counseling_exigent", "credit_counseling", "exigent"),
         ("paid_preparer_yes", "paid_preparer", "yes"),
     )
+}
+
+# 106Sum line 7's not-consumer box says "You have nothing to report on this part of the form"
+# (D7): lines 8-9g print unless the filer's own line 16 answer is business or neither. No
+# `key == value` row says "anything but these two", so it has its own row.
+_DEBT_NATURE_PREDICATES: dict[str, Callable[..., bool]] = {
+    "debt_nature_consumer_or_unanswered": lambda s, answer_cache=None: (
+        _petition(s, "debt_nature") not in ("business", "neither")
+    ),
 }
 
 # Schedule I's and Schedule J line 24's boxes print only what the step shows (4c-R5): your
@@ -1801,5 +1822,6 @@ PREDICATES: dict[str, Callable[[IntakeSession], bool]] = {
         s, "address_history_gate", answer_cache
     ),
     **_PETITION_PREDICATES,
+    **_DEBT_NATURE_PREDICATES,
     **_SCHEDULE_I_PREDICATES,
 }

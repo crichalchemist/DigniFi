@@ -9,10 +9,11 @@ filer's own sworn answers. DigniFi never answers them. Each form prints exactly 
 the filer said, and a question the filer hasn't answered stays blank. Form 103B lines
 17-19 ask three different payment questions, and each prints its own answer.
 
-Until 4d and 4i ask these questions once, the answers live in two stores: Form 101 reads
-`PetitionAnswers` and the other forms read `FormAnswer`. The tests plant the answer in
-each form's own store, so they show that each form prints its store's answer, not that
-the two stores agree.
+The consumer debts answer is Form 101 line 16, asked once on the Amounts Owed step and stored
+in `PetitionAnswers`, which every form that asks reads (4d). Until 4i asks about paid help
+once, that answer lives in two stores: Form 101 reads `PetitionAnswers` and the other forms
+read `FormAnswer`. The paid-help tests plant the answer in each form's own store, so they show
+that each form prints its store's answer, not that the two stores agree.
 """
 
 from datetime import date
@@ -32,12 +33,36 @@ from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
-# Form → (box, state its "yes" ticks, state its "no" ticks), each state from the index. Form 101
-# (11/26) asks each as two single boxes: ((its Yes box, its No box), the one state each ticks).
+# Form → the boxes that print line 16's answer: (the box that says "primarily consumer debts",
+# the boxes that say otherwise), each box → the one state it ticks, from the index. Form 101
+# (11/26) asks 16a and 16b as single boxes; 106Sum line 7 and Form 107 line 6 draw one name
+# twice, each widget its own box, keyed "<name>@<page>:<tag>" as the engine fills it (4d-R7).
 CONSUMER_DEBTS = {
-    "form_101": (("Yes Go to line 17", "No Go to line 16b"), "/On"),
-    "form_106sum": ("check7", "/consumer", "/not consumer"),
-    "form_107": ("check6", "/yes", "/no"),
+    "form_101": (
+        {"Yes Go to line 17": "/On"},
+        {"No Go to line 16b": "/On", "Yes Go to line 17_2": "/On", "No Go to line 16c": "/On"},
+    ),
+    "form_106sum": ({"check7@2:T5": "/consumer"}, {"check7@2:T6": "/not consumer"}),
+    "form_107": ({"check6@3:T6": "/yes"}, {"check6@3:T3": "/no"}),
+}
+# Line 16 answer → the boxes it ticks on each form (an unanswered line 16 ticks none).
+LINE_16_TICKS = {
+    "consumer": {
+        "form_101": {"Yes Go to line 17"},
+        "form_106sum": {"check7@2:T5"},
+        "form_107": {"check6@3:T6"},
+    },
+    "business": {
+        "form_101": {"No Go to line 16b", "Yes Go to line 17_2"},
+        "form_106sum": {"check7@2:T6"},
+        "form_107": {"check6@3:T3"},
+    },
+    "neither": {
+        "form_101": {"No Go to line 16b", "No Go to line 16c"},
+        "form_106sum": {"check7@2:T6"},
+        "form_107": {"check6@3:T3"},
+    },
+    None: {"form_101": set(), "form_106sum": set(), "form_107": set()},
 }
 PAID_HELP = {
     "form_101": (("Yes Name of Person", "No_10"), "/On"),
@@ -93,17 +118,20 @@ def _answer(session, key, value, form_type="form_101"):
     FormAnswer.objects.create(session=session, form_type=form_type, field_key=key, value=value)
 
 
-# The petition's own record of the answers 106Sum, 106Dec and 107 still read from FormAnswer
-# rows until 4d and 4i: key → (PetitionAnswers key, the stored value of a "yes" / "no").
+# The petition's own record of the answers 106Dec and 107 still read from FormAnswer rows until
+# 4i: key → (PetitionAnswers key, the stored value of a "yes" / "no").
 PETITION_ANSWER = {
-    "primarily_consumer_debts": ("debt_nature", {"yes": "consumer", "no": "business"}),
     "paid_non_attorney_preparer": ("paid_preparer", {"yes": "yes", "no": "no"}),
 }
 
 
 def _says(session, form_type, key, value):
-    """The filer's answer, stored where the form reads it: Form 101's record, or the shared row."""
-    if form_type != "form_101":
+    """
+    The filer's answer, stored where the form reads it: line 16 (`debt_nature`) in the petition's
+    record for every form, a None leaving it unanswered; paid help in Form 101's record, or the
+    shared row the other forms read.
+    """
+    if key != "debt_nature" and form_type != "form_101":
         _answer(session, key, value)
         return
     petition_key, stored = PETITION_ANSWER.get(key, (key, None))
@@ -134,11 +162,19 @@ def _shows(filled, form_type, entry, answer):
 
 
 def _filled(session, form_type):
-    """Box → what the drawn form prints in it: the ticked states, or the text."""
-    values = resolve(load_schema(form_type), session)
+    """
+    Box → what the drawn form prints in it: the ticked states, or the text. A widget the schema
+    binds by its tag is its own box, "<name>@<page>:<tag>".
+    """
+    schema = load_schema(form_type)
+    values = resolve(schema, session)
+    tagged = {(f.pdf_field, f.page, f.tag) for f in schema.fields if f.tag}
     shows = {}
     for widget in read_drawn(form_type, PDFFormFiller().fill(form_type, values)):
-        seen = shows.setdefault(widget.full_name, set())
+        box = widget.full_name
+        if (widget.full_name, widget.page, widget.tag) in tagged:
+            box = f"{widget.full_name}@{widget.page}:{widget.tag}"
+        seen = shows.setdefault(box, set())
         if widget.state:
             if widget.state != "/Off":
                 seen.add(widget.state)
@@ -148,31 +184,51 @@ def _filled(session, form_type):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("answer", ["yes", "no"])
+@pytest.mark.parametrize("answer", LINE_16_TICKS)
 @pytest.mark.parametrize("form_type", CONSUMER_DEBTS)
-def test_the_consumer_debts_answer_ticks_the_same_answer_on_every_form_that_asks(
-    session, form_type, answer
-):
-    _says(session, form_type, "primarily_consumer_debts", answer)
-    shown, expected = _shows(
-        _filled(session, form_type), form_type, CONSUMER_DEBTS[form_type], answer
-    )
-    assert shown == expected
+def test_the_consumer_debts_answer_ticks_the_same_answer_on_every_form(session, form_type, answer):
+    # One answer, stored once (4d), prints the same on every form that asks: each box that
+    # names the filer's own answer is ticked, and every other box stays blank.
+    _says(session, form_type, "debt_nature", answer)
+    if answer is None:
+        assert "debt_nature" not in session.petition_answers.get_answers()
+    consumer, other = CONSUMER_DEBTS[form_type]
+    boxes = {**consumer, **other}
+    filled = _filled(session, form_type)
+    ticked = LINE_16_TICKS[answer][form_type]
+    assert {box: filled.get(box) for box in boxes} == {
+        box: {state} if box in ticked else set() for box, state in boxes.items()
+    }
+
+
+def _field(form_type, box):
+    """The schema field that fills a box: a bare name, or "<name>@<page>:<tag>"."""
+    name, _, at = box.partition("@")
+    page, _, tag = at.partition(":")
+    found = [
+        f
+        for f in load_schema(form_type).fields
+        if f.pdf_field == name and (not at or (str(f.page), f.tag) == (page, tag))
+    ]
+    assert len(found) == 1, f"{box!r} is bound {len(found)} times on {form_type}"
+    return found[0]
 
 
 @pytest.mark.parametrize("form_type", CONSUMER_DEBTS)
 def test_only_the_filers_own_answer_can_tick_consumer_debts(form_type):
-    # The answer decides whether the means test applies, and DigniFi never gives it for
-    # the filer: the box is held for legal review, which fills it only from an answer.
-    box = _boxes(CONSUMER_DEBTS[form_type])[0]
-    field = next((f for f in load_schema(form_type).fields if f.pdf_field == box), None)
-    assert field is not None, f"{box!r} is not bound on {form_type}"
-    if form_type == "form_101":
-        # Form 101 ticks its Yes box through a rule that fires on the filer's own "consumer".
-        assert (field.source, field.legal_review) == ("derived", True)
-        assert field.rule in ANSWER_BOX_RULES
-    else:
-        assert (field.source, field.legal_review) == ("asked", True)
+    # The answer decides whether the means test applies, and DigniFi never gives it for the
+    # filer: the "primarily consumer debts" box is held for legal review, and prints only
+    # through a rule that ticks exactly the filer's own stored "consumer" (ANSWER_BOX_RULES).
+    # The boxes that say otherwise make no such claim.
+    consumer, other = CONSUMER_DEBTS[form_type]
+    for box in consumer:
+        field = _field(form_type, box)
+        assert (field.source, field.legal_review) == ("derived", True), box
+        assert field.rule in ANSWER_BOX_RULES, box
+    for box in other:
+        field = _field(form_type, box)
+        assert (field.source, field.legal_review) == ("derived", False), box
+        assert field.rule not in ANSWER_BOX_RULES, box
 
 
 @pytest.mark.slow
@@ -263,13 +319,19 @@ def test_a_question_the_filer_has_not_answered_prints_nothing(session):
     boxes = {
         "form_101": [
             *CONSUMER_DEBTS["form_101"][0],
+            *CONSUMER_DEBTS["form_101"][1],
             *PAID_HELP["form_101"][0],
             HELPER_NAME["form_101"],
         ],
         "form_103b": [box for _, box in PAYMENT_LINES.values()],
         "form_106dec": ["check1", HELPER_NAME["form_106dec"]],
-        "form_106sum": [CONSUMER_DEBTS["form_106sum"][0]],
-        "form_107": ["check6", "check30", HELPER_NAME["form_107"]],
+        "form_106sum": [*CONSUMER_DEBTS["form_106sum"][0], *CONSUMER_DEBTS["form_106sum"][1]],
+        "form_107": [
+            *CONSUMER_DEBTS["form_107"][0],
+            *CONSUMER_DEBTS["form_107"][1],
+            "check30",
+            HELPER_NAME["form_107"],
+        ],
     }
     for form_type, names in boxes.items():
         filled = _filled(session, form_type)

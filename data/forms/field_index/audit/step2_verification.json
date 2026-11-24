@@ -1652,22 +1652,42 @@
   {
     "schema": "form_106sum",
     "pdf_field": "check7",
-    "producer": "asked:answer:form_101.primarily_consumer_debts",
+    "producer": "derived:debt_nature_consumer",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check7",
-    "evidence": "Field index: check7 p2 line 7 'What kind of debt do you have?', states /consumer ('Your debts are primarily consumer debts') and /not consumer (on_state not#20consumer), both sampled_ok. Yes ticks /consumer and No ticks /not consumer. Owner's answer Q7 (DIG-121; step 2 spec §3, §6.3): each filer answers 'primarily consumer debts', and the answer prints on 101 Check Box18, 106Sum check7 and 107 check6, marked for legal review."
+    "evidence": "Field index: check7 p2 T5 line 7 'What kind of debt do you have?', state /consumer ('Your debts are primarily consumer debts. Consumer debts are those “incurred by an individual primarily for a personal, family, or household purpose.”'), sampled_ok; T6 is the not-consumer box. Bound @2:T5, marked for legal review, its rule in ANSWER_BOX_RULES. Step 4 spec §5.3 (S:176): the box prints Form 101 line 16's answer (debt_nature). Ruling R-D6 and 4d-R7: the name is drawn twice, each widget its own box, so each answer has its own tagged binding through the line 16a rules' aliases. The consumer box prints only for the filer's own `consumer`; the other for `business` or `neither`; an unanswered line 16 ticks neither."
+  },
+  {
+    "schema": "form_106sum",
+    "pdf_field": "check7",
+    "producer": "derived:debt_nature_not_consumer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check7",
+    "evidence": "Field index: check7 p2 T6 line 7 'What kind of debt do you have?', state /not consumer (on_state not#20consumer: 'Your debts are not primarily consumer debts. You have nothing to report on this part of the form.'), sampled_ok; T5 is the consumer box. Bound @2:T6, not marked for legal review. Step 4 spec §5.3 (S:176): the box prints Form 101 line 16's answer (debt_nature). Ruling R-D6 and 4d-R7: the name is drawn twice, each widget its own box, so each answer has its own tagged binding through the line 16a rules' aliases. The consumer box prints only for the filer's own `consumer`; the other for `business` or `neither`; an unanswered line 16 ticks neither."
   },
   {
     "schema": "form_107",
     "pdf_field": "check6",
-    "producer": "asked:answer:form_101.primarily_consumer_debts",
+    "producer": "derived:debt_nature_consumer",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check6",
-    "evidence": "Field index: check6 p3 line 6 'Are either Debtor 1’s or Debtor 2’s debts primarily consumer debts?', states /no ('No. Neither Debtor 1 nor Debtor 2 has primarily consumer debts.') and /yes ('Yes. Debtor 1 or Debtor 2 or both have primarily consumer debts.'), sampled_ok. check6a and check6b stay blank. Owner's answer Q7 (DIG-121; step 2 spec §3, §6.3): each filer answers 'primarily consumer debts', and the answer prints on 101 Check Box18, 106Sum check7 and 107 check6, marked for legal review."
+    "evidence": "Field index: check6 p3 T6 line 6 'Are either Debtor 1’s or Debtor 2’s debts primarily consumer debts?', state /yes ('Yes. Debtor 1 or Debtor 2 or both have primarily consumer debts.'), sampled_ok; T3 is the No box. Bound @3:T6, marked for legal review, its rule in ANSWER_BOX_RULES. check6a and check6b stay blank. Step 4 spec §5.3 (S:176): the box prints Form 101 line 16's answer (debt_nature). Ruling R-D6 and 4d-R7: the name is drawn twice, each widget its own box, so each answer has its own tagged binding through the line 16a rules' aliases. The consumer box prints only for the filer's own `consumer`; the other for `business` or `neither`; an unanswered line 16 ticks neither."
+  },
+  {
+    "schema": "form_107",
+    "pdf_field": "check6",
+    "producer": "derived:debt_nature_not_consumer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check6",
+    "evidence": "Field index: check6 p3 T3 line 6 'Are either Debtor 1’s or Debtor 2’s debts primarily consumer debts?', state /no ('No. Neither Debtor 1 nor Debtor 2 has primarily consumer debts.'), sampled_ok; T6 is the Yes box. Bound @3:T3, not marked for legal review. check6a and check6b stay blank. Step 4 spec §5.3 (S:176): the box prints Form 101 line 16's answer (debt_nature). Ruling R-D6 and 4d-R7: the name is drawn twice, each widget its own box, so each answer has its own tagged binding through the line 16a rules' aliases. The consumer box prints only for the filer's own `consumer`; the other for `business` or `neither`; an unanswered line 16 ticks neither."
   },
   {
     "schema": "form_107",

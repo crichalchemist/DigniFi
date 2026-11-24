@@ -1127,15 +1127,24 @@ def test_lines_15_and_16a_carry_legal_review():
     assert marked == LEGAL_REVIEW
 
 
-def test_only_line_15s_and_16as_own_answer_boxes_pass_the_upl_guard():
+def test_only_the_filers_own_answer_boxes_pass_the_upl_guard_on_any_form():
     # Ruling T4-legalreview: a derived legal_review box prints only when its rule ticks exactly
-    # the filer's own stored choice. The guard's list is these eight rules and no other, so a
-    # rule joins it only by a change here.
+    # the filer's own stored choice. The guard's list is nine rules and no other, so a rule
+    # joins it only by a change here: Form 101 line 15's seven boxes and 16a's Yes, and
+    # debt_nature_consumer, 106Sum line 7's and Form 107 line 6's consumer box (4d-R7).
+    from apps.forms.registry import FORM_REGISTRY
     from apps.forms.services.derivations import ANSWER_BOX_RULES
 
-    reviewed = [f for f in load_schema("form_101").fields if f.legal_review]
-    assert {f.source for f in reviewed} == {"derived"}
-    assert {f.rule for f in reviewed} == ANSWER_BOX_RULES
+    form_101_reviewed = [f for f in load_schema("form_101").fields if f.legal_review]
+    assert {f.source for f in form_101_reviewed} == {"derived"}
+    rules = {
+        f.rule
+        for form_type in FORM_REGISTRY
+        for f in load_schema(form_type).fields
+        if f.legal_review and f.source == "derived"
+    }
+    assert rules == ANSWER_BOX_RULES
+    assert len(ANSWER_BOX_RULES) == 9
 
 
 def test_the_revision_mark_on_the_template_is_11_26():
