@@ -870,6 +870,24 @@ def test_every_persona_answers_line_16_and_both_military_gates():
 
 
 @pytest.mark.django_db
+def test_no_persona_gets_the_supp_and_every_packet_count_is_unchanged():
+    # 4d adds a form and three outcomes to the routing; no persona's packet moves. Priya's
+    # presumption keeps 122A-2 and every other persona is below the median, and none holds the
+    # Supp. The counts are the ones pinned above.
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", stdout=StringIO())
+
+    packets = {
+        persona: packet(IntakeSession.objects.get(user__username=f"demo_{persona}"))
+        for persona in PACKET_SIZE
+    }
+
+    assert {persona: len(forms) for persona, forms in packets.items()} == PACKET_SIZE
+    assert [persona for persona, forms in packets.items() if "form_122a1_supp" in forms] == []
+    assert [persona for persona, forms in packets.items() if "form_122a2" in forms] == ["priya"]
+
+
+@pytest.mark.django_db
 def test_no_seed_builder_or_fixture_writes_a_4i_key():
     # 4i asks these on other steps; until then a stored answer would be a sworn answer no screen
     # collected, printed on Form 101 (PF-R2, PF2-8). The set is derived, so a key 4i adds to the

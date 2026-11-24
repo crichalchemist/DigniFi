@@ -543,3 +543,45 @@ def test_a_filed_122a1_with_box_3_shows_no_mismatch(api_client, session_with_deb
     forms = api_client.get("/api/forms/packet/", {"session": session.pk}).data["form_types"]
     assert "form_122a2" not in forms
     assert "form_122a1_supp" in forms
+
+
+@pytest.mark.django_db
+def test_the_supp_is_marked_filed_alone_once_122a1_is_filed(api_client, session_with_debtor):
+    # D11's route: 122A-1 was filed first (box 1, before the filer's answers changed), so the
+    # Supp's partner is already filed and nothing holds the Supp back from being filed alone.
+    session = session_with_debtor
+    _set_wages(session, "9000.00")
+    answer_petition(session, debt_nature="business")
+    GeneratedForm.objects.create(session=session, form_type="form_122a1", status="filed")
+    row = _generate(api_client, session, "form_122a1_supp")
+
+    resp = _mark_filed(api_client, row)
+
+    assert resp.status_code == 200, resp.data
+    assert resp.data["status"] == "filed"
+    row.refresh_from_db()
+    assert row.status == "filed"
+
+
+@pytest.mark.django_db
+def test_a_supp_row_outside_the_packet_cant_be_marked_filed(api_client, session_with_debtor):
+    # A consumer filer below the median has no Supp outcome, so a Supp row left from earlier
+    # answers is not in the packet and is refused rather than filed.
+    session = session_with_debtor
+    answer_petition(session, debt_nature="consumer", disabled_veteran="no", reservist="no")
+    stored = json.dumps({"version": 2, "parts": [{"kind": "form", "values": {}}]})
+    row = GeneratedForm.objects.create(
+        session=session, form_type="form_122a1_supp", status="generated", field_values=stored
+    )
+
+    resp = _mark_filed(api_client, row)
+
+    assert (resp.status_code, resp.data) == (
+        422,
+        {
+            "form_type": "form_122a1_supp",
+            "error": "This form isn't part of your packet, based on the answers you've given.",
+        },
+    )
+    row.refresh_from_db()
+    assert (row.status, row.field_values) == ("generated", stored)

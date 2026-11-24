@@ -2985,6 +2985,48 @@ describe('FormDashboard', () => {
         expect(within(card).getByText(MEANS_FILED_BEFORE_122A1)).toBeInTheDocument();
         expect(within(card).queryByText(MEANS_FILED_BOX_2_NOW_SUPP)).not.toBeInTheDocument();
       });
+
+      // T7-H1: the filed 122A-1's notice is shown on the Supp's card before it marks alone
+      it('shows the box 2 notice before the Supp marks alone after a filed 122A-1', async () => {
+        let markFiledCalls = 0;
+        let pairCalls = 0;
+        packetWith(
+          { outcome: 'not_consumer', family_size: 4, tables_gap: null, open_on: null },
+          SUPP_PACKET
+        );
+        formsWith(
+          storedForm('form_122a1', 7, {
+            status: 'filed',
+            filed_before_means_test: false,
+            stored_box_2: true,
+          }),
+          storedForm('form_122a1_supp', 9)
+        );
+        server.use(
+          http.post('http://localhost:8000/api/forms/:id/mark_filed/', () => {
+            markFiledCalls += 1;
+            return HttpResponse.json({ message: 'Marked as filed.' });
+          }),
+          http.post('http://localhost:8000/api/forms/mark_pair_filed/', () => {
+            pairCalls += 1;
+            return HttpResponse.json({ forms: [], message: 'marked' });
+          })
+        );
+        renderFormDashboard();
+
+        const card = await screen.findByRole('article', { name: SUPP_CARD });
+        await userEvent.click(within(card).getByRole('button', { name: 'Mark as Filed' }));
+
+        const group = within(card).getByRole('group', {
+          name: `${CARD_1} ${MEANS_FILED_BOX_2_NOW_SUPP}`,
+        });
+        expect(within(group).getByText(MEANS_FILED_BOX_2_NOW_SUPP)).toBeInTheDocument();
+
+        await userEvent.click(within(group).getByRole('button', { name: MEANS_PAIR_MARK_ALONE }));
+
+        await waitFor(() => expect(markFiledCalls).toBe(1));
+        expect(pairCalls).toBe(0);
+      });
     });
   });
 });

@@ -184,6 +184,33 @@ def test_122a1_supplement_follows_the_supp_outcomes(session, outcome, in_packet)
     assert ("form_122a2" in forms) is not in_packet
 
 
+@pytest.mark.parametrize(
+    "outcome",
+    [
+        "at_or_below_median",
+        "cannot_work_out",
+        "no_presumption",
+        "presumption",
+        "not_consumer",
+        "veteran_exemption",
+        "military_exclusion",
+    ],
+)
+def test_a_packet_holds_122a2_or_the_supp_never_both(session, outcome):
+    # 122A-1 is filed with one partner (D4): 122A-2 above the median, the Supp under one of its
+    # three outcomes. A filer above the median with any of the seven outcomes gets at most one.
+    means_test = _means_test(session, "12000.00", "134366.00")
+    means_test.outcome = outcome
+    means_test.save()
+
+    forms = packet(IntakeSession.objects.get(pk=session.pk))
+
+    assert not ({"form_122a2", "form_122a1_supp"} <= set(forms))
+    assert ("form_122a1_supp" in forms) is (
+        outcome in {"not_consumer", "veteran_exemption", "military_exclusion"}
+    )
+
+
 def test_no_means_test_leaves_the_supplement_out(session):
     assert "form_122a1_supp" not in packet(session)
 
