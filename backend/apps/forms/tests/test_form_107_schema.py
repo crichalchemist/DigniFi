@@ -98,12 +98,16 @@ def test_the_filers_name_heads_every_page(session):
 @pytest.mark.slow
 def test_saved_sofa_rows_print_nothing_on_lines_4_to_6(session):
     _sofa(session, prior_income=3, creditor_payments=3)
+    # The SOFA rows only: line 6's check6 prints the filer's own Form 101 line 16 answer (4d-R6),
+    # pinned by test_each_debt_nature_answer_ticks_exactly_one_line_6_box. Answered here, so the
+    # test can't pass only because line 16 is unanswered.
+    answer_petition(session, debt_nature="consumer")
+    sofa_boxes = _boxes_on_lines("4", "5", "6") - {"check6"}
 
     printed = {
         w.full_name
         for w in read_drawn("form_107", _fill(session))
-        if w.full_name in _boxes_on_lines("4", "5", "6")
-        and (w.value or w.state not in ("", "/Off"))
+        if w.full_name in sofa_boxes and (w.value or w.state not in ("", "/Off"))
     }
 
     assert printed == set()

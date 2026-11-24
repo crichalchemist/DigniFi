@@ -331,13 +331,13 @@ def test_a_result_that_waits_on_amounts_owed_says_so(db, monkeypatch):
     MeansTestCalculator(session).calculate()
     assert _open_on(session) == "debts"
 
-    for answers in ({"debt_nature": "business"}, VETERAN, EXCLUSION):
+    for answers, outcome in (
+        ({"debt_nature": "business"}, "not_consumer"),
+        (VETERAN, "veteran_exemption"),
+        (EXCLUSION, "military_exclusion"),
+    ):
         answer_petition(session, **{"disabled_veteran": "no", "reservist": "no", **answers})
-        assert MeansTestCalculator(session).calculate()["outcome"] in (
-            "not_consumer",
-            "veteran_exemption",
-            "military_exclusion",
-        )
+        assert MeansTestCalculator(session).calculate()["outcome"] == outcome, answers
         assert _open_on(session) is None, answers
         answer_petition(
             session,

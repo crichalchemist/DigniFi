@@ -111,7 +111,7 @@ def answer_household(
     claims: Mapping[str, object] | None = MappingProxyType({}),
     exemptions: Mapping[str, object] | None = MappingProxyType({}),
     schedule_i: Mapping[str, object] | None = SCHEDULE_I_DEFAULTS,
-    debt_nature: Mapping[str, str] | None = DEBT_NATURE_DEFAULTS,
+    debt_nature: Mapping[str, str | None] | None = DEBT_NATURE_DEFAULTS,
 ) -> Household:
     """Store the marriage answer, the county and the household list, and the spouse's amounts
     when given, through the session's own relations, so a test holding the session reads them.

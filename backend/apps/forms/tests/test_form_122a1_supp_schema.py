@@ -147,6 +147,9 @@ def test_part_2_prints_nothing_under_business_or_neither(session, answer):
     # Line 1's No sends the filer to Form 122A-1 box 1: Part 2 is never reached, and an
     # unanswered line 1 reaches nothing either.
     answer_petition(session, debt_nature=answer, **EVERY_YES)
+    if answer is None:
+        # Ruling E: the case really has line 16 unanswered, not a default's consumer
+        assert "debt_nature" not in session.petition_answers.get_answers()
 
     assert _boxes(_printed(session), PART_2_BOXES) == {}
 
@@ -230,13 +233,13 @@ def test_every_box_the_tool_binds_is_on_the_index():
 # Ruling T2-H1: Complete's gaps ask a military question exactly where the Supp prints it, so the
 # gap reach (petition._SUPP_SHOWN) and the print reach (each box's conditional_on) can't drift.
 SHOWN_AND_PRINTED = [
-    ("disabled_veteran", "petition_debt_nature_consumer"),
-    ("debts_on_duty", "supp_line_2_follow_up"),
-    ("reservist", "supp_line_3"),
-    ("called_to_duty", "supp_line_3_follow_up"),
-    ("duty_category", "supp_categories"),
-    ("duty_released_on", "supp_date_1"),
-    ("duty_ended_on", "supp_date_2"),
+    ("disabled_veteran", "CheckBox3", "petition_debt_nature_consumer"),
+    ("debts_on_duty", "CheckBox4", "supp_line_2_follow_up"),
+    ("reservist", "CheckBox5", "supp_line_3"),
+    ("called_to_duty", "CheckBox6", "supp_line_3_follow_up"),
+    ("duty_category", "CheckBox7", "supp_categories"),
+    ("duty_released_on", "Date1", "supp_date_1"),
+    ("duty_ended_on", "Date2", "supp_date_2"),
 ]
 WALK = itertools.product(
     ("consumer", "business", "neither", None),
@@ -261,10 +264,11 @@ def _stand_in(answers):
     return SimpleNamespace(petition_answers=SimpleNamespace(get_answers=lambda: answers))
 
 
-@pytest.mark.parametrize("key,predicate", SHOWN_AND_PRINTED)
-def test_each_military_question_prints_exactly_where_complete_asks_it(key, predicate):
-    printed_by = {f.conditional_on for f in load_schema(FORM).fields}
-    assert predicate in printed_by
+@pytest.mark.parametrize("key,box,predicate", SHOWN_AND_PRINTED)
+def test_each_military_question_prints_exactly_where_complete_asks_it(key, box, predicate):
+    # The key's own box carries the predicate, so two boxes swapping theirs can't pass
+    (field,) = [f for f in load_schema(FORM).fields if f.pdf_field == box]
+    assert field.conditional_on == predicate
     for answers in STATES:
         shown = _SUPP_SHOWN[key](answers)
         assert PREDICATES[predicate](_stand_in(answers)) == shown, (key, answers)

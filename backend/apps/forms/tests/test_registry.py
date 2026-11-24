@@ -205,10 +205,11 @@ def test_a_packet_holds_122a2_or_the_supp_never_both(session, outcome):
 
     forms = packet(IntakeSession.objects.get(pk=session.pk))
 
+    supp = outcome in {"not_consumer", "veteran_exemption", "military_exclusion"}
     assert not ({"form_122a2", "form_122a1_supp"} <= set(forms))
-    assert ("form_122a1_supp" in forms) is (
-        outcome in {"not_consumer", "veteran_exemption", "military_exclusion"}
-    )
+    assert ("form_122a1_supp" in forms) is supp
+    # Exactly one partner: above the median, 122A-2 holds every outcome the Supp doesn't take
+    assert ("form_122a2" in forms) is not supp
 
 
 def test_no_means_test_leaves_the_supplement_out(session):
