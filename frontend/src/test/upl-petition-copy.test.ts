@@ -98,15 +98,16 @@ const NOTICE_NAMES = [
 ];
 
 describe("step 1's Form 101 sentences are information, never advice", () => {
-  it('mirrors every gate and detail petition.py holds today (10 and 18)', () => {
-    expect(GAP_NAMES.filter((name) => name.startsWith('PETITION_GATE_'))).toHaveLength(10);
-    expect(GAP_NAMES.filter((name) => name.startsWith('PETITION_DETAIL_'))).toHaveLength(18);
+  it('mirrors every gate and detail petition.py holds today (13 and 24)', () => {
+    expect(GAP_NAMES.filter((name) => name.startsWith('PETITION_GATE_'))).toHaveLength(13);
+    expect(GAP_NAMES.filter((name) => name.startsWith('PETITION_DETAIL_'))).toHaveLength(24);
   });
 
   it("checks every PETITION_ string, the row lists' twelve labels among them", () => {
-    // 28 gap sentences, 3 questions in DigniFi's words and 12 Add, row and Remove labels, so a
-    // filter that silently matched fewer names can't pass the advice check below
-    expect(PREFIXED_NAMES).toHaveLength(43);
+    // 37 gap sentences (Amounts Owed's nine among them, 4d), 3 questions in DigniFi's words and
+    // 12 Add, row and Remove labels, so a filter that silently matched fewer names can't pass the
+    // advice check below
+    expect(PREFIXED_NAMES).toHaveLength(52);
     expect(PREFIXED_NAMES).toContain('PETITION_ADD_OTHER_NAME');
     expect(PREFIXED_NAMES).toContain('PETITION_REMOVE_PENDING_CASE');
   });
@@ -162,6 +163,21 @@ describe("step 1's Form 101 sentences are information, never advice", () => {
     'GUIDE_FORM_101A_BOXES_BLANK',
   ])('%s carries counsel mark C-46 on the line above', (name) => {
     expect(copySource).toMatch(new RegExp(`// DRAFT: counsel C-46\\nexport const ${name}\\b`));
+  });
+
+  // Amounts Owed's Form 101 line 16 and Form 122A-1Supp gap sentences (4d)
+  it.each([
+    'PETITION_GATE_DEBT_NATURE',
+    'PETITION_GATE_DISABLED_VETERAN',
+    'PETITION_GATE_RESERVIST',
+    'PETITION_DETAIL_DEBT_NATURE_TEXT',
+    'PETITION_DETAIL_DEBTS_ON_DUTY',
+    'PETITION_DETAIL_CALLED_TO_DUTY',
+    'PETITION_DETAIL_DUTY_CATEGORY',
+    'PETITION_DETAIL_DUTY_RELEASED',
+    'PETITION_DETAIL_DUTY_ENDED',
+  ])('%s carries counsel mark C-39 on the line above', (name) => {
+    expect(copySource).toMatch(new RegExp(`// DRAFT: counsel C-39\\nexport const ${name}\\b`));
   });
 
   it('no copy sentence carries a clerk number inside its text (4b-R6)', () => {

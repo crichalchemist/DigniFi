@@ -95,12 +95,12 @@ def test_only_the_too_long_templates_take_placeholders_and_each_only_its_own():
 
 
 def test_the_mirror_has_every_sentence_the_server_has_today():
-    # The counts as petition.py holds them after 4b2 (10 gates, 18 details: 16 as 4b-ii left
-    # them, with 7c's row template and owner ruling Q7's DETAIL_ITIN_NINE, plus the landlord's
-    # detail and Form 101A's too-long template), so a reader that silently matched nothing can't
-    # pass the test above
-    assert len(_server_sentences("GATE_")) == 10
-    assert len(_server_sentences("DETAIL_")) == 18
+    # The counts as petition.py holds them after 4d (13 gates, 24 details: 10 and 18 as 4b2 left
+    # them, with 7c's row template and owner ruling Q7's DETAIL_ITIN_NINE, the landlord's detail
+    # and Form 101A's too-long template among them, plus Amounts Owed's 3 gates and 6 details),
+    # so a reader that silently matched nothing can't pass the test above
+    assert len(_server_sentences("GATE_")) == 13
+    assert len(_server_sentences("DETAIL_")) == 24
 
 
 def test_the_row_nouns_the_browser_names_are_the_servers():

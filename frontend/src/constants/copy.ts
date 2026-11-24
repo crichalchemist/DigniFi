@@ -1652,6 +1652,16 @@ export const PETITION_GATE_HAZARD =
 export const PETITION_GATE_RENTS = 'Say whether you rent your residence.';
 export const PETITION_GATE_EVICTION =
   'Say whether your landlord has an eviction judgment against you.';
+// Amounts Owed's Form 101 line 16 and Form 122A-1Supp's military questions (4d, owner-approved
+// 2026-11-23 as drafted)
+// DRAFT: counsel C-39
+export const PETITION_GATE_DEBT_NATURE =
+  'Say whether your debts are primarily consumer debts, on the Amounts Owed step.';
+// DRAFT: counsel C-39
+export const PETITION_GATE_DISABLED_VETERAN = 'Say whether you are a disabled veteran.';
+// DRAFT: counsel C-39
+export const PETITION_GATE_RESERVIST =
+  'Say whether you are or have been a Reservist or member of the National Guard.';
 export const PETITION_DETAIL_VENUE = 'Choose why you are filing in this district.';
 // DRAFT: counsel C-40
 export const PETITION_DETAIL_VENUE_REASON = 'Explain your other reason for filing here.';
@@ -1678,6 +1688,23 @@ export const PETITION_DETAIL_PENDING_CASE =
   'Each pending case needs the name of the person who filed it.';
 export const PETITION_DETAIL_BUSINESS = "Add your business's name, or change your answer to No.";
 export const PETITION_DETAIL_HAZARD = 'Say what the hazard is, or change your answer to No.';
+// Amounts Owed's details (4d): line 16c's words, then the Supp's follow-ups and dates
+// DRAFT: counsel C-39
+export const PETITION_DETAIL_DEBT_NATURE_TEXT = 'Say what type of debts you owe.';
+// DRAFT: counsel C-39
+export const PETITION_DETAIL_DEBTS_ON_DUTY =
+  'Say whether most of your debts began while you were on active duty. Time doing a homeland defense activity counts too.';
+// DRAFT: counsel C-39
+export const PETITION_DETAIL_CALLED_TO_DUTY =
+  'Say whether you were called to active duty. Doing a homeland defense activity counts too.';
+// DRAFT: counsel C-39
+export const PETITION_DETAIL_DUTY_CATEGORY = 'Choose a category, or say that none applies.';
+// DRAFT: counsel C-39
+export const PETITION_DETAIL_DUTY_RELEASED =
+  'A date is written as MM/DD/YYYY. Type the date you were released from active duty.';
+// DRAFT: counsel C-39
+export const PETITION_DETAIL_DUTY_ENDED =
+  'A date is written as MM/DD/YYYY. Type the date your homeland defense activity ended.';
 // Templates the server fills in: {label} a box in plain words; {noun} and {n} a row (Q5);
 // {forms} the forms whose box refuses it: Form 101, Form 103B or Forms 101 and 103B (Q10)
 export const PETITION_DETAIL_TOO_LONG =

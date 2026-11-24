@@ -32,6 +32,7 @@ from apps.intake.models import (
     SpouseIncome,
 )
 from apps.intake.petition import (
+    GATE_DEBT_NATURE,
     GATE_HAZARD,
     GATE_ITIN,
     GATE_MAILING,
@@ -528,6 +529,8 @@ def test_complete_lists_every_gap_in_wizard_order(filer, district):
         # The hazard ends the Assets step, whose own lines are all answered here.
         {"step": "assets", "message": GATE_HAZARD},
         {"step": "debts", "message": SCANNED_DEBTS},
+        # Form 101 line 16, asked on Amounts Owed after its own gaps, before Contracts' (4d).
+        {"step": "debts", "message": GATE_DEBT_NATURE},
         {"step": "contracts", "message": CONTRACT_GAP_NO_ANSWER},
         # The rent question follows the Contracts gaps, before Codebtors'.
         {"step": "contracts", "message": GATE_RENTS},
