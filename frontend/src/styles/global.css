@@ -170,7 +170,7 @@ a {
   border-radius: var(--radius);
 }
 
-/* The title keeps the content column; the progress row below it is wider, so nine step
+/* The title keeps the content column; the progress row below it is wider, so ten step
    names fit at the 16px text floor. The row takes over the column's bottom padding. */
 .wizard-header .wizard-container {
   padding-bottom: 0;
