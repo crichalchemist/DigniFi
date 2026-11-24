@@ -24,7 +24,7 @@ from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.intake.claims import CLAIM_GAP_LEGACY_VEHICLE, CONTRACT_GAP_PAYMENT, CONTRACT_GAP_VEHICLE
 from apps.intake.completion import Gap, completion_gaps
-from apps.intake.intentions import INTENTION_GAP_NONE, LEASE_GAP_NONE
+from apps.intake.intentions import LEASE_GAP_NONE
 from apps.intake.models import (
     AssetInfo,
     DebtInfo,
@@ -52,6 +52,7 @@ from apps.intake.tests.builders import (
     answer_claims,
     answer_household,
     answer_income_detail,
+    answer_intentions,
     answer_petition,
     complete_contract,
     complete_debt,
@@ -548,11 +549,16 @@ def test_complete_lists_every_gap_in_wizard_order(filer, district):
     # Form 108's details (4e-R11) never reach Complete's 400, which carries gates only, so their
     # places show in Complete's whole list: Amounts Owed's too-long name right after line 16's
     # gate, Contracts & Leases' too-long description right after the rent gate, and Your Plans'
-    # open rows after Codebtors' gaps, before the claims tail, which stays last (3c4).
+    # open rows, then its too-long "[explain]" words, after Codebtors' gaps, before the claims
+    # tail, which stays last (3c4).
     wide = "W" * 30  # Schedule D's name box can't take it
-    linked_loan(session, linked_row(session, "3"), "100", creditor_name=wide)
+    loan = linked_loan(session, linked_row(session, "3"), "100", creditor_name=wide)
     complete_contract(
         session, counterparty_name="Demo Leasing", lease_kind="vehicle", description="WWWW " * 37
+    )
+    # Explain2 can't take the break of these words (measured in test_intention_gaps.py)
+    answer_intentions(
+        session, secured={str(loan.pk): {"intention": "retain_explain", "explain": "a " + "W" * 31}}
     )
     ExpenseInfo.objects.create(session=session, vehicle_payment=Decimal("500.00"))
     listed = [(g.step, g.kind, str(g)) for g in completion_gaps(session)]
@@ -572,8 +578,12 @@ def test_complete_lists_every_gap_in_wizard_order(filer, district):
         ),
         ("codebtors", Gap.GATE, CODEBTOR_GAP_NO_ANSWER),
         ("codebtors", Gap.GATE, CODEBTOR_GAP_COMMUNITY),
-        ("plans", Gap.DETAIL, INTENTION_GAP_NONE.format(name=wide)),
         ("plans", Gap.DETAIL, LEASE_GAP_NONE.format(name="Demo Leasing")),
+        (
+            "plans",
+            Gap.DETAIL,
+            too_long.format(label="the explanation of your plan", form="Form 108"),
+        ),
         (
             "debts",
             Gap.GATE,
