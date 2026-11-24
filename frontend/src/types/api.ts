@@ -836,6 +836,8 @@ export interface MeansTestResult {
   outcome: MeansOutcome | null;
   /** The name of the table the means test needs and DigniFi doesn't have, else null */
   tables_gap: string | null;
+  /** "debts" while the result waits on an answer on the Amounts Owed step, else null (4d-R27) */
+  open_on: 'debts' | null;
   details: {
     cmi: number;
     annualized_cmi: number;
@@ -1005,6 +1007,8 @@ export interface MeansPage {
   outcome: MeansOutcome | null;
   family_size: number | null;
   tables_gap: string | null;
+  /** "debts" while the result waits on an answer on the Amounts Owed step, else null (4d-R27) */
+  open_on: 'debts' | null;
   /** The server's first gap, null when none */
   gap: string | null;
   /** True when an AI service is set up to rewrite a line 43 explanation */
@@ -1205,7 +1209,7 @@ export const FORM_TYPE_METADATA: Record<
     order: 8,
   },
   form_122a1_supp: {
-    label: 'Form 122A-1 Supp - Means Test Supplement',
+    label: 'Form 122A-1Supp - Statement of Exemption from Presumption of Abuse',
     description: 'Supplement to the Chapter 7 means test',
     order: 9,
   },
@@ -1370,6 +1374,8 @@ export interface FormPacketResponse {
   outcome?: MeansOutcome | null;
   family_size?: number | null;
   tables_gap?: string | null;
+  /** "debts" while the result waits on an answer on the Amounts Owed step (4d-R27) */
+  open_on?: 'debts' | null;
   /** When the secured-debt answers were last changed, and today; null before they were */
   means_debts_answered?: MeansDebtsAnswered | null;
 }
@@ -1383,6 +1389,7 @@ export interface Packet {
   outcome: MeansOutcome | null;
   family_size: number | null;
   tables_gap: string | null;
+  open_on: 'debts' | null;
   means_debts_answered: MeansDebtsAnswered | null;
 }
 

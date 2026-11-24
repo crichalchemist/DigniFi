@@ -133,6 +133,18 @@ export const MEANS_OUTCOME_NO_PRESUMPTION =
 export const MEANS_OUTCOME_PRESUMPTION =
   "The form's arithmetic gives: There is a presumption of abuse.";
 
+// DRAFT: counsel C-39
+export const MEANS_OUTCOME_NOT_CONSUMER =
+  'You answered that your debts are not primarily consumer debts. Form 122A-1Supp says that a filer who answers this way checks box 1 on Form 122A-1, signs Part 3 and submits this supplement with it. Your packet follows the form.';
+
+// DRAFT: counsel C-39
+export const MEANS_OUTCOME_VETERAN =
+  'You answered Yes to both questions on line 2 of Form 122A-1Supp. The form says that a filer who answers this way checks box 1 on Form 122A-1, signs Part 3 and submits this supplement with it. Your packet follows the form.';
+
+// DRAFT: counsel C-39
+export const MEANS_OUTCOME_MILITARY =
+  "You chose one of the service categories on line 3 of Form 122A-1Supp. The form says that a filer who answers this way checks box 3 on Form 122A-1 and doesn't fill out the rest of that form during the exclusion period. The form counts 540 days from the day you file; DigniFi doesn't check that. Your packet follows the form.";
+
 // DRAFT: counsel C-24
 export const MEANS_TABLE_MISSING =
   "DigniFi doesn't have the means test figures for today's date yet, so it can't work out Form 122A-2.";
@@ -167,6 +179,10 @@ export const MEANS_PAIR_CANCEL = 'Cancel';
 export const MEANS_PAIR_NOTICE =
   'Form 122A-1 says your result is worked out on Form 122A-2. File them together.';
 
+// DRAFT: counsel C-39
+export const MEANS_SUPP_PAIR_NOTICE =
+  'Form 122A-1Supp says to submit it with the signed Form 122A-1. File them together.';
+
 // DRAFT: counsel C-24
 export const MEANS_FILED_BEFORE_122A2 =
   'This copy was marked filed before DigniFi could fill in all of Form 122A-2. It shows what was stored then.';
@@ -178,6 +194,10 @@ export const MEANS_FILED_BEFORE_122A1 =
 // DRAFT: counsel C-24
 export const MEANS_FILED_MISMATCH =
   "This copy doesn't say its result is worked out on Form 122A-2. Form 122A-2 now applies to you.";
+
+// DRAFT: counsel C-39
+export const MEANS_FILED_BOX_2_NOW_SUPP =
+  'This filed copy has box 2 checked. With your current answers, your packet holds Form 122A-1Supp, and Form 122A-1 checks a different box.';
 
 // The Form 122A-2 page (3h2)
 
@@ -191,6 +211,13 @@ export const MEANS_OUTCOME_ANSWER_PAGE =
 
 // DRAFT: counsel C-24
 export const MEANS_PAGE_PHRASE = 'the Form 122A-2 page';
+
+// DRAFT: counsel C-39
+export const MEANS_OUTCOME_ANSWER_DEBTS =
+  "Its result can't be worked out until you answer the questions on the Amounts Owed step.";
+
+// DRAFT: counsel C-39
+export const MEANS_DEBTS_STEP_PHRASE = 'the Amounts Owed step';
 
 // DRAFT: counsel C-24
 export const MEANS_LINE_43_LINK = 'Go to line 43, special circumstances';

@@ -286,3 +286,32 @@ def test_the_eviction_and_hazard_words_are_the_forms_own(name, template, page):
         assert WHOLE_BEFORE.search(before) or after_heading or after_label, cut_start
         cut_end = f"{name}: …{text[-40:]!r} stops mid-sentence, before {after[:40]!r}"
         assert WHOLE_AFTER.match(after), cut_end
+
+
+# Form 122A-1Supp's quotes (4d, E15): every formText.ts constant with this prefix is a quotation of
+# the Supp and must be listed below. Its own pattern beside OWNED_PREFIXES, which stays Form 101's
+SUPP_PREFIXES = re.compile(r"^export const (FORM_122A1SUPP_\w*)\b", re.M)
+
+SUPP_TEMPLATE = "form_b122a-1supp.pdf"
+
+SUPP_QUOTES = ["FORM_122A1SUPP_AMENDED"]
+
+
+def _squeezed(text: str) -> str:
+    """Text with every whitespace character taken out: the Supp's text layer splits words ("A re",
+    "Gu ard"), so its words are compared with no spaces at all."""
+    return "".join(text.split())
+
+
+def test_every_supp_quote_is_pinned():
+    # A new quotation of the Supp can't reach a screen unread against its template
+    source = (FRONTEND / "constants" / "formText.ts").read_text()
+    assert sorted(SUPP_PREFIXES.findall(source)) == sorted(SUPP_QUOTES)
+
+
+@pytest.mark.parametrize("name", SUPP_QUOTES)
+def test_the_supp_words_are_the_forms_own(name):
+    # D8: the military exclusion's second sentence is the form's own, word for word (owner-copy §6)
+    page = _squeezed(pypdf.PdfReader(PDFS / SUPP_TEMPLATE).pages[0].extract_text())
+    for text in _form_text_strings(name):
+        assert _squeezed(text) in page, f"{name}: {text!r} is not on {SUPP_TEMPLATE} page 1"

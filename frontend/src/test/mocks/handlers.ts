@@ -82,6 +82,7 @@ const mockMeansTestResult = {
   family_size: 1,
   outcome: 'at_or_below_median',
   tables_gap: null,
+  open_on: null,
   details: {
     cmi: 3500,
     annualized_cmi: 42000,
@@ -322,6 +323,7 @@ export const handlers = [
       outcome: null,
       family_size: null,
       tables_gap: null,
+      open_on: null,
       means_debts_answered: null,
     })
   ),

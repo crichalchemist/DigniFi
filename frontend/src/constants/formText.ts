@@ -710,6 +710,11 @@ export const EXEMPTIONS_LINE_3_1_QUESTION =
 export const PRESUMPTION_INSTRUCTIONS =
   'A presumption of abuse does not mean you are actually trying to abuse the bankruptcy system. Rather, the presumption simply means that you are presumed to have enough income that you should not be granted relief under chapter 7. You may overcome the presumption by showing special circumstances that reduce your income or increase your expenses.';
 
+// Form 122A-1Supp (12/15) page 1, line 3's last sentence, as printed: shown after the military
+// exclusion's outcome sentence (D8)
+export const FORM_122A1SUPP_AMENDED =
+  'If your exclusion period ends before your case is closed, you may have to file an amended form later.';
+
 // Form 122A-2's title, page 1
 export const FORM_122A2_TITLE = 'Form 122A-2: Chapter 7 Means Test Calculation';
 // Part 2's note on whom "you" means, page 3

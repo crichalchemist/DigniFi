@@ -167,6 +167,7 @@ export function meansPage(): MeansPage {
     outcome: 'cannot_work_out',
     family_size: 4,
     tables_gap: null,
+    open_on: null,
     gap: null,
   };
 }

@@ -45,6 +45,7 @@ export function MeansTestPreview({ sessionId, currentStep }: MeansTestPreviewPro
         result.outcome ?? null,
         result.family_size ?? null,
         result.tables_gap ?? null,
+        result.open_on ?? null,
         'sidebar'
       )
     : [];

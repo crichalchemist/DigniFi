@@ -658,6 +658,7 @@ export const formsAPI = {
       outcome: response.outcome ?? null,
       family_size: response.family_size ?? null,
       tables_gap: response.tables_gap ?? null,
+      open_on: response.open_on ?? null,
       means_debts_answered: response.means_debts_answered ?? null,
     };
   },

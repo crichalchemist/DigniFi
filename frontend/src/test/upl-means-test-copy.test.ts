@@ -221,6 +221,13 @@ const NAMES = [
   'MEANS_PAIR_REFUSAL',
   'MEANS_SUPP_PAIR_REFUSAL',
   'MEANS_MILITARY_OPEN',
+  'MEANS_SUPP_PAIR_NOTICE',
+  'MEANS_FILED_BOX_2_NOW_SUPP',
+  'MEANS_OUTCOME_NOT_CONSUMER',
+  'MEANS_OUTCOME_VETERAN',
+  'MEANS_OUTCOME_MILITARY',
+  'MEANS_OUTCOME_ANSWER_DEBTS',
+  'MEANS_DEBTS_STEP_PHRASE',
   'MEANS_TABLE_MISSING',
   'MEANS_TEST_CALCULATING',
   'MEANS_TEST_INCOME_LABEL',
@@ -377,6 +384,31 @@ const EXACT_WORDS: [string, string][] = [
     'MEANS_MILITARY_OPEN',
     'Answer each question about military service on the Amounts Owed step. Form 122A-2 waits for those answers.',
   ],
+  [
+    'MEANS_SUPP_PAIR_NOTICE',
+    'Form 122A-1Supp says to submit it with the signed Form 122A-1. File them together.',
+  ],
+  [
+    'MEANS_FILED_BOX_2_NOW_SUPP',
+    'This filed copy has box 2 checked. With your current answers, your packet holds Form 122A-1Supp, and Form 122A-1 checks a different box.',
+  ],
+  [
+    'MEANS_OUTCOME_NOT_CONSUMER',
+    'You answered that your debts are not primarily consumer debts. Form 122A-1Supp says that a filer who answers this way checks box 1 on Form 122A-1, signs Part 3 and submits this supplement with it. Your packet follows the form.',
+  ],
+  [
+    'MEANS_OUTCOME_VETERAN',
+    'You answered Yes to both questions on line 2 of Form 122A-1Supp. The form says that a filer who answers this way checks box 1 on Form 122A-1, signs Part 3 and submits this supplement with it. Your packet follows the form.',
+  ],
+  [
+    'MEANS_OUTCOME_MILITARY',
+    "You chose one of the service categories on line 3 of Form 122A-1Supp. The form says that a filer who answers this way checks box 3 on Form 122A-1 and doesn't fill out the rest of that form during the exclusion period. The form counts 540 days from the day you file; DigniFi doesn't check that. Your packet follows the form.",
+  ],
+  [
+    'MEANS_OUTCOME_ANSWER_DEBTS',
+    "Its result can't be worked out until you answer the questions on the Amounts Owed step.",
+  ],
+  ['MEANS_DEBTS_STEP_PHRASE', 'the Amounts Owed step'],
   ['MEANS_PAIR_CONFIRM', 'These two forms go together. Mark both as filed?'],
   ['MEANS_PAIR_MARK_BOTH', 'Mark both as filed'],
   ['MEANS_PAIR_MARK_ALONE', 'Mark as filed'],
@@ -772,7 +804,17 @@ describe('the means test sentences keep their words exactly', () => {
 });
 
 // Step 4d's sentences (consumer debts and Form 122A-1Supp) wait on counsel draft C-39
-const COUNSEL_C39 = new Set(['MEANS_MILITARY_OPEN', 'MEANS_SUPP_PAIR_REFUSAL']);
+const COUNSEL_C39 = new Set([
+  'MEANS_MILITARY_OPEN',
+  'MEANS_SUPP_PAIR_REFUSAL',
+  'MEANS_SUPP_PAIR_NOTICE',
+  'MEANS_FILED_BOX_2_NOW_SUPP',
+  'MEANS_OUTCOME_NOT_CONSUMER',
+  'MEANS_OUTCOME_VETERAN',
+  'MEANS_OUTCOME_MILITARY',
+  'MEANS_OUTCOME_ANSWER_DEBTS',
+  'MEANS_DEBTS_STEP_PHRASE',
+]);
 
 // The counsel draft each sentence waits on (the plan's Global Constraints), read from the source
 function counselMark(name: string): string {

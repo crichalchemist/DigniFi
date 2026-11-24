@@ -4,13 +4,16 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../../test/mocks/server';
 import { MeansTestPreview } from '../MeansTestPreview';
 import {
+  MEANS_OUTCOME_ANSWER_DEBTS,
+  MEANS_OUTCOME_ANSWER_SIDEBAR,
+  MEANS_OUTCOME_MILITARY,
   MEANS_OUTCOME_NO_PRESUMPTION,
   MEANS_OUTCOME_PRESUMPTION,
   MEANS_TABLE_MISSING,
   MEANS_TEST_UNAVAILABLE,
   MEANS_TEST_WAITING,
 } from '../../../constants/copy';
-import { PRESUMPTION_INSTRUCTIONS } from '../../../constants/formText';
+import { FORM_122A1SUPP_AMENDED, PRESUMPTION_INSTRUCTIONS } from '../../../constants/formText';
 import type { MeansOutcome } from '../../../types/api';
 
 const CLOSING = 'A court makes the final decision.';
@@ -267,6 +270,35 @@ describe('MeansTestPreview with a result', () => {
     expect(text).toContain(MEANS_TABLE_MISSING);
     expect(text).not.toContain("Its result can't be worked out until you answer");
     expect(text).toContain("doesn't mean a presumption of abuse applies");
+  });
+
+  // D1, D8: box 3's route in Form 122A-1Supp's words, then the form's own amended-form sentence
+  it('shows the military exclusion’s sentences and the closing sentence', async () => {
+    const { container } = await openPreviewWith({
+      outcome: 'military_exclusion',
+      passes_means_test: null,
+      open_on: null,
+    });
+
+    const text = container.querySelector('.means-test-preview-indicator-text')!.textContent!;
+    expect(text).toBe(`${MEANS_OUTCOME_MILITARY} ${FORM_122A1SUPP_AMENDED}`);
+    expect(screen.getAllByText(CLOSING)).toHaveLength(1);
+    expect(container.textContent).not.toMatch(/presumption|eligib|estimate/i);
+  });
+
+  // 4d-R14 (B34): the sidebar names no Amounts Owed dependency, whatever open_on says
+  it('keeps the 122A-2 page sentence in the sidebar while the result waits on Amounts Owed', async () => {
+    const { container } = await openPreviewWith({
+      outcome: 'cannot_work_out',
+      passes_means_test: null,
+      tables_gap: null,
+      open_on: 'debts',
+    });
+
+    const text = container.querySelector('.means-test-preview-indicator-text')!.textContent!;
+    expect(text).toContain(MEANS_OUTCOME_ANSWER_SIDEBAR);
+    expect(text).not.toContain(MEANS_OUTCOME_ANSWER_DEBTS);
+    expect(text).not.toContain('Amounts Owed');
   });
 
   it('shows no outcome words and no closing sentence for a null outcome', async () => {
