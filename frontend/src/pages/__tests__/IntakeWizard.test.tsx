@@ -5616,6 +5616,83 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     expect(bodies).toHaveLength(1);
   });
 
+  // F0: once a step 6 save that changed line 16's or the Supp's answers has landed, the sidebar
+  // works the means test out again, and that call saves the row an unfinished intake's dashboard
+  // reads, so a presumption worked out before a business answer, or before an open military
+  // question, never stays on show
+  /** Records each means test call as the number of session PATCHes the server had by then */
+  function serveCalculates(bodies: unknown[]) {
+    const calls: number[] = [];
+    server.use(
+      http.post('http://localhost:8000/api/intake/sessions/:id/calculate_means_test/', () => {
+        calls.push(bodies.length);
+        return HttpResponse.json({
+          means_test_result: {
+            passes_means_test: true,
+            cmi: 1000,
+            median_income_threshold: 5000,
+            outcome: 'at_or_below_median',
+            tables_gap: null,
+          },
+          session_id: 1,
+        });
+      })
+    );
+    return calls;
+  }
+
+  it('works the means test out again once a save that changes line 16 has landed', async () => {
+    const { bodies } = serveSessionSaves({
+      ...onStep6,
+      petition_answers: { hazard_answer: 'no', rents_residence: 'no' },
+    });
+    const calls = serveCalculates(bodies);
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    // The sidebar's own first call, when the step shows
+    await waitFor(() => expect(calls).toEqual([0]));
+
+    vi.useFakeTimers();
+    try {
+      choose('debt_nature', 'business');
+      await waitSeconds(4);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toHaveLength(1);
+    // Exactly one more call, made after the PATCH
+    expect(calls).toEqual([0, 1]);
+  });
+
+  it('works nothing out again on a visit alone, or a save that changes no line 16 answer', async () => {
+    const { bodies } = serveSessionSaves({
+      ...onStep6,
+      petition_answers: LATER_PETITION_GATES,
+    });
+    const calls = serveCalculates(bodies);
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    await waitFor(() => expect(calls).toEqual([0]));
+
+    vi.useFakeTimers();
+    try {
+      // A visit alone saves nothing and works nothing out
+      await waitSeconds(4);
+      expect(bodies).toHaveLength(0);
+      expect(calls).toEqual([0]);
+
+      // A save of a row alone sends line 16's answers as loaded
+      fireEvent.change(field('creditor_name_0'), { target: { value: 'Northwind Bank' } });
+      await waitSeconds(4);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toHaveLength(1);
+    expect(calls).toEqual([0]);
+  });
+
   it('sends a new debt that has a number but no name', async () => {
     const { bodies } = serveSessionSaves(onStep6);
     renderWizard();

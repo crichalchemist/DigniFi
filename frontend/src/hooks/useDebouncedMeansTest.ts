@@ -19,6 +19,11 @@ interface UseDebouncedMeansTestOptions {
   currentStep: number;
   /** Debounce delay in milliseconds */
   debounceMs?: number;
+  /**
+   * Counts the saves that changed Form 101 line 16's or Form 122A-1Supp's answers. Each change
+   * works the result out again, which also saves the row an unfinished intake's dashboard reads.
+   */
+  routeAnswersSaved?: number;
 }
 
 interface UseDebouncedMeansTestReturn {
@@ -34,6 +39,7 @@ export function useDebouncedMeansTest({
   sessionId,
   currentStep,
   debounceMs = 500,
+  routeAnswersSaved = 0,
 }: UseDebouncedMeansTestOptions): UseDebouncedMeansTestReturn {
   const [result, setResult] = useState<MeansTestResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -86,7 +92,8 @@ export function useDebouncedMeansTest({
     }
   }, [sessionId, currentStep]);
 
-  // Debounced recalculation on step changes
+  // Debounced recalculation on step changes, and after a save that changed the route's answers
+  // (routeAnswersSaved, read by no code here: its change alone runs the effect again)
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(calculate, debounceMs);
@@ -94,7 +101,7 @@ export function useDebouncedMeansTest({
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [calculate, debounceMs]);
+  }, [calculate, debounceMs, routeAnswersSaved]);
 
   // Cleanup on unmount
   useEffect(() => {

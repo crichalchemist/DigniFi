@@ -22,15 +22,22 @@ import { meansOutcomeSentences } from '../../utils/meansOutcome';
 interface MeansTestPreviewProps {
   sessionId: number | null;
   currentStep: number;
+  /** Counts the Amounts Owed saves that changed line 16's or the Supp's answers (F0) */
+  routeAnswersSaved?: number;
 }
 
-export function MeansTestPreview({ sessionId, currentStep }: MeansTestPreviewProps) {
+export function MeansTestPreview({
+  sessionId,
+  currentStep,
+  routeAnswersSaved,
+}: MeansTestPreviewProps) {
   // Collapsed by default so the result stays unobtrusive; the styled header
   // invites the filer to open it when they want reassurance.
   const [isExpanded, setIsExpanded] = useState(false);
   const { result, isCalculating, statusMessage } = useDebouncedMeansTest({
     sessionId,
     currentStep,
+    routeAnswersSaved,
   });
 
   // Don't render before step 2 (income)

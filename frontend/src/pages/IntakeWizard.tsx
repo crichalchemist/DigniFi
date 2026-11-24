@@ -393,6 +393,11 @@ export function IntakeWizard() {
   // other Social Security number typed since the last save are held apart, as digits, since the
   // server never reads them back; each is cleared once a save that carried it succeeds.
   const [petitionAnswers, setPetitionAnswers] = useState<PetitionAnswers>({});
+  // Form 101 line 16's and the Supp's answers as the server last held them (loaded, or a step 6
+  // save that landed), and how many landed saves have changed them. Each change works the means
+  // test out again, which saves the row an unfinished intake's dashboard reads (F0).
+  const landedRouteAnswersRef = useRef<string | null>(null);
+  const [routeAnswersSaved, setRouteAnswersSaved] = useState(0);
   const [pendingSecrets, setPendingSecrets] = useState<Partial<Record<PetitionSecret, string>>>({});
   // Schedule I lines 1, 11 and 13 and Schedule J line 24 (4c): step 2 sends its keys, step 4 its
   // own. The pay stub's employer name is the read's, shown beside the box and never sent (4c-R10).
@@ -509,6 +514,9 @@ export function IntakeWizard() {
         }
         if (fresh.debtor_info) setDebtorData(fresh.debtor_info);
         setPetitionAnswers(hydratePetition(fresh.petition_answers));
+        landedRouteAnswersRef.current = JSON.stringify(
+          stepPetitionBody(fresh.petition_answers ?? {}, DEBT_NATURE_KEYS)
+        );
         setScheduleIAnswers(fresh.schedule_i_answers ?? {});
         setPaystubEmployerName(fresh.paystub_employer_name ?? '');
         if (fresh.household) {
@@ -1037,6 +1045,16 @@ export function IntakeWizard() {
     const spouseEntriesSave = sendsSpouseEntries ? ++listSavesRef.current.spouseEntries : 0;
     const saved = await api.intake.updateSession(session.id, request as Partial<IntakeSession>);
 
+    // Step 6's save has landed: if it changed line 16's or the Supp's answers, the sidebar works
+    // the means test out again (F0). An edit alone, or a save that changed none of them, doesn't.
+    if (debts && petition) {
+      const sentRouteAnswers = JSON.stringify(petition);
+      if (sentRouteAnswers !== landedRouteAnswersRef.current) {
+        landedRouteAnswersRef.current = sentRouteAnswers;
+        setRouteAnswersSaved((count) => count + 1);
+      }
+    }
+
     // A secret this save carried is now the server's (PF2-T8-6): the value sent is cleared, unless
     // the filer has typed another since, the step shows it as saved by the server's own rule, and
     // the saved copy leaves it out, as the next body will, so no second identical save goes out
@@ -1397,7 +1415,13 @@ export function IntakeWizard() {
       canGoNext={canProceed && gate === null}
       canGoPrevious={currentStepNumber > 1}
       isLastStep={currentStepNumber === WIZARD_STEPS.length}
-      sidebar={<MeansTestPreview sessionId={session.id} currentStep={currentStepNumber} />}
+      sidebar={
+        <MeansTestPreview
+          sessionId={session.id}
+          currentStep={currentStepNumber}
+          routeAnswersSaved={routeAnswersSaved}
+        />
+      }
       saveStatus={saveStatus}
       lastSavedAt={lastSavedAt}
     />
