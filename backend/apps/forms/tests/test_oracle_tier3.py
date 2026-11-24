@@ -191,11 +191,13 @@ def _petition_boxes(rents, business=None):
     """
     Form 101's boxes for the answers every persona is seeded with on steps 1, 5 and 7 (4b-ii,
     worked out from seed_demo_data._petition): line 9 and line 10 No, filing here for the
-    180 days (line 6), line 13 No unless a business is named, line 24's hazard No, and line 11's
-    rent answer with No to an eviction judgment under a Yes. Radio states are the index's own
-    names for each group.
+    180 days (line 6), line 13 No unless a business is named, line 24's hazard No, line 11's
+    rent answer with No to an eviction judgment under a Yes, and (4d, step 6) line 16a Yes,
+    consumer debts. Radio states are the index's own names for each group.
     """
     boxes = {
+        "Yes Go to line 17": "/On",
+        "No Go to line 16b": "",
         "bankruptcy within the": "/No",
         "filed by a spouse who is": "/No_2",
         "Go to line 12": "/Yes_3" if rents else "/No_3",

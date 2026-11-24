@@ -730,7 +730,7 @@ export interface PetitionAnswers {
   debts_on_duty?: YesNo | null;
   reservist?: YesNo | null;
   called_to_duty?: YesNo | null;
-  duty_category?: '1' | '2' | '3' | '4' | null;
+  duty_category?: '1' | '2' | '3' | '4' | 'none' | null;
   duty_released_on?: string | null;
   duty_ended_on?: string | null;
   rents_residence?: YesNo | null;
@@ -821,7 +821,10 @@ export type MeansOutcome =
   | 'at_or_below_median'
   | 'cannot_work_out'
   | 'no_presumption'
-  | 'presumption';
+  | 'presumption'
+  | 'not_consumer'
+  | 'veteran_exemption'
+  | 'military_exclusion';
 
 // `passes_means_test` is null while the result can't be worked out, and the words come from
 // `outcome` (see utils/meansOutcome.ts), never from it

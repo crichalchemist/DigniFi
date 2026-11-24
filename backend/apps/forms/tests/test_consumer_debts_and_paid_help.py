@@ -84,7 +84,8 @@ def session(db):
     )
     # 106Sum line 8 prints CMI, which needs income entered by source.
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("1200.00"))
-    answer_household(session)
+    # Line 16 left unanswered (4d's builder default answers consumer): each test plants its own.
+    answer_household(session, debt_nature=None)
     return session
 
 

@@ -2,8 +2,10 @@
 official tables, and the result says only what that arithmetic gives."""
 
 import pickle
+import re
 from dataclasses import replace
 from decimal import Decimal, InvalidOperation, localcontext
+from pathlib import Path
 
 import pytest
 
@@ -11,12 +13,16 @@ from apps.eligibility.means_lines import (
     AT_OR_BELOW_MEDIAN,
     CANNOT_WORK_OUT,
     LINE_KEYS,
+    MILITARY_EXCLUSION,
     MISSING,
     NO_PRESUMPTION,
+    NOT_CONSUMER,
     OUTCOMES,
     PRESUMPTION,
     ROW_KEYS,
     SKIPPED,
+    SUPP_OUTCOMES,
+    VETERAN_EXEMPTION,
     HealthInsurance,
     MeansInputs,
     MeansLines,
@@ -31,9 +37,12 @@ from apps.eligibility.means_lines import (
     is_spouse_ref,
     line_30_cap,
     line_43_rows_to_print,
+    military_question_open,
     missing_line,
     plan_product,
     rebuttal_figure,
+    route_outcome,
+    supp_line_3_reached,
     work_out,
 )
 
@@ -232,10 +241,154 @@ def test_the_record_holds_every_line_the_form_prints():
     assert set(PRIYA_LINES) == set(LINE_KEYS)
 
 
-def test_the_outcomes_are_the_four_the_app_shows_in_order():
-    assert OUTCOMES == (AT_OR_BELOW_MEDIAN, CANNOT_WORK_OUT, NO_PRESUMPTION, PRESUMPTION)
+def test_the_outcomes_are_the_seven_the_app_shows_in_order():
+    assert OUTCOMES == (
+        AT_OR_BELOW_MEDIAN,
+        CANNOT_WORK_OUT,
+        NO_PRESUMPTION,
+        PRESUMPTION,
+        NOT_CONSUMER,
+        VETERAN_EXEMPTION,
+        MILITARY_EXCLUSION,
+    )
+    assert SUPP_OUTCOMES == (NOT_CONSUMER, VETERAN_EXEMPTION, MILITARY_EXCLUSION)
+    assert (NOT_CONSUMER, VETERAN_EXEMPTION, MILITARY_EXCLUSION) == (
+        "not_consumer",
+        "veteran_exemption",
+        "military_exclusion",
+    )
     assert repr(MISSING) == "MISSING" and repr(SKIPPED) == "SKIPPED"
     assert pickle.loads(pickle.dumps(MISSING)) is MISSING
+
+
+# Form 122A-1Supp's answers as PetitionAnswers stores them (4d): line 1 (Form 101 line 16), line 2
+# (disabled veteran, then most debts on active duty) and line 3 (Reservist or National Guard, then
+# called to duty, then a category, "none" when none applies).
+CONSUMER = {"debt_nature": "consumer"}
+LINE_2_NO = {**CONSUMER, "disabled_veteran": "no"}
+LINE_2_YES_YES = {**CONSUMER, "disabled_veteran": "yes", "debts_on_duty": "yes"}
+LINE_2_YES_NO = {**CONSUMER, "disabled_veteran": "yes", "debts_on_duty": "no"}
+LINE_2_YES_OPEN = {**CONSUMER, "disabled_veteran": "yes"}
+
+
+def _line_3(category):
+    return {"reservist": "yes", "called_to_duty": "yes", "duty_category": category}
+
+
+@pytest.mark.parametrize(
+    ("answers", "above", "expected"),
+    [
+        pytest.param({"debt_nature": "business"}, False, NOT_CONSUMER, id="business-below"),
+        pytest.param({"debt_nature": "business"}, True, NOT_CONSUMER, id="business-above"),
+        pytest.param({"debt_nature": "neither"}, True, NOT_CONSUMER, id="neither-above"),
+        pytest.param(
+            {
+                "debt_nature": "business",
+                "disabled_veteran": "yes",
+                "debts_on_duty": "yes",
+                **_line_3("1"),
+            },
+            True,
+            NOT_CONSUMER,
+            id="business-with-stale-military",
+        ),
+        pytest.param(
+            {**LINE_2_YES_YES, **_line_3("1")}, False, VETERAN_EXEMPTION, id="veteran-first-below"
+        ),
+        pytest.param(LINE_2_YES_YES, True, VETERAN_EXEMPTION, id="veteran-above"),
+        pytest.param(
+            {**LINE_2_NO, **_line_3("4")}, False, MILITARY_EXCLUSION, id="exclusion-below"
+        ),
+        pytest.param({}, False, AT_OR_BELOW_MEDIAN, id="unanswered-below"),
+        pytest.param({}, True, CANNOT_WORK_OUT, id="unanswered-above"),
+        pytest.param({**LINE_2_NO, "reservist": "no"}, True, None, id="consumer-no-no-above"),
+        pytest.param(
+            {**LINE_2_NO, "reservist": "no"}, False, AT_OR_BELOW_MEDIAN, id="consumer-no-no-below"
+        ),
+        pytest.param({**LINE_2_YES_NO, "reservist": "no"}, True, None, id="yes-no-line-3-no"),
+        pytest.param(
+            {**LINE_2_YES_NO, **_line_3("3")}, True, MILITARY_EXCLUSION, id="yes-no-claim"
+        ),
+        pytest.param(
+            {**LINE_2_YES_OPEN, **_line_3("3")}, True, CANNOT_WORK_OUT, id="line-2-open-above"
+        ),
+        pytest.param(
+            {**LINE_2_YES_OPEN, **_line_3("3")},
+            False,
+            AT_OR_BELOW_MEDIAN,
+            id="line-2-open-below",
+        ),
+        pytest.param({**LINE_2_NO, **_line_3("none")}, True, None, id="none-applies-above"),
+    ],
+)
+def test_route_outcome_follows_the_supps_order(answers, above, expected):
+    # B53: line 1 first, then line 2, then line 3 at any income; only then the median, and above
+    # it every answer that could still change the route (D3).
+    assert route_outcome(answers, above) == expected
+
+
+@pytest.mark.parametrize(
+    "line_2",
+    [pytest.param(CONSUMER, id="veteran-absent"), pytest.param(LINE_2_YES_OPEN, id="on-duty-open")],
+)
+def test_a_line_3_claim_waits_for_line_2_to_settle(line_2):
+    # R-D2 and F2: the form takes line 2 first, so an open line 2 could still turn box 3 into box
+    # 1. Line 3 is reached, and its claim waits.
+    answers = {**line_2, **_line_3("3")}
+    assert supp_line_3_reached(answers) is True
+    assert route_outcome(answers, True) == CANNOT_WORK_OUT
+    assert route_outcome(answers, False) == AT_OR_BELOW_MEDIAN
+    stale = {**LINE_2_YES_YES, **_line_3("3")}
+    assert route_outcome(stale, True) == route_outcome(stale, False) == VETERAN_EXEMPTION
+
+
+@pytest.mark.parametrize(
+    "answers",
+    [
+        pytest.param(CONSUMER, id="disabled_veteran"),
+        pytest.param(LINE_2_YES_OPEN, id="debts_on_duty"),
+        pytest.param(LINE_2_NO, id="reservist"),
+        pytest.param({**LINE_2_NO, "reservist": "yes"}, id="called_to_duty"),
+        pytest.param({**LINE_2_NO, "reservist": "yes", "called_to_duty": "yes"}, id="category"),
+    ],
+)
+def test_an_open_military_question_above_the_median_cannot_be_worked_out(answers):
+    # D3 and 4d-R3: an answer the Supp still asks could exclude the filer, so no 122A-2 figure (and
+    # never a presumption) is shown above the median while it is open; below, nothing changes.
+    assert military_question_open(answers) is True
+    assert route_outcome(answers, True) == CANNOT_WORK_OUT
+    assert route_outcome(answers, False) == AT_OR_BELOW_MEDIAN
+
+
+def test_a_category_with_no_date_is_still_a_claim():
+    # The claim is made; the Supp's own check asks for the date (4d-R10), not the route.
+    answers = {**LINE_2_NO, **_line_3("2")}
+    assert "duty_released_on" not in answers
+    assert military_question_open(answers) is False
+    assert route_outcome(answers, True) == MILITARY_EXCLUSION
+
+
+def test_called_to_duty_with_no_category_that_applies_works_out_122a2():
+    # D9: "None of these categories applies to me" is an answer that claims no exclusion.
+    answers = {**LINE_2_NO, **_line_3("none")}
+    assert military_question_open(answers) is False
+    assert route_outcome(answers, True) is None
+    assert route_outcome(answers, False) == AT_OR_BELOW_MEDIAN
+
+
+def test_only_calculate_routes():
+    # Every routing reader reads the stored outcome; only MeansTest.calculate() decides it (4d-R2).
+    backend = Path(__file__).resolve().parents[3]
+    call = re.compile(r"(?<!def )\broute_outcome\(")
+    hits = {
+        path.relative_to(backend).as_posix()
+        for path in (backend / "apps").rglob("*.py")
+        if "tests" not in path.parts
+        and not path.name.startswith("test_")
+        and path.name != "conftest.py"
+        and call.search(path.read_text())
+    }
+    assert hits == {"apps/eligibility/models.py"}
 
 
 def test_the_comparison_in_the_band_needs_line_41b():

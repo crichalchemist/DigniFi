@@ -886,7 +886,8 @@ class PetitionAnswers(models.Model):
             "not_yet",
         ),
         "not_required_reason": ("incapacity", "disability", "active_duty"),
-        "duty_category": ("1", "2", "3", "4"),
+        # "none": "None of these categories applies to me" (D9), which claims no exclusion
+        "duty_category": ("1", "2", "3", "4", "none"),
     }
     LIST_KEYS: ClassVar[dict[str, tuple[str, ...]]] = {
         "other_names": ("first", "middle", "last"),

@@ -36,7 +36,68 @@ AT_OR_BELOW_MEDIAN = "at_or_below_median"
 CANNOT_WORK_OUT = "cannot_work_out"
 NO_PRESUMPTION = "no_presumption"
 PRESUMPTION = "presumption"
-OUTCOMES = (AT_OR_BELOW_MEDIAN, CANNOT_WORK_OUT, NO_PRESUMPTION, PRESUMPTION)
+# Form 122A-1Supp's three routes off Form 122A-2 (4d): debts not primarily consumer debts and the
+# disabled veteran's exemption tick 122A-1 box 1, a line 3 service category ticks box 3.
+NOT_CONSUMER = "not_consumer"
+VETERAN_EXEMPTION = "veteran_exemption"
+MILITARY_EXCLUSION = "military_exclusion"
+SUPP_OUTCOMES = (NOT_CONSUMER, VETERAN_EXEMPTION, MILITARY_EXCLUSION)
+OUTCOMES = (AT_OR_BELOW_MEDIAN, CANNOT_WORK_OUT, NO_PRESUMPTION, PRESUMPTION, *SUPP_OUTCOMES)
+
+
+def supp_line_3_reached(answers: Mapping[str, object]) -> bool:
+    """Whether Form 122A-1Supp reaches line 3: the debts are primarily consumer debts and line 2
+    isn't Yes to both questions (R-D2). Line 2 Yes with its follow-up open still reaches it."""
+    return answers.get("debt_nature") == "consumer" and not (
+        answers.get("disabled_veteran") == "yes" and answers.get("debts_on_duty") == "yes"
+    )
+
+
+def military_question_open(answers: Mapping[str, object]) -> bool:
+    """Whether a military question the Supp reaches is unanswered, under consumer debts only
+    (D3, 4d-R3): line 2's gate, its follow-up under Yes, and where line 3 is reached its gate,
+    "called to duty" under Yes and the category under that Yes. "none" is an answer (D9); a
+    category's missing date is not open."""
+    if answers.get("debt_nature") != "consumer":
+        return False
+    veteran = answers.get("disabled_veteran")
+    if veteran is None or (veteran == "yes" and answers.get("debts_on_duty") is None):
+        return True
+    if not supp_line_3_reached(answers):
+        return False
+    reservist = answers.get("reservist")
+    if reservist is None:
+        return True
+    if reservist != "yes":
+        return False
+    called = answers.get("called_to_duty")
+    return called is None or (called == "yes" and answers.get("duty_category") is None)
+
+
+def route_outcome(answers: Mapping[str, object], above_median: bool) -> str | None:
+    """B53's order. Called only by MeansTest.calculate(); None means work 122A-2 out."""
+    nature = answers.get("debt_nature")
+    if nature in ("business", "neither"):
+        return NOT_CONSUMER
+    if nature == "consumer":
+        veteran, on_duty = answers.get("disabled_veteran"), answers.get("debts_on_duty")
+        if veteran == "yes" and on_duty == "yes":
+            return VETERAN_EXEMPTION
+        line_2_settled = veteran == "no" or (veteran == "yes" and on_duty == "no")
+        if (
+            line_2_settled  # D3: an open line 2 could still turn box 3 into box 1 (F2)
+            and supp_line_3_reached(answers)
+            and answers.get("reservist") == "yes"
+            and answers.get("called_to_duty") == "yes"
+            and answers.get("duty_category") in ("1", "2", "3", "4")  # "none" claims nothing (D9)
+        ):
+            return MILITARY_EXCLUSION
+    if not above_median:
+        return AT_OR_BELOW_MEDIAN
+    if nature is None or military_question_open(answers):
+        return CANNOT_WORK_OUT
+    return None
+
 
 LINE_KEYS = (
     "1", "2", "2_filing", "3_answer", "3", "4", "5", "6",

@@ -7,7 +7,8 @@ government assistance, and $0 taken out of pay. answer_household also chooses to
 fee in full (Form 101 line 8), so a forms test meets no refusal for a missing answer;
 payment_choice=None leaves the answer as it is. The claim answers default to no debts, and No on
 contracts, codebtors and H line 2. Schedule I's answers default to not employed and No on lines
-11, 13 and Schedule J line 24 (SCHEDULE_I_DEFAULTS).
+11, 13 and Schedule J line 24 (SCHEDULE_I_DEFAULTS). Form 101 line 16 defaults to consumer debts,
+with No to Form 122A-1Supp's two military questions (DEBT_NATURE_DEFAULTS).
 """
 
 import json
@@ -49,6 +50,12 @@ SCHEDULE_I_DEFAULTS = MappingProxyType(
         "line_13_answer": "no",
         "schedule_j_line_24_answer": "no",
     }
+)
+
+# The Amounts Owed step's Form 101 line 16 and Form 122A-1Supp answers that leave no gap and route
+# to Form 122A-2 (4d-R22): debts mainly consumer debts, and No to both military questions.
+DEBT_NATURE_DEFAULTS = MappingProxyType(
+    {"debt_nature": "consumer", "disabled_veteran": "no", "reservist": "no"}
 )
 
 
@@ -104,6 +111,7 @@ def answer_household(
     claims: Mapping[str, object] | None = MappingProxyType({}),
     exemptions: Mapping[str, object] | None = MappingProxyType({}),
     schedule_i: Mapping[str, object] | None = SCHEDULE_I_DEFAULTS,
+    debt_nature: Mapping[str, str] | None = DEBT_NATURE_DEFAULTS,
 ) -> Household:
     """Store the marriage answer, the county and the household list, and the spouse's amounts
     when given, through the session's own relations, so a test holding the session reads them.
@@ -132,6 +140,12 @@ def answer_household(
     SCHEDULE_I_DEFAULTS (plus the spouse's "not employed" under married_together), gives way to
     any key already stored, so a second call keeps what a test stored; a mapping passed is
     applied whole, through answer_schedule_i; None leaves the record alone.
+
+    debt_nature answers the Amounts Owed step's Form 101 line 16 and Form 122A-1Supp questions
+    (4d) in the session's PetitionAnswers, made if missing. The default, DEBT_NATURE_DEFAULTS,
+    writes only those keys and gives way to any key already stored; a mapping passed is merged
+    whole (a None in it removes the key); None leaves the record alone. It never goes through
+    answer_petition, so step 1's gates stay unanswered for a test that asserts them.
     """
     session.income_info.marital_status = marital_status
     session.income_info.save(update_fields=["marital_status"])
@@ -177,6 +191,14 @@ def answer_household(
         answer_schedule_i(session, **{k: v for k, v in defaults.items() if k not in stored})
     elif schedule_i is not None:
         answer_schedule_i(session, **schedule_i)
+    if debt_nature is not None:
+        record = getattr(session, "petition_answers", None) or PetitionAnswers(session=session)
+        sent = dict(debt_nature)
+        if debt_nature is DEBT_NATURE_DEFAULTS:
+            stored = record.get_answers()
+            sent = {key: value for key, value in sent.items() if key not in stored}
+        record.merge(sent)
+        record.save()
     return household
 
 
@@ -196,14 +218,16 @@ def finish_intake(session, **expense_over) -> None:
     answer_petition(session)
 
 
-# Form 101's answers that finish its steps (4b-ii): every step 1 question No, the venue as "lived
-# here", the hazard No and the rent No. Nothing for 4d's or 4i's keys, which no step asks yet.
+# Form 101's answers that finish its steps (4b-ii, 4d): every step 1 question No, the venue as
+# "lived here", the hazard No, the rent No, and line 16 consumer with both military questions No.
+# Nothing for 4i's keys, which no step asks yet.
 PETITION_DEFAULTS = MappingProxyType(
     {
         **dict.fromkeys(STEP_1_GATES, "no"),
         "venue_choice": "lived_here",
         "hazard_answer": "no",
         "rents_residence": "no",
+        **DEBT_NATURE_DEFAULTS,
     }
 )
 

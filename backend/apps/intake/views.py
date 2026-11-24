@@ -336,7 +336,8 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                 "details": {...},
                 "means_test_id": int,
                 "outcome": "at_or_below_median" | "cannot_work_out" | "no_presumption"
-                    | "presumption",
+                    | "presumption" | "not_consumer" | "veteran_exemption"
+                    | "military_exclusion",
                 "tables_gap": str or None (the 122A-2 table that isn't in force)
             }
         """
