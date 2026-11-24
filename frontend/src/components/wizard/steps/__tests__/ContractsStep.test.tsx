@@ -381,6 +381,70 @@ describe('ContractsStep', () => {
   });
 });
 
+// E4: a lessor's name or lease description longer than a form's box takes is saved as typed and
+// noted beside its box, in Review's words; the note is never a gap, so Continue and the gap region
+// stay as they were (DIG-542)
+describe("Contracts & Leases' too-long notes", () => {
+  const tooLong = (label: string, form: string) =>
+    fill(copy.SCHEDULE_I_DETAIL_TOO_LONG, { label, form });
+
+  it('a too-long lessor name or lease description shows its note', async () => {
+    const onValidationChange = vi.fn();
+    const onRowsChange = vi.fn();
+    render(
+      <StepWithRows
+        initial={[leaseRow]}
+        assets={assets}
+        onValidationChange={onValidationChange}
+        onRowsChange={onRowsChange}
+      />
+    );
+    const gapsBefore = screen.getByRole('status').textContent;
+    const validBefore = onValidationChange.mock.lastCall![0];
+    const user = userEvent.setup();
+
+    // A vehicle lease prints on Schedule G (79) and Form 108 (98): Schedule G's box governs
+    await user.clear(nameBox());
+    await user.paste('L'.repeat(80));
+    const nameNote = tooLong(copy.CLAIM_TEXT_LABELS.counterparty_name, 'Schedule G');
+    expect(screen.getByText(nameNote)).toBeInTheDocument();
+    expect(nameBox()).toHaveAccessibleDescription(nameNote);
+
+    await user.clear(field('description_0'));
+    await user.paste('d'.repeat(139));
+    const descriptionNote = tooLong(copy.CLAIM_TEXT_LABELS.description, 'Form 108');
+    expect(screen.getByText(descriptionNote)).toBeInTheDocument();
+    expect(field('description_0')).toHaveAccessibleDescription(descriptionNote);
+
+    expect(onRowsChange.mock.lastCall![0][0]).toMatchObject({
+      counterparty_name: 'L'.repeat(80),
+      description: 'd'.repeat(139),
+    });
+    expect(screen.getByRole('status').textContent).toBe(gapsBefore);
+    expect(onValidationChange.mock.lastCall![0]).toBe(validBefore);
+  });
+
+  it("a residential lease's description is measured on Schedule G alone", () => {
+    render(
+      <StepWithRows
+        initial={[{ ...leaseRow, lease_kind: 'residential', description: 'd'.repeat(139) }]}
+        assets={assets}
+      />
+    );
+    expect(screen.queryByText(/is too long for its box/)).toBeNull();
+  });
+
+  it("a contract that isn't a lease gets no note", () => {
+    render(
+      <StepWithRows
+        initial={[{ ...leaseRow, contract_type: 'contract', counterparty_name: 'L'.repeat(200) }]}
+        assets={assets}
+      />
+    );
+    expect(screen.queryByText(/is too long for its box/)).toBeNull();
+  });
+});
+
 describe("Form 101 line 11's rent and eviction, after the contracts (4b)", () => {
   const rentRadio = (name: string, value: YesNo) =>
     document.querySelector(`input[name="${name}"][value="${value}"]`) as HTMLInputElement;

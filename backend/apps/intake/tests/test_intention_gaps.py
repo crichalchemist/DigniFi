@@ -424,6 +424,20 @@ def test_an_explanation_over_its_cap_that_fits_is_listed_by_length(session):
     assert [str(g) for g in _text_gaps(session, "plans")] == [_too_long("explain", "form_108")]
 
 
+def test_words_that_reach_the_cap_only_through_spaces_are_not_listed(session):
+    # T5-R1: Explain1 and Explain2 print the trimmed words (F6), and the browser's note counts them
+    # trimmed, so spaces around them never make a detail
+    words = "   I keep paying as agreed." + " " * 50
+    cap = intentions.CLAIM_BOX_CAPS["form_108:explain"]
+    assert len(words) > cap >= len(words.strip())
+    explain_1, explain_2 = split_explain(words.strip())
+    assert not _refuses("form_108", {"Explain1 1a": explain_1, "Explain2 1a": explain_2})
+    debt = _secured(session)
+    _choose(session, debt, intention="retain_explain", explain=words)
+
+    assert _text_gaps(session, "plans") == []
+
+
 @pytest.mark.parametrize(
     "intention", ["surrender", "retain_redeem", "retain_reaffirm", "undecided"]
 )

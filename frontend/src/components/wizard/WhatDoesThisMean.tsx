@@ -9,6 +9,8 @@ interface WhatDoesThisMeanProps {
    * told apart (4d-R21); shown as they are, with no differing aria-label (WCAG 2.5.3, Ruling M)
    */
   label?: string;
+  /** DigniFi's own closing sentence, after the citation, never inside the quotation (4e-R7) */
+  note?: string;
   /** The statute's or the court's own words, verbatim, never a paraphrase */
   children: ReactNode;
 }
@@ -18,12 +20,13 @@ interface WhatDoesThisMeanProps {
  * A collapsed definition. The children are the statute's or the court's words verbatim, never
  * DigniFi's paraphrase of them; the citation says where they come from.
  */
-export function WhatDoesThisMean({ citation, label, children }: WhatDoesThisMeanProps) {
+export function WhatDoesThisMean({ citation, label, note, children }: WhatDoesThisMeanProps) {
   return (
     <details className="what-does-this-mean">
       <summary>{label ?? WHAT_DOES_THIS_MEAN}</summary>
       <blockquote>{children}</blockquote>
       <p className="form-help-text">{citation}</p>
+      {note && <p className="form-help-text">{note}</p>}
     </details>
   );
 }

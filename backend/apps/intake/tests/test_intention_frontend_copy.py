@@ -1,22 +1,26 @@
 """
 Your Plans asks Form 108's questions in the browser and the server judges them, so a few things are
 typed on both sides: the sentences naming an open row (copy.ts, mirrored from intentions.py), the
-choice words a save sends (types/api.ts, from IntentionAnswers and the exempt states), and the
-cases the two sides' gap helpers both run (intentionGapCases.json). A sentence worded differently
-on one side tells the filer one thing on the step and another on Review; a choice spelled
-differently makes every save of the step a 400.
+choice words a save sends (types/api.ts, from IntentionAnswers and the exempt states), the
+too-long notes' caps, boxes and labels (claimTextLimits.ts and copy.ts, from form_108.limits.json),
+and the cases the two sides' gap helpers both run (intentionGapCases.json). A sentence worded
+differently on one side tells the filer one thing on the step and another on Review; a choice
+spelled differently makes every save of the step a 400.
 """
 
 import json
 import re
 
 import pytest
+from django.conf import settings
 
 from apps.intake import exemptions, intentions, schedule_i
 from apps.intake.models import IntentionAnswers
 from apps.intake.tests.test_petition_frontend_copy import FRONTEND, _copy_sentences
+from apps.intake.tests.test_schedule_i_frontend_copy import _quoted_record
 
 CASES = FRONTEND / "components" / "wizard" / "steps" / "plans" / "intentionGapCases.json"
+SCHEMAS = settings.BASE_DIR.parent / "data" / "forms" / "schemas"
 PREFIXES = ("INTENTION_GAP_", "LEASE_GAP_")
 
 
@@ -74,6 +78,31 @@ def test_the_case_file_is_what_the_server_says():
         assert sentence == expected, case["name"]
     # every sentence and "no gap" are each pinned on both sides
     assert {case["expect"] for case in cases} == {*_server_sentences(), None}
+
+
+def test_the_browsers_caps_and_labels_are_the_tools():
+    # Amounts Owed's, Contracts & Leases' and Your Plans' too-long notes count against these caps
+    # and name these labels; a cap or a box list that drifted would show a note Review never lists,
+    # or miss one it does
+    limits = json.loads((SCHEMAS / "form_108.limits.json").read_text())
+    source = (FRONTEND / "constants" / "claimTextLimits.ts").read_text()
+    caps = re.search(r"^export const CLAIM_BOX_CAPS\b[^\n]*= \{\n(.*?)^\};", source, re.M | re.S)
+    assert caps, "claimTextLimits.ts has no CLAIM_BOX_CAPS"
+    pairs = re.findall(r"^  '([^']+)': (\d+),$", caps[1], re.M)
+    browser_caps = {key: int(cap) for key, cap in pairs}
+    assert browser_caps == limits["boxes"]
+    assert len(browser_caps) == 11
+    boxes = re.search(r"^export const ROW_BOXES\b[^\n]*= \{\n(.*?)^\};", source, re.M | re.S)
+    assert boxes, "claimTextLimits.ts has no ROW_BOXES"
+    browser_boxes = {
+        tuple(key.split(":")): tuple(re.findall(r"'([^']+)'", keys))
+        # a box key holds "[]" itself, so the list is read as quoted strings up to its own "]"
+        for key, keys in re.findall(r"'(\w+:\w+)': \[((?:\s*'[^']+',?)+)\s*\]", boxes[1])
+    }
+    assert browser_boxes == intentions.ROW_BOXES
+    labels = _quoted_record(FRONTEND / "constants" / "copy.ts", "CLAIM_TEXT_LABELS")
+    assert labels == limits["labels"] == intentions.CLAIM_TEXT_LABELS
+    assert set(labels) == set(intentions.CLAIM_TEXT_KEYS)
 
 
 def test_the_too_long_sentence_is_the_schedule_i_one():

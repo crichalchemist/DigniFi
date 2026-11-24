@@ -198,10 +198,13 @@ describe("step 1's Form 101 sentences are information, never advice", () => {
   });
 
   it('no copy sentence carries a clerk number inside its text (4b-R6)', () => {
+    // PLANS_EFFECTS_HELP carries the court's pro se help desk, one number for both divisions,
+    // inside the sentence the owner approved (4e, E1); it is no clerk's office
     const withNumber = Object.entries(strings).filter(
       ([name, value]) =>
         typeof value === 'string' &&
         !name.startsWith('CLERK_PHONE_') &&
+        name !== 'PLANS_EFFECTS_HELP' &&
         /\(\d{3}\) \d{3}-\d{4}/.test(value)
     );
     expect(withNumber).toEqual([]);

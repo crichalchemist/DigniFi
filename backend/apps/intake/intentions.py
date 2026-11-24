@@ -203,7 +203,9 @@ def claim_text_gaps(session) -> list:
             return
         cap, cap_forms = row_cap(text, list_name)
         forms = set(refused.get((kind, pk, text), ()))
-        if len(value) > cap:
+        # The "[explain]" words print trimmed (F6), so their cap counts them trimmed (T5-R1); a
+        # name or description counts as stored
+        if len(value.strip() if text == "explain" else value) > cap:
             forms |= set(cap_forms)
         if forms:
             ordered = tuple(form for form in FORM_WORDS if form in forms)

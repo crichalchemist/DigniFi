@@ -16,6 +16,7 @@ import type {
   ExemptionLine1,
   ExpenseField,
   ExpenseSpecifyField,
+  Intention,
   LienKind,
   MaritalStatus,
   PaymentChoice,
@@ -753,6 +754,88 @@ export const STATUTE_HOMELAND_DEFENSE_CITATION = '32 U.S.C. § 901(1)';
 export const STATUTE_HOMELAND_DEFENSE =
   'The term “homeland defense activity” means an activity undertaken for the military protection of the territory or domestic population of the United States, or of infrastructure or other assets of the United States determined by the Secretary of Defense as being critical to national security, from a threat or aggression against the United States.';
 
+// Form 108 (form_b108.pdf, 12/15), asked on Your Plans (forms step 4e, E6, R-FORM-WORDS). Copied
+// from the template's text layer, its line breaks joined; test_form_108_frontend_copy.py finds
+// each on the template.
+// DRAFT: counsel C-37
+export const FORM_108_TITLE = 'Statement of Intention for Individuals Filing Under Chapter 7';
+// Page 1's instructions, the deadline sentence whole (E6), shown as the form's words
+// DRAFT: counsel C-37
+export const FORM_108_DEADLINE =
+  'You must file this form with the court within 30 days after you file your bankruptcy petition or by the date set for the meeting of creditors, whichever is earlier, unless the court extends the time for cause.';
+// DRAFT: counsel C-37
+export const FORM_108_PART_1_HEADING = 'Part 1: List Your Creditors Who Have Secured Claims';
+// Part 1's column head over the four choices
+// DRAFT: counsel C-37
+export const FORM_108_INTENTION_QUESTION =
+  'What do you intend to do with the property that secures a debt?';
+// The four choices as printed, in the form's order, keyed by the answer each one is
+// DRAFT: counsel C-37
+export const FORM_108_INTENTIONS: Record<Exclude<Intention, 'undecided'>, string> = {
+  surrender: 'Surrender the property.',
+  retain_redeem: 'Retain the property and redeem it.',
+  retain_reaffirm: 'Retain the property and enter into a Reaffirmation Agreement.',
+  retain_explain: 'Retain the property and [explain]:',
+};
+// Part 1's column head over the exempt box
+// DRAFT: counsel C-37
+export const FORM_108_EXEMPT_QUESTION = 'Did you claim the property as exempt on Schedule C?';
+// DRAFT: counsel C-37
+export const FORM_108_CREDITOR_LABEL = 'Creditor’s name:';
+// DRAFT: counsel C-37
+export const FORM_108_PROPERTY_LABEL = 'Description of property securing debt:';
+// DRAFT: counsel C-37
+export const FORM_108_PART_2_HEADING = 'Part 2: List Your Unexpired Personal Property Leases';
+// Part 2's sentence, its citation included
+// DRAFT: counsel C-37
+export const FORM_108_ASSUME_SENTENCE =
+  'You may assume an unexpired personal property lease if the trustee does not assume it. 11 U.S.C. § 365(p)(2).';
+// Part 2's column head
+// DRAFT: counsel C-37
+export const FORM_108_ASSUMED_QUESTION = 'Will the lease be assumed?';
+// Its two answers, in the form's order
+// DRAFT: counsel C-37
+export const FORM_108_ASSUMED: Record<'no' | 'yes', string> = {
+  no: 'No',
+  yes: 'Yes',
+};
+// DRAFT: counsel C-37
+export const FORM_108_LESSOR_LABEL = 'Lessor’s name:';
+// DRAFT: counsel C-37
+export const FORM_108_LEASED_PROPERTY_LABEL = 'Description of leased property:';
+
+// The statutes' own words under each choice's "What does … mean on this form?" on Your Plans (4e,
+// E2, 4e-R7), with their citations; pinned word for word by PlansStep.test.tsx. Each is pasted
+// from its uscode.house.gov page, fetched 2026-11-24, re-check before 2027-11-24. One rule for all
+// four: the page's U+2060 word joiner (before each em dash) is removed, the U+00A0 after each
+// enumerator ("(a)&nbsp; The", "(2)&nbsp;(A)&nbsp; If") is read as one space, and each paragraph
+// (one <p> on the page) is one line.
+// https://uscode.house.gov/us/usc/t11/s521 (R-521-LEAD: what makes (A) a sentence; "[…]" where
+// text is left out)
+// DRAFT: counsel C-37
+export const STATUTE_521_A_2_A_CITATION = '11 U.S.C. § 521(a)(2)(A)';
+// DRAFT: counsel C-37
+export const STATUTE_521_A_2_A =
+  '(a) The debtor shall—\n[…]\n(2) if an individual debtor’s schedule of assets and liabilities includes debts which are secured by property of the estate—\n(A) within thirty days after the date of the filing of a petition under chapter 7 of this title or on or before the date of the meeting of creditors, whichever is earlier, or within such additional time as the court, for cause, within such period fixes, file with the clerk a statement of his intention with respect to the retention or surrender of such property and, if applicable, specifying that such property is claimed as exempt, that the debtor intends to redeem such property, or that the debtor intends to reaffirm debts secured by such property; and\n[…]';
+// https://uscode.house.gov/us/usc/t11/s722, whole
+// DRAFT: counsel C-37
+export const STATUTE_722_CITATION = '11 U.S.C. § 722';
+// DRAFT: counsel C-37
+export const STATUTE_722 =
+  'An individual debtor may, whether or not the debtor has waived the right to redeem under this section, redeem tangible personal property intended primarily for personal, family, or household use, from a lien securing a dischargeable consumer debt, if such property is exempted under section 522 of this title or has been abandoned under section 554 of this title, by paying the holder of such lien the amount of the allowed secured claim of such holder that is secured by such lien in full at the time of redemption.';
+// https://uscode.house.gov/us/usc/t11/s524, subsection (c) whole
+// DRAFT: counsel C-37
+export const STATUTE_524_C_CITATION = '11 U.S.C. § 524(c)';
+// DRAFT: counsel C-37
+export const STATUTE_524_C =
+  '(c) An agreement between a holder of a claim and the debtor, the consideration for which, in whole or in part, is based on a debt that is dischargeable in a case under this title is enforceable only to any extent enforceable under applicable nonbankruptcy law, whether or not discharge of such debt is waived, only if—\n(1) such agreement was made before the granting of the discharge under section 727, 1141, 1192, 1228, or 1328 of this title;\n(2) the debtor received the disclosures described in subsection (k) at or before the time at which the debtor signed the agreement;\n(3) such agreement has been filed with the court and, if applicable, accompanied by a declaration or an affidavit of the attorney that represented the debtor during the course of negotiating an agreement under this subsection, which states that—\n(A) such agreement represents a fully informed and voluntary agreement by the debtor;\n(B) such agreement does not impose an undue hardship on the debtor or a dependent of the debtor; and\n(C) the attorney fully advised the debtor of the legal effect and consequences of—\n(i) an agreement of the kind specified in this subsection; and\n(ii) any default under such an agreement;\n(4) the debtor has not rescinded such agreement at any time prior to discharge or within sixty days after such agreement is filed with the court, whichever occurs later, by giving notice of rescission to the holder of such claim;\n(5) the provisions of subsection (d) of this section have been complied with; and\n(6) (A) in a case concerning an individual who was not represented by an attorney during the course of negotiating an agreement under this subsection, the court approves such agreement as—\n(i) not imposing an undue hardship on the debtor or a dependent of the debtor; and\n(ii) in the best interest of the debtor.\n(B) Subparagraph (A) shall not apply to the extent that such debt is a consumer debt secured by real property.';
+// https://uscode.house.gov/us/usc/t11/s365, subsection (p) paragraph (2) whole
+// DRAFT: counsel C-37
+export const STATUTE_365_P_2_CITATION = '11 U.S.C. § 365(p)(2)';
+// DRAFT: counsel C-37
+export const STATUTE_365_P_2 =
+  '(2) (A) If the debtor in a case under chapter 7 is an individual, the debtor may notify the creditor in writing that the debtor desires to assume the lease. Upon being so notified, the creditor may, at its option, notify the debtor that it is willing to have the lease assumed by the debtor and may condition such assumption on cure of any outstanding default on terms set by the contract.\n(B) If, not later than 30 days after notice is provided under subparagraph (A), the debtor notifies the lessor in writing that the lease is assumed, the liability under the lease will be assumed by the debtor and not by the estate.\n(C) The stay under section 362 and the injunction under section 524(a)(2) shall not be violated by notification of the debtor and negotiation of cure under this subsection.';
+
 // Form 122A-2's title, page 1
 export const FORM_122A2_TITLE = 'Form 122A-2: Chapter 7 Means Test Calculation';
 // Part 2's note on whom "you" means, page 3
@@ -872,6 +955,7 @@ export const FORM_REVISIONS: Record<string, string> = {
   form_101: '11/26',
   form_101a: '12/15',
   form_122a1_supp: '12/15',
+  form_108: '12/15',
 };
 
 // Line 1, the label under the suffix box

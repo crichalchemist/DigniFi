@@ -202,11 +202,19 @@ def test_the_revision_the_wizard_names_is_the_one_the_template_prints():
         re.M,
     )
     assert mark_supp, "Form 122A-1Supp's page 1 has no title line with an edition mark"
+    page_108 = pypdf.PdfReader(PDFS / "form_b108.pdf").pages[0].extract_text()
+    mark_108 = re.search(
+        r"^Statement of Intention for Individuals Filing Under Chapter 7 (\d{2}/\d{2}) *$",
+        page_108,
+        re.M,
+    )
+    assert mark_108, "Form 108's page 1 has no title line with an edition mark"
     form_text = FRONTEND / "constants" / "formText.ts"
     assert _string_record(form_text, "FORM_REVISIONS") == {
         "form_101": mark.group(1),
         "form_101a": mark_101a.group(1),
         "form_122a1_supp": mark_supp.group(1),
+        "form_108": mark_108.group(1),
     }
 
 
