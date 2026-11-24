@@ -243,6 +243,13 @@ def index_rows(template):
     repeated = sorted({label for label in labels if labels.count(label) > 1})
     if repeated:
         raise SystemExit(f"labels on more than one row: {repeated}")
+    # T3-H1: a Part 1 box read from another row's rectangle would print a sworn choice beside
+    # another creditor, so each row's label letter must be its widget's own row suffix (1a-1d).
+    for row in rows:
+        if row["label"].startswith("Part 1, row "):
+            letter = row["label"][len("Part 1, row ")]
+            if not row["full_name"].endswith(f" 1{letter}"):
+                raise SystemExit(f"{row['label']!r} is on the widget {row['full_name']!r}")
     return rows
 
 

@@ -453,7 +453,8 @@ def claims_session(db):
     unsecured = complete_debt(session, notice_parties=[party])
     # Part 1's debt shares the others' name and address, so the List of Creditors keeps 4 entries.
     complete_debt(session, priority_answer="taxes", past_due_amount=Decimal("0.00"))
-    contract = complete_contract(session)
+    # A vehicle lease: one row on Schedule G's contracts and on Form 108's leases (4e)
+    contract = complete_contract(session, lease_kind="vehicle", description="Demo car lease")
     complete_codebtor(
         session,
         links=[

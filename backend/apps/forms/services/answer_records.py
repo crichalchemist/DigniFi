@@ -1,7 +1,7 @@
 """
 The answers records the step 4 namespaces read (spec §7, §14.2).
 
-`petition.`, `schedule_i.`, `intentions.` and `affairs.` each name a key of one record's
+`petition.`, `schedule_i.` and `affairs.` each name a key of one record's
 `get_answers()`. Forms step 4a registers the namespaces with nothing bound and no record
 behind them, so a session without the record reads blank (a scalar) or empty (a row list):
 never 0.00 and never a default, since blank means the filer has not answered.
@@ -10,14 +10,13 @@ never 0.00 and never a default, since blank means the filer has not answered.
 import re
 from datetime import datetime
 
-ANSWER_NAMESPACES = ("petition.", "schedule_i.", "intentions.", "affairs.")
+ANSWER_NAMESPACES = ("petition.", "schedule_i.", "affairs.")
 
 # The session's related name for each record. `affairs.` is by line: Form 107's lines 1 to 12
 # are the financial affairs record's, 13 to 28 the property affairs record's (§7.4).
 RECORD_OF_NAMESPACE = {
     "petition.": "petition_answers",
     "schedule_i.": "schedule_i_answers",
-    "intentions.": "intention_answers",
 }
 
 # A step the wizard doesn't have yet; each leaves this tuple when its PR adds the step to
@@ -169,7 +168,7 @@ def _unrecognized(binding: str) -> ValueError:
 
 
 def _namespace(binding: str) -> str:
-    """The answer namespace a binding starts with; a binding outside the four is unrecognized."""
+    """The answer namespace a binding starts with; a binding outside the three is unrecognized."""
     for prefix in ANSWER_NAMESPACES:
         if binding.startswith(prefix):
             return prefix
@@ -232,6 +231,4 @@ def record_step(binding: str) -> str:
         return step
     if namespace == "schedule_i.":
         return "expense_info" if key.startswith("schedule_j_") else "income_info"
-    if namespace == "intentions.":
-        return "plans"
     return "last_few_years_1" if _affairs_line(binding) <= 12 else "last_few_years_2"

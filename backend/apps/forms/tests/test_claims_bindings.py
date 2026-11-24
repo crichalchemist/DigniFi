@@ -113,6 +113,8 @@ def test_every_claims_cell_resolves_one_value_a_row(session):
         "unsecured_notices": 2,
         "contracts": 2,
         "codebtors": 1,
+        # Both contracts are residential leases, which Form 108 never lists (R-LEASE-GATE)
+        "leases": 0,
     }
     assert set(expected) == set(CLAIM_LISTS)
     for name in CLAIM_LISTS:
@@ -120,6 +122,10 @@ def test_every_claims_cell_resolves_one_value_a_row(session):
             values = _cell(session, f"claims.{name}[].{attr}")
             assert len(values) == expected[name], (name, attr)
             assert all(isinstance(v, str) for v in values), (name, attr)
+    # With no Form 108 answers and no Schedule C answers, every Form 108 cell is blank: no
+    # choice, no words and no exempt box the filer didn't give.
+    for attr in ("intention", "exempt", "explain", "explain_1", "explain_2"):
+        assert _cell(session, f"claims.secured[].{attr}") == ["", ""], attr
 
 
 @pytest.mark.parametrize(

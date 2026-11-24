@@ -1,5 +1,5 @@
 """
-The four answer namespaces (petition., schedule_i., intentions., affairs.) read one record each.
+The three answer namespaces (petition., schedule_i., affairs.) read one record each.
 
 Forms step 4a registers them with nothing bound: a session with no record reads blank (a
 scalar) or empty (a row list), never 0.00 and never a default, and a refusal that names a
@@ -110,7 +110,6 @@ def test_a_row_list_that_is_not_a_list_of_objects_reads_empty_or_blank():
         ("petition.paid_preparer", "review"),
         ("schedule_i.employer_name", "income_info"),
         ("schedule_i.schedule_j_line_24_answer", "expense_info"),
-        ("intentions.secured", "plans"),
         ("affairs.l2_rows[].street", "last_few_years_1"),
         ("affairs.l12_statement", "last_few_years_1"),
         ("affairs.l13_answer", "last_few_years_2"),
@@ -195,16 +194,6 @@ def test_a_form_107_line_reads_the_record_that_asks_it(line, record, other):
     assert record_value(rows, f"affairs.l{line}_rows[].street") == ["1 Demo St"]
 
 
-def test_structure_under_a_scalar_binding_reads_blank():
-    # §7.3: intentions.secured is a JSON object keyed by DebtInfo.id, not a scalar (4a-R7).
-    stub = SimpleNamespace(
-        intention_answers=SimpleNamespace(
-            get_answers=lambda: {"secured": {"7": {"intention": "keep"}}}
-        )
-    )
-    assert record_value(stub, "intentions.secured") == ""
-
-
 @pytest.mark.parametrize(
     "binding",
     [
@@ -212,7 +201,6 @@ def test_structure_under_a_scalar_binding_reads_blank():
         "petition.paid_preparer",
         "schedule_i.employer_name",
         "schedule_i.schedule_j_line_24_answer",
-        "intentions.secured",
         "affairs.l2_answer",
         "affairs.l28_answer",
     ],
@@ -225,7 +213,7 @@ def test_every_step_a_namespace_names_is_a_wizard_step_or_a_reserved_key(binding
 
 @pytest.mark.parametrize(
     "binding",
-    ["petition.prior_cases[].district", "affairs.l2_rows[].street", "intentions.secured[].a"],
+    ["petition.prior_cases[].district", "affairs.l2_rows[].street"],
 )
 def test_a_row_binding_in_each_namespace_is_a_list_binding(binding):
     assert _LIST_BINDING.fullmatch(binding)

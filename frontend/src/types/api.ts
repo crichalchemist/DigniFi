@@ -1145,7 +1145,7 @@ export type ExemptionsUpdate = Partial<
 // Form Generation
 // ============================================================================
 
-/** All 19 form types registered in the backend form registry */
+/** All 20 form types registered in the backend form registry */
 export type FormType =
   | 'form_101' // Voluntary Petition
   | 'form_101a' // Eviction Judgment Statement
@@ -1153,6 +1153,7 @@ export type FormType =
   | 'form_106dec' // Declaration
   | 'form_106sum' // Summary of Assets/Liabilities
   | 'form_107' // Statement of Financial Affairs
+  | 'form_108' // Statement of Intention
   | 'form_121' // SSN Statement
   | 'list_of_creditors' // List of Creditors
   | 'form_122a1' // Means Test
@@ -1222,65 +1223,70 @@ export const FORM_TYPE_METADATA: Record<
     description: 'Statement of your financial affairs',
     order: 6,
   },
+  form_108: {
+    label: 'Form 108 - Statement of Intention',
+    description: 'Statement of Intention for Individuals Filing Under Chapter 7',
+    order: 7,
+  },
   form_121: {
     label: 'Form 121 - SSN Statement',
     description: 'Social Security number verification',
-    order: 7,
+    order: 8,
   },
   form_122a1: {
     label: 'Form 122A-1 - Means Test',
     description: 'Chapter 7 means test calculation',
-    order: 8,
+    order: 9,
   },
   // DRAFT: counsel C-39
   form_122a1_supp: {
     label: 'Form 122A-1Supp - Statement of Exemption from Presumption of Abuse',
     description: 'Supplement to the Chapter 7 means test',
-    order: 9,
+    order: 10,
   },
   form_122a2: {
     label: 'Form 122A-2 - Means Test Expenses',
     description: 'Chapter 7 means test expense calculation',
-    order: 10,
+    order: 11,
   },
   list_of_creditors: {
     label: 'List of Creditors',
     description:
       "The court's list of the name and address of everyone you owe money to, or who must be told about your case.",
-    order: 11,
+    order: 12,
   },
   schedule_a_b: {
     label: 'Schedule A/B - Property',
     description: 'List of all your property',
-    order: 12,
+    order: 13,
   },
   schedule_c: {
     label: 'Schedule C - Exemptions',
     description: 'Property you claim as exempt',
-    order: 13,
+    order: 14,
   },
   schedule_d: {
     label: 'Schedule D - Secured Creditors',
     description: 'Creditors with collateral claims',
-    order: 14,
+    order: 15,
   },
   schedule_e_f: {
     label: 'Schedule E/F - Unsecured Creditors',
     description: 'Creditors without collateral',
-    order: 15,
+    order: 16,
   },
   schedule_g: {
     label: 'Schedule G - Executory Contracts',
     description: 'Executory contracts and unexpired leases',
-    order: 16,
+    order: 17,
   },
   schedule_h: {
     label: 'Schedule H - Codebtors',
     description: 'People who are also liable for your debts',
-    order: 17,
+    order: 18,
   },
-  schedule_i: { label: 'Schedule I - Income', description: 'Your current income', order: 18 },
-  schedule_j: { label: 'Schedule J - Expenses', description: 'Your current expenses', order: 19 },
+  schedule_i: { label: 'Schedule I - Income', description: 'Your current income', order: 19 },
+  schedule_j: { label: 'Schedule J - Expenses', description: 'Your current expenses', order: 20 },
 };
 
 // ============================================================================

@@ -103,8 +103,9 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
     expect(seen).toBe(false);
     await sofa.skipForNow();
 
-    // He pays in installments, so no Form 103B; below median, so no Form 122A-2
-    await dashboard.generateAllForms(15);
+    // He pays in installments, so no Form 103B; below median, so no Form 122A-2; his car loan
+    // and his car lease bring Form 108
+    await dashboard.generateAllForms(16);
     const count = await dashboard.getGeneratedCount();
     expect(count).toBe(15);
   });

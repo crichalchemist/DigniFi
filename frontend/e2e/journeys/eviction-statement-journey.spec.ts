@@ -100,8 +100,8 @@ test.describe('Eviction statement — Form 101A', () => {
     await sofa.waitForLoad();
     await sofa.skipForNow();
 
-    // James's 15 forms and Form 101A
-    await dashboard.generateAllForms(16);
+    // James's 16 forms (Form 108 among them, for his car loan) and Form 101A
+    await dashboard.generateAllForms(17);
     await expect(page.getByText('Form 101A - Eviction Judgment Statement')).toBeVisible();
   });
 });

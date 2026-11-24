@@ -4,7 +4,7 @@
  * $12,000 a month plus her spouse's $1,800 is $13,800 a month, $165,600 a
  * year, with a 4-person household — above the $137,902 HH4 median, so
  * Form 122A-2 applies. She answers its page and reads the form's arithmetic with no verdict;
- * she reaches the dashboard, where Generate All makes 16 forms.
+ * she reaches the dashboard, where Generate All makes 17 forms.
  * Tests that the above-median result is shown with dignity and no verdict.
  */
 
@@ -117,8 +117,9 @@ test.describe('Priya Sharma — Above the Median', () => {
     await sofa.waitForLoad();
     await sofa.skipForNow();
 
-    // Above the median, her packet holds Form 122A-2: 15 forms plus that one
-    await dashboard.generateAllForms(16);
+    // Above the median, her packet holds Form 122A-2, and her car loan Form 108: 15 forms plus
+    // those two
+    await dashboard.generateAllForms(17);
     expect(await dashboard.getGeneratedCount()).toBe(16);
     await expect(
       page.getByRole('article', { name: /122A-2/ }).getByRole('button', { name: 'Download' })

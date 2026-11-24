@@ -130,7 +130,7 @@ LINE_8 = {
     "james": "pay_in_full",
     "priya": "pay_in_full",
 }
-PACKET_SIZE = {"maria": 16, "sarah": 16, "deshawn": 15, "andres": 15, "james": 15, "priya": 16}
+PACKET_SIZE = {"maria": 16, "sarah": 16, "deshawn": 16, "andres": 16, "james": 16, "priya": 17}
 
 
 EXPENSE_TOTAL = {
@@ -353,7 +353,7 @@ def test_a_gig_drivers_business_entry_leaves_his_debts_as_he_classed_them_and_he
 
     assert classed == [d["consumer_business_classification"] for d in _andres_kettleby()["debts"]]
     assert classed.count("business") == 2
-    assert len(packet(session)) == 15
+    assert len(packet(session)) == 16
 
 
 @pytest.mark.django_db
@@ -870,10 +870,9 @@ def test_every_persona_answers_line_16_and_both_military_gates():
 
 
 @pytest.mark.django_db
-def test_no_persona_gets_the_supp_and_every_packet_count_is_unchanged():
-    # 4d adds a form and three outcomes to the routing; no persona's packet moves. Priya's
-    # presumption keeps 122A-2 and every other persona is below the median, and none holds the
-    # Supp. The counts are the ones pinned above.
+def test_no_persona_gets_the_supp():
+    # Form 108 joins four packets; the Supp joins none. Priya's presumption keeps 122A-2 and
+    # every other persona is below the median. The counts are the ones pinned above.
     call_command("loaddata", "ilnd_2025_data", verbosity=0)
     call_command("seed_demo_data", stdout=StringIO())
 

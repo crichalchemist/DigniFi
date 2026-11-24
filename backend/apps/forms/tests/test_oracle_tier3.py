@@ -646,6 +646,20 @@ EXPECTED = {
             "creditor1.0.2": "Gold Coast Example Residential LLC 850 N State St c/o Management Office Chicago, IL 60610",
             "creditor1.0.3": "",
         },
+        # Form 108 (4e): his car loan. No seeded choice until Task 8, so no choice box ticks;
+        # the Camry's claim on Schedule C ticks the exempt box Yes (R-EXEMPT). His apartment, a
+        # residential lease, is not on Form 108.
+        "form_108": {
+            "Debtor 1": "James D Washington",
+            "Creditors Name 1a": "Crestway Auto Credit",
+            "PropertyDescription 1a": "2019 Toyota Camry",
+            "check1 1a": "",
+            "check2 1a": "/yes",
+            "Explain1 1a": "",
+            "Explain2 1a": "",
+            "Creditors Name 1b": "",
+            "Lessors Name 2a": "",
+        },
     },
     "priya": {
         "form_101": {
@@ -1032,6 +1046,20 @@ EXPECTED = {
             "creditor2.0.1": "Rohan Sharma 456 W Fullerton Pkwy Chicago, IL 60614",
             "creditor2.0.2": "",
         },
+        # Form 108 (4e): her car loan. No seeded choice until Task 8, so no choice box ticks;
+        # the CR-V's claim on Schedule C ticks the exempt box Yes (R-EXEMPT). Her apartment, a
+        # residential lease, is not on Form 108.
+        "form_108": {
+            "Debtor 1": "Priya Sharma",
+            "Creditors Name 1a": "Kestrel Auto Finance",
+            "PropertyDescription 1a": "2021 Honda CR-V EX",
+            "check1 1a": "",
+            "check2 1a": "/yes",
+            "Explain1 1a": "",
+            "Explain2 1a": "",
+            "Creditors Name 1b": "",
+            "Lessors Name 2a": "",
+        },
     },
     "deshawn": {
         "form_101": {
@@ -1234,6 +1262,19 @@ EXPECTED = {
             "creditor1.0.4": "Demo Recovery Services PO Box 4405 Chicago, IL 60680",
             "creditor2.0.0": "Demo Medical Collections PO Box 4406 Chicago, IL 60680",
             "creditor2.0.1": "",
+        },
+        # Form 108 (4e): his mortgage. No seeded choice until Task 8, so no choice box ticks;
+        # the home's claim on Schedule C ticks the exempt box Yes (R-EXEMPT).
+        "form_108": {
+            "Debtor 1": "DeShawn R Mitchell",
+            "Creditors Name 1a": "Harrowgate Home Loans",
+            "PropertyDescription 1a": "Single-family home, 7823 S Sangamon St",
+            "check1 1a": "",
+            "check2 1a": "/yes",
+            "Explain1 1a": "",
+            "Explain2 1a": "",
+            "Creditors Name 1b": "",
+            "Lessors Name 2a": "",
         },
     },
     "sarah": {
@@ -1672,6 +1713,25 @@ EXPECTED = {
             "creditor1.0.5.4": "Mateo Kettleby 377 Douglas Ave Elgin, IL 60120",
             "creditor1.0.5.5": "",
         },
+        # Form 108 (4e): his car loan and his vehicle lease. The seed stores no choice until
+        # Task 8, so no choice box ticks and the lease's answer is blank; the Fit's claim on
+        # Schedule C ticks the exempt box Yes (R-EXEMPT). The Fox Run apartment, a residential
+        # lease, is not on Form 108.
+        "form_108": {
+            "Debtor 1": "Andrés J Kettleby",
+            "Bankruptcy District Information": "Northern District of Illinois",
+            "Creditors Name 1a": "Copperline Auto Finance",
+            "PropertyDescription 1a": "2017 Honda Fit, co-owned with my brother",
+            "check1 1a": "",
+            "check2 1a": "/yes",
+            "Explain1 1a": "",
+            "Explain2 1a": "",
+            "Creditors Name 1b": "",
+            "Lessors Name 2a": "Northlight Auto Leasing",
+            "PropertyDescription 2a": "Lease of a 2024 Toyota Corolla Hybrid, 36 months, 03/01/2025–02/29/2028",
+            "check2a": "",
+            "Lessors Name 2b": "",
+        },
     },
 }
 
@@ -1846,7 +1906,7 @@ def test_a_renter_with_an_eviction_judgment_gets_form_101a_with_the_landlord():
     answer_petition(session, rents_residence="yes", eviction_judgment="yes", **FORM_101A_LANDLORD)
 
     forms = packet(session)
-    assert len(forms) == 16
+    assert len(forms) == 17  # his 15, Form 101A and Form 108 (his car loan)
     assert forms[1] == "form_101a"
 
     values = build_field_values("form_101a", session)
@@ -1904,11 +1964,11 @@ def _ticks(form_type, session):
 @pytest.mark.django_db
 def test_a_non_consumer_filer_gets_the_supp_and_box_1():
     # Priya is above the median: answering business sends her to box 1 (D1), and the Supp takes
-    # 122A-2's place, so her packet stays at 16 forms.
+    # 122A-2's place, so her packet stays at 17 forms (Form 108 among them, 4e).
     session = _routed("priya", debt_nature="business")
 
     forms = packet(session)
-    assert len(forms) == 16
+    assert len(forms) == 17
     assert "form_122a1_supp" in forms and "form_122a2" not in forms
     assert _ticks("form_122a1", session)["CheckBox1"] == {"/No Abuse"}
     supp = _ticks("form_122a1_supp", session)
@@ -1924,7 +1984,7 @@ def test_a_disabled_veteran_gets_the_supp_and_box_1():
     session = _routed("james", disabled_veteran="yes", debts_on_duty="yes")
 
     forms = packet(session)
-    assert len(forms) == 16
+    assert len(forms) == 17
     assert "form_122a1_supp" in forms and "form_122a2" not in forms
     assert _ticks("form_122a1", session)["CheckBox1"] == {"/No Abuse"}
     supp = _ticks("form_122a1_supp", session)
@@ -1941,7 +2001,7 @@ def test_a_reservist_gets_the_supp_and_box_3():
     session = _routed("priya", reservist="yes", called_to_duty="yes", duty_category="3")
 
     forms = packet(session)
-    assert len(forms) == 16
+    assert len(forms) == 17
     assert "form_122a1_supp" in forms and "form_122a2" not in forms
     assert _ticks("form_122a1", session)["CheckBox1"] == {"/Does not apply"}
     supp = _ticks("form_122a1_supp", session)

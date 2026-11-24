@@ -68,15 +68,17 @@ def test_every_template_widget_matches_one_index_row():
     # 4b retired Form 101 06/24 (246 widgets) for 11/26 (279), counted from the two templates.
     # 4b2 registers Form 101A (12/15): 18 widgets (12 text boxes, the district combo, the two
     # certification boxes and 3 print buttons), counted from the template.
-    assert total == 3039 - 246 + 279 + 18
+    # 4e registers Form 108 (12/15): 83 widgets (39 text boxes, the district combo, 39 boxes to
+    # tick and 4 print buttons), counted from the template.
+    assert total == 3039 - 246 + 279 + 18 + 83
 
 
 def test_only_the_print_buttons_are_left_unprinted():
     widgets = _all_widgets()
     unprinted = [w for w in widgets if not w.printed]
     # Form 101 06/24 had 4 print buttons; 11/26 has none.
-    # Form 101A (12/15) has 3 print buttons.
-    assert len(unprinted) == 67 - 4 + 0 + 3
+    # Form 101A (12/15) has 3 print buttons, and Form 108 (12/15) 4.
+    assert len(unprinted) == 67 - 4 + 0 + 3 + 4
     assert unprinted == [w for w in widgets if w.kind == "Button"]
     # Flagged not to show on screen but to print: it prints, as from the fillable form.
     (hidden,) = _named(
@@ -194,7 +196,8 @@ def test_every_box_is_measured_the_way_pypdf_draws_it(monkeypatch):
                 compared += 1
     # Form 101 06/24 out (142 text boxes and its district combo), 11/26 in (177 text boxes).
     # Form 101A (12/15) in: its 12 text boxes and its district combo.
-    assert compared == 2053 + 18 + 36 - 143 + 177 + 13
+    # Form 108 (12/15) in: its 39 text boxes and its district combo.
+    assert compared == 2053 + 18 + 36 - 143 + 177 + 13 + 40
     # Only what pypdf doesn't read from where the template puts it, and the drawing hands
     # over: MaxLen on the parent field (R4), /Q on the kid widget alone (R26).
     assert differences == {
@@ -212,14 +215,16 @@ def test_text_boxes_start_at_the_templates_font_and_size():
     # whose 177 text boxes are all /Helv auto size and none comb or multiline.
     assert Counter((w.font, w.size) for w in text) == {
         # Form 101A (12/15)'s 12 text boxes: 10 at /Helv 10 and 2 at 12.
-        ("/Helv", 10.0): 1959 - 124 + 10,
-        ("/Helv", 9.0): 65,
+        # Form 108 (12/15)'s 39: 37 at /Helv 10 and its two signing dates at 9.
+        ("/Helv", 10.0): 1959 - 124 + 10 + 37,
+        ("/Helv", 9.0): 65 + 2,
         ("/Helv", 12.0): 23 - 10 + 2,
         ("/Helv", 0.0): 10 - 8 + 177,  # auto size
         ("/TiRo", 11.0): 30,  # the List of Creditors' entry boxes
         ("/TiRo", 12.0): 1,  # its read-only "Debtor 1" label box
     }
-    assert (sum(w.comb for w in text), sum(w.multiline for w in text)) == (51 - 8, 124)
+    # Form 108's 11 property and lease descriptions are multi-line.
+    assert (sum(w.comb for w in text), sum(w.multiline for w in text)) == (51 - 8, 124 + 11)
 
 
 def test_a_box_lists_its_on_states_and_a_combo_its_options():

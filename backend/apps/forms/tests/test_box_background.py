@@ -1,7 +1,7 @@
 """
 A box the template gives a background hides what the page prints under it.
 
-The 18 district boxes of the 17 forms below (two on 103B) sit on the page's own
+The 19 district boxes of the 18 forms below (two on 103B) sit on the page's own
 "__________ District of __________", and 15 of Schedule C's boxes on ruled lines. Form 101
 (11/26) names its court in two text boxes with no background. A viewer paints the box's
 /MK /BG over them. Text read-back can't see a line showing through, so these tests judge
@@ -26,6 +26,7 @@ FORMS_WITH_WORDS_UNDER_THE_DISTRICT = [
     "form_106dec",
     "form_106sum",
     "form_107",
+    "form_108",
     "form_121",
     "form_122a1",
     "form_122a1_supp",

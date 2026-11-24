@@ -117,7 +117,8 @@ test.describe('SOFA — Form 107 Financial History', () => {
 
     // ── Form Generation ─────────────────────────────────────
 
-    await dashboard.generateAllForms(15); // James pays in full → 15 forms (no 103B)
+    // James pays in full → no 103B; his car loan brings Form 108
+    await dashboard.generateAllForms(16);
     const count = await dashboard.getGeneratedCount();
     expect(count).toBe(15);
 
