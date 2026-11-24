@@ -344,6 +344,117 @@ describe('DebtNatureQuestion', () => {
     });
   });
 
+  it("keeps line 3's follow-ups behind one line under No, and Delete clears only them", async () => {
+    // A Reservist answer changed to No: the duty answers stay stored and in reach (4d-R15)
+    const onChange = vi.fn();
+    render(
+      <Harness
+        onChange={onChange}
+        initial={{
+          debt_nature: 'consumer',
+          disabled_veteran: 'no',
+          reservist: 'no',
+          called_to_duty: 'yes',
+          duty_category: '2',
+          duty_released_on: '01/02/2026',
+        }}
+      />
+    );
+    expect(radiosNamed('called_to_duty')).toHaveLength(0);
+    expect(radiosNamed('duty_category')).toHaveLength(0);
+    expect(screen.getAllByText(HIDDEN_ANSWERS)).toHaveLength(1);
+    await userEvent.click(screen.getByRole('button', { name: SHOW_HIDDEN }));
+    expect(radio('called_to_duty', 'yes')).toBeChecked();
+    expect(radio('duty_category', '2')).toBeChecked();
+    expect(field('duty_released_on')).toHaveValue('01/02/2026');
+    // A new answer to line 3 hides them again
+    await userEvent.click(radio('reservist', 'yes')!);
+    await userEvent.click(radio('reservist', 'no')!);
+    expect(radiosNamed('called_to_duty')).toHaveLength(0);
+    expect(screen.getAllByText(HIDDEN_ANSWERS)).toHaveLength(1);
+    await userEvent.click(screen.getByRole('button', { name: DELETE_HIDDEN }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      debt_nature: 'consumer',
+      disabled_veteran: 'no',
+      reservist: 'no',
+      called_to_duty: null,
+      duty_category: null,
+      duty_released_on: null,
+      duty_ended_on: null,
+    });
+    expect(screen.queryByText(HIDDEN_ANSWERS)).not.toBeInTheDocument();
+  });
+
+  it('keeps the duty categories behind one line under No, and Delete clears only them', async () => {
+    // Called to duty changed to No: the category and its date stay stored and in reach (4d-R15)
+    const onChange = vi.fn();
+    render(
+      <Harness
+        onChange={onChange}
+        initial={{
+          ...CALLED,
+          called_to_duty: 'no',
+          duty_category: '4',
+          duty_ended_on: '03/04/2026',
+        }}
+      />
+    );
+    expect(radiosNamed('called_to_duty')).toHaveLength(2);
+    expect(radiosNamed('duty_category')).toHaveLength(0);
+    expect(screen.getAllByText(HIDDEN_ANSWERS)).toHaveLength(1);
+    await userEvent.click(screen.getByRole('button', { name: SHOW_HIDDEN }));
+    expect(radio('duty_category', '4')).toBeChecked();
+    expect(field('duty_ended_on')).toHaveValue('03/04/2026');
+    // A new answer to the follow-up hides them again
+    await userEvent.click(radio('called_to_duty', 'yes')!);
+    await userEvent.click(radio('called_to_duty', 'no')!);
+    expect(radiosNamed('duty_category')).toHaveLength(0);
+    expect(screen.getAllByText(HIDDEN_ANSWERS)).toHaveLength(1);
+    await userEvent.click(screen.getByRole('button', { name: DELETE_HIDDEN }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      debt_nature: 'consumer',
+      disabled_veteran: 'no',
+      reservist: 'yes',
+      called_to_duty: 'no',
+      duty_category: null,
+      duty_released_on: null,
+      duty_ended_on: null,
+    });
+    expect(screen.queryByText(HIDDEN_ANSWERS)).not.toBeInTheDocument();
+  });
+
+  it("Delete under line 2 Yes and Yes clears line 3's answers and keeps line 2's", async () => {
+    // Line 2's answers send the filer to box 1, so Delete must never reopen one of them
+    const onChange = vi.fn();
+    render(
+      <Harness
+        onChange={onChange}
+        initial={{
+          debt_nature: 'consumer',
+          disabled_veteran: 'yes',
+          debts_on_duty: 'yes',
+          reservist: 'yes',
+          called_to_duty: 'yes',
+          duty_category: '2',
+          duty_released_on: '01/02/2026',
+        }}
+      />
+    );
+    expect(screen.getAllByText(HIDDEN_ANSWERS)).toHaveLength(1);
+    await userEvent.click(screen.getByRole('button', { name: DELETE_HIDDEN }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      debt_nature: 'consumer',
+      disabled_veteran: 'yes',
+      debts_on_duty: 'yes',
+      reservist: null,
+      called_to_duty: null,
+      duty_category: null,
+      duty_released_on: null,
+      duty_ended_on: null,
+    });
+    expect(screen.queryByText(HIDDEN_ANSWERS)).not.toBeInTheDocument();
+  });
+
   it('offers "none applies" after the four categories and asks no date under it', async () => {
     render(<Harness initial={CALLED} />);
     const categories = radiosNamed('duty_category');
