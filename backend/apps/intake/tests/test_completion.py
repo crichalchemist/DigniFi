@@ -22,6 +22,9 @@ from apps.eligibility.services import MeansTestCalculator
 from apps.forms.models import GeneratedForm
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
+from apps.intake.claims import CLAIM_GAP_LEGACY_VEHICLE, CONTRACT_GAP_PAYMENT, CONTRACT_GAP_VEHICLE
+from apps.intake.completion import Gap, completion_gaps
+from apps.intake.intentions import INTENTION_GAP_NONE, LEASE_GAP_NONE
 from apps.intake.models import (
     AssetInfo,
     DebtInfo,
@@ -50,7 +53,10 @@ from apps.intake.tests.builders import (
     answer_household,
     answer_income_detail,
     answer_petition,
+    complete_contract,
     complete_debt,
+    linked_loan,
+    linked_row,
 )
 from apps.users.models import User
 
@@ -538,6 +544,47 @@ def test_complete_lists_every_gap_in_wizard_order(filer, district):
         {"step": "codebtors", "message": CODEBTOR_GAP_COMMUNITY},
     ]
     assert _status(session) == "started"
+
+    # Form 108's details (4e-R11) never reach Complete's 400, which carries gates only, so their
+    # places show in Complete's whole list: Amounts Owed's too-long name right after line 16's
+    # gate, Contracts & Leases' too-long description right after the rent gate, and Your Plans'
+    # open rows after Codebtors' gaps, before the claims tail, which stays last (3c4).
+    wide = "W" * 30  # Schedule D's name box can't take it
+    linked_loan(session, linked_row(session, "3"), "100", creditor_name=wide)
+    complete_contract(
+        session, counterparty_name="Demo Leasing", lease_kind="vehicle", description="WWWW " * 37
+    )
+    ExpenseInfo.objects.create(session=session, vehicle_payment=Decimal("500.00"))
+    listed = [(g.step, g.kind, str(g)) for g in completion_gaps(session)]
+    start = listed.index(("debts", Gap.GATE, GATE_DEBT_NATURE))
+
+    too_long = "Your answer for {label} is too long for its box on {form}."
+    assert listed[start:] == [
+        ("debts", Gap.GATE, GATE_DEBT_NATURE),
+        ("debts", Gap.DETAIL, too_long.format(label="the creditor's name", form="Schedule D")),
+        ("contracts", Gap.GATE, CONTRACT_GAP_VEHICLE.format(name="Demo Leasing")),
+        ("contracts", Gap.GATE, CONTRACT_GAP_PAYMENT.format(name="Demo Leasing")),
+        ("contracts", Gap.GATE, GATE_RENTS),
+        (
+            "contracts",
+            Gap.DETAIL,
+            too_long.format(label="the description of the leased property", form="Form 108"),
+        ),
+        ("codebtors", Gap.GATE, CODEBTOR_GAP_NO_ANSWER),
+        ("codebtors", Gap.GATE, CODEBTOR_GAP_COMMUNITY),
+        ("plans", Gap.DETAIL, INTENTION_GAP_NONE.format(name=wide)),
+        ("plans", Gap.DETAIL, LEASE_GAP_NONE.format(name="Demo Leasing")),
+        (
+            "debts",
+            Gap.GATE,
+            CLAIM_GAP_LEGACY_VEHICLE.format(typed="500.00", linked="100.00"),
+        ),
+    ]
+    # and none of them is in Complete's refusal
+    refused = client.post(_session_url(session, "complete/")).data["errors"]
+    assert {e["step"] for e in refused} >= {"debts", "contracts", "codebtors"}
+    assert "plans" not in {e["step"] for e in refused}
+    assert not any("too long" in e["message"] for e in refused)
 
 
 # ── Complete names each 3e2 income, take-home pay and line 3 gap (3e2 spec §8) ──

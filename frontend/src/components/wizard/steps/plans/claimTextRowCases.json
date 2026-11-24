@@ -1,0 +1,81 @@
+{
+  "debts": [
+    {
+      "name": "a secured debt",
+      "debt": { "is_secured": true, "priority_answer": null },
+      "list": "secured"
+    },
+    {
+      "name": "a secured debt with a priority answer stays on Schedule D",
+      "debt": { "is_secured": true, "priority_answer": "taxes" },
+      "list": "secured"
+    },
+    {
+      "name": "taxes",
+      "debt": { "is_secured": false, "priority_answer": "taxes" },
+      "list": "priority"
+    },
+    {
+      "name": "domestic support",
+      "debt": { "is_secured": false, "priority_answer": "domestic_support" },
+      "list": "priority"
+    },
+    {
+      "name": "intoxicated driving",
+      "debt": { "is_secured": false, "priority_answer": "intoxicated" },
+      "list": "priority"
+    },
+    {
+      "name": "another priority kind",
+      "debt": { "is_secured": false, "priority_answer": "other" },
+      "list": "priority"
+    },
+    {
+      "name": "not a priority",
+      "debt": { "is_secured": false, "priority_answer": "no" },
+      "list": "unsecured"
+    },
+    {
+      "name": "not sure",
+      "debt": { "is_secured": false, "priority_answer": "not_sure" },
+      "list": "unsecured"
+    },
+    {
+      "name": "unanswered",
+      "debt": { "is_secured": false, "priority_answer": null },
+      "list": "unsecured"
+    }
+  ],
+  "contracts": [
+    {
+      "name": "a vehicle lease is on Form 108's lease list",
+      "contract": { "contract_type": "lease", "lease_kind": "vehicle" },
+      "list": "leases"
+    },
+    {
+      "name": "a lease of other personal property is on Form 108's lease list",
+      "contract": { "contract_type": "lease", "lease_kind": "other_personal_property" },
+      "list": "leases"
+    },
+    {
+      "name": "another kind of lease is on Form 108's lease list",
+      "contract": { "contract_type": "lease", "lease_kind": "other" },
+      "list": "leases"
+    },
+    {
+      "name": "a lease with no kind is on Form 108's lease list (R-LEASE-GATE)",
+      "contract": { "contract_type": "lease", "lease_kind": null },
+      "list": "leases"
+    },
+    {
+      "name": "a residential lease is on Schedule G only",
+      "contract": { "contract_type": "lease", "lease_kind": "residential" },
+      "list": "contracts"
+    },
+    {
+      "name": "a contract that isn't a lease is measured nowhere",
+      "contract": { "contract_type": "contract", "lease_kind": null },
+      "list": null
+    }
+  ]
+}
