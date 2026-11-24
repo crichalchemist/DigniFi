@@ -10,9 +10,7 @@
 - **Tags.** `[Qn]` is one of the owner's five decisions (§2). `[SF]` is one of the settled facts under them. `C-n` is a counsel item; step 4's start at C-36, since C-35 is the highest number used (3H:1015). `Bn` is a builder's call. `DIG-n` is a Plane ticket. `[UPL]` is the rule that DigniFi gives information, never advice.
 - **People.** Filers are "they". The owner is "he".
 
-<!-- prettier-ignore-end -->
 
-<!-- prettier-ignore-start -->
 
 ## 1. Why
 
