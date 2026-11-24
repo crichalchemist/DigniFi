@@ -145,6 +145,9 @@ export const MEANS_LINE_MISSING =
 export const MEANS_PAIR_REFUSAL = 'File Form 122A-1 and Form 122A-2 together.';
 
 // DRAFT: counsel C-39
+export const MEANS_SUPP_PAIR_REFUSAL = 'File Form 122A-1 and Form 122A-1Supp together.';
+
+// DRAFT: counsel C-39
 export const MEANS_MILITARY_OPEN =
   'Answer each question about military service on the Amounts Owed step. Form 122A-2 waits for those answers.';
 

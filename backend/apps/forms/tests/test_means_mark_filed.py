@@ -14,6 +14,7 @@ from django.core.management import call_command
 from rest_framework.test import APIClient
 
 from apps.districts.models import District
+from apps.forms import views
 from apps.forms.models import GeneratedForm
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.tests.means_pair import box_1_state, stored_check_box_1
@@ -21,7 +22,12 @@ from apps.forms.tests.pdf_readback import read_drawn
 from apps.forms.views import MEANS_PAIR_REFUSAL
 from apps.intake.completion import EXPENSES_STEP_NEVER_SAVED
 from apps.intake.models import DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
-from apps.intake.tests.builders import answer_household, answer_means_test, finish_intake
+from apps.intake.tests.builders import (
+    answer_household,
+    answer_means_test,
+    answer_petition,
+    finish_intake,
+)
 
 User = get_user_model()
 LINE_16 = "Enter the amount for line 16. Enter 0 if you have none."
@@ -454,3 +460,86 @@ def test_a_form_downloaded_while_marking_is_not_reported_filed(api_client, sessi
     assert resp.data["status"] == "downloaded"
     row.refresh_from_db()
     assert (row.status, row.field_values) == ("downloaded", intervening)
+
+
+# Form 122A-1Supp says to submit it with the signed Form 122A-1 (D4): under one of its outcomes the
+# Supp is 122A-1's partner, on either side of the median, and the two are marked filed together.
+SUPP_FORMS = ("form_122a1", "form_122a1_supp")
+BOX_3 = "/Does not apply"
+
+
+def _as_stored(session):
+    """Each means form's row as the database holds it, so a refusal is shown to have written
+    nothing."""
+    return {
+        r.form_type: (r.status, r.field_values, r.updated_at)
+        for r in GeneratedForm.objects.filter(session=session, form_type__in=views.MEANS_FORMS)
+    }
+
+
+@pytest.mark.parametrize("wages", ["3000.00", "9000.00"], ids=["below", "above"])
+@pytest.mark.django_db
+def test_marking_122a1_alone_is_refused_while_the_supp_is_unfiled(
+    api_client, session_with_debtor, wages
+):
+    session = session_with_debtor
+    _set_wages(session, wages)
+    answer_petition(session, debt_nature="business")
+    row = _generate(api_client, session, "form_122a1")
+    _generate(api_client, session, "form_122a1_supp")
+    before = _as_stored(session)
+
+    resp = _mark_filed(api_client, row)
+
+    assert (resp.status_code, resp.data) == (
+        422,
+        {"form_type": "form_122a1", "error": views.MEANS_SUPP_PAIR_REFUSAL},
+    )
+    assert _as_stored(session) == before
+    assert set(before) == set(SUPP_FORMS)
+
+
+@pytest.mark.django_db
+def test_marking_the_supp_alone_is_refused_while_122a1_is_unfiled(api_client, session_with_debtor):
+    session = session_with_debtor
+    _set_wages(session, "9000.00")
+    answer_petition(session, debt_nature="business")
+    row = _generate(api_client, session, "form_122a1_supp")
+    before = _as_stored(session)
+
+    resp = _mark_filed(api_client, row)
+
+    assert (resp.status_code, resp.data) == (
+        422,
+        {"form_type": "form_122a1_supp", "error": views.MEANS_SUPP_PAIR_REFUSAL},
+    )
+    assert _as_stored(session) == before
+    assert set(before) == {"form_122a1_supp"}
+
+
+@pytest.mark.django_db
+def test_a_filed_122a1_with_box_3_shows_no_mismatch(api_client, session_with_debtor):
+    # The mismatch notice is for a filed 122A-1 that doesn't tick box 2 while 122A-2 applies; a line
+    # 3 exclusion files 122A-1 with box 3 beside the Supp, and 122A-2 isn't in the packet.
+    session = session_with_debtor
+    _set_wages(session, "9000.00")
+    answer_petition(
+        session,
+        debt_nature="consumer",
+        disabled_veteran="no",
+        reservist="yes",
+        called_to_duty="yes",
+        duty_category="1",
+    )
+
+    marked = api_client.post(
+        "/api/forms/mark_pair_filed/", {"session_id": session.pk}, format="json"
+    )
+
+    assert marked.status_code == 200, marked.data
+    row = GeneratedForm.objects.get(session=session, form_type="form_122a1")
+    assert stored_check_box_1(row) == BOX_3
+    assert _listed(api_client, session)["form_122a1"]["stored_box_2"] is False
+    forms = api_client.get("/api/forms/packet/", {"session": session.pk}).data["form_types"]
+    assert "form_122a2" not in forms
+    assert "form_122a1_supp" in forms

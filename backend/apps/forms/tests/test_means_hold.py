@@ -24,7 +24,7 @@ from apps.eligibility.means_inputs import read_inputs, read_tables
 from apps.eligibility.means_lines import MeansRow, line_30_cap, work_out
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services import MeansTestCalculator
-from apps.forms import registry
+from apps.forms import registry, views
 from apps.forms.models import GeneratedForm
 from apps.forms.registry import (
     FORM_122A2_LINE_MISSING,
@@ -54,7 +54,7 @@ from apps.intake.means_test import (
     MEANS_GAP_PAYMENTS_LEFT,
 )
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
-from apps.intake.petition import DETAIL_DUTY_RELEASED, GATE_DEBT_NATURE
+from apps.intake.petition import DETAIL_DUTY_ENDED, DETAIL_DUTY_RELEASED, GATE_DEBT_NATURE
 from apps.intake.tests import polish_builders
 from apps.intake.tests.builders import (
     answer_asset_lines,
@@ -1594,6 +1594,17 @@ def test_a_stale_presumption_row_routes_by_the_recalculated_outcome(api_client, 
     row = GeneratedForm.objects.get(session=above, form_type="form_122a1")
     assert stored_check_box_1(row) == box_1_state()
 
+    # Mark as Filed works the row out again too, so its tie is the Supp's, not 122A-2's (F15)
+    _stale_presumption(above)
+    assert MeansTest.objects.get(session=above).outcome == "presumption"
+    refused = _mark_filed(api_client, row)
+    assert (refused.status_code, refused.data) == (
+        422,
+        {"form_type": "form_122a1", "error": views.MEANS_SUPP_PAIR_REFUSAL},
+    )
+    row.refresh_from_db()
+    assert row.status == "generated"
+
 
 @pytest.mark.django_db
 def test_an_unfinished_intakes_packet_reads_the_stored_row(api_client, above):
@@ -1627,3 +1638,137 @@ def test_a_row_saved_before_3h1_routes_as_today(above):
     assert "form_122a2" in forms
     assert "form_122a1_supp" not in forms
     assert resolve(load_schema("form_122a1"), session)["CheckBox1"] == BOX_2
+
+
+# Form 122A-1 files with its partner (D4): Form 122A-2, or Form 122A-1Supp, never both.
+MEANS_FORMS = ("form_122a1", "form_122a2", "form_122a1_supp")
+
+
+def _means_rows(session):
+    """Each means form's row as the database holds it, the Supp's included."""
+    return {
+        r.form_type: (r.status, r.field_values, r.updated_at)
+        for r in GeneratedForm.objects.filter(session=session, form_type__in=MEANS_FORMS)
+    }
+
+
+# A line 3 exclusion with line 2 settled (No): box 3 on 122A-1 and the Supp in the packet.
+LINE_2_NO_LINE_3_CLAIMED = {
+    "debt_nature": "consumer",
+    "disabled_veteran": "no",
+    "reservist": "yes",
+    "called_to_duty": "yes",
+}
+
+
+@pytest.mark.django_db
+def test_mark_pair_filed_files_122a1_with_the_supp(api_client, above):
+    answer_petition(above, debt_nature="business")
+
+    marked = _mark_pair_filed(api_client, above)
+
+    assert marked.status_code == 200, marked.data
+    assert marked.data["message"] == "Form 122A-1 and Form 122A-1Supp marked as filed with court"
+    forms = marked.data["forms"]
+    assert [(f["form_type"], f["status"]) for f in forms] == [
+        ("form_122a1", "filed"),
+        ("form_122a1_supp", "filed"),
+    ]
+    assert stored_check_box_1(_row(above, "form_122a1")) == box_1_state() == "/No Abuse"
+    assert _row(above, "form_122a1_supp").status == "filed"
+    assert not GeneratedForm.objects.filter(session=above, form_type="form_122a2").exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("claim", "broken", "sentence"),
+    [
+        (
+            {"duty_category": "4", "duty_ended_on": "01/15/2026"},
+            {"duty_ended_on": None},
+            DETAIL_DUTY_ENDED,
+        ),
+        (
+            {"duty_category": "2", "duty_released_on": "01/15/2026"},
+            {"duty_released_on": "13/45/20"},
+            DETAIL_DUTY_RELEASED,
+        ),
+    ],
+    ids=["category_4_no_date", "category_2_bad_date"],
+)
+def test_a_supp_date_gap_refuses_the_pair_and_writes_nothing(
+    api_client, above, claim, broken, sentence
+):
+    # The exclusion is claimed (line 2 settled), so the Supp stays the partner while its date is
+    # missing or unreadable: the Supp is checked first, refuses in its own words, and nothing moves.
+    answer_petition(above, **LINE_2_NO_LINE_3_CLAIMED, **claim)
+    _generated(api_client, above, "form_122a1_supp")
+    _generated(api_client, above, "form_122a1")
+    answer_petition(above, **broken)
+    before = _means_rows(above)
+
+    refused = _mark_pair_filed(api_client, above)
+
+    assert (refused.status_code, refused.data) == (
+        422,
+        {"form_type": "form_122a1_supp", "error": sentence, "step": "debts"},
+    )
+    assert _means_rows(above) == before
+    assert set(before) == {"form_122a1", "form_122a1_supp"}
+
+
+@pytest.mark.django_db
+def test_an_open_line_2_answer_refuses_the_122a2_pair_and_writes_nothing(api_client, above):
+    # R-D2's boundary (F2): line 2 Yes with its follow-up open reaches line 3, but the claim waits,
+    # so 122A-2 stays the partner and refuses in D3's words, linked to Amounts Owed.
+    answer_petition(above, **{**LINE_2_NO_LINE_3_CLAIMED, "disabled_veteran": "yes"})
+    answer_petition(above, duty_category="3")
+    assert "debts_on_duty" not in above.petition_answers.get_answers()
+    for form_type in PAIR:
+        GeneratedForm.objects.create(session=above, form_type=form_type, status="generated")
+    before = _means_rows(above)
+
+    refused = _mark_pair_filed(api_client, above)
+
+    assert (refused.status_code, refused.data) == (
+        422,
+        {"form_type": "form_122a2", "error": registry.FORM_122A2_MILITARY_OPEN, "step": "debts"},
+    )
+    assert _means_rows(above) == before
+    assert set(before) == set(PAIR)
+
+
+# Each stored outcome, on the side of the median it is stored on, and 122A-1's partner for it.
+PARTNERS = [
+    ("at_or_below_median", "3000.00", None),
+    ("cannot_work_out", "9000.00", "form_122a2"),
+    ("no_presumption", "9000.00", "form_122a2"),
+    ("presumption", "9000.00", "form_122a2"),
+    (None, "9000.00", "form_122a2"),  # a row saved before 3h1 routes as today (R-ROUTE)
+    ("not_consumer", "3000.00", "form_122a1_supp"),
+    ("not_consumer", "9000.00", "form_122a1_supp"),
+    ("veteran_exemption", "3000.00", "form_122a1_supp"),
+    ("veteran_exemption", "9000.00", "form_122a1_supp"),
+    ("military_exclusion", "3000.00", "form_122a1_supp"),
+    ("military_exclusion", "9000.00", "form_122a1_supp"),
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("outcome", "cmi", "partner"), PARTNERS)
+def test_122a1s_partner_is_never_both_forms(session_with_debtor, outcome, cmi, partner):
+    # The views read the stored row as _prepare leaves it; here the row is stored by hand, so no
+    # recalculation stands between the outcome and the partner (Ruling O).
+    MeansTest.objects.update_or_create(
+        session=session_with_debtor,
+        defaults={
+            "district": session_with_debtor.district,
+            "calculated_cmi": Decimal(cmi),
+            "median_income_threshold": Decimal("71304.00"),
+            "outcome": outcome,
+        },
+    )
+    session = _fresh(session_with_debtor)
+
+    assert views._means_partner(session) == partner
+    assert not {"form_122a2", "form_122a1_supp"} <= set(packet(session))

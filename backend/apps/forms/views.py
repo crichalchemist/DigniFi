@@ -60,8 +60,12 @@ FILED_ON_EARLIER_REVISION = (
     "DigniFi can no longer print it. Keep the copy you gave the court."
 )
 
-# The two forms that say the means test's result is worked out on Form 122A-2.
-MEANS_PAIR = ("form_122a1", "form_122a2")
+# Form 122A-1 and the two forms that can be its partner: 122A-2, which works its result out, or
+# 122A-1Supp, which says to submit it with the signed 122A-1 (D4). A packet holds one of them.
+MEANS_FORMS = ("form_122a1", "form_122a2", "form_122a1_supp")
+
+# How mark_pair_filed's reply names each partner.
+_PARTNER_NAMES = {"form_122a2": "Form 122A-2", "form_122a1_supp": "Form 122A-1Supp"}
 
 
 class NotInPacket(Exception):
@@ -76,6 +80,10 @@ class MeansPairTie(Exception):
     """One form of the means pair can't be marked filed while the other is unfiled (H43)."""
 
 
+class SuppPairTie(Exception):
+    """Form 122A-1 or Form 122A-1Supp can't be marked filed while the other is unfiled (D4)."""
+
+
 class IntakeNotFinished(Exception):
     """The filer hasn't completed the intake, so an empty list can't yet mean "none"."""
 
@@ -84,6 +92,9 @@ class IntakeNotFinished(Exception):
 
 # DRAFT: counsel C-24
 MEANS_PAIR_REFUSAL = "File Form 122A-1 and Form 122A-2 together."
+
+# DRAFT: counsel C-39
+MEANS_SUPP_PAIR_REFUSAL = "File Form 122A-1 and Form 122A-1Supp together."
 
 
 class _PairRefused(Exception):
@@ -112,6 +123,7 @@ _FAILURE_SENTENCES = {
     NotInPacket: "This form isn't part of your packet, based on the answers you've given.",
     FormIsFiled: "This form is marked as filed, so it keeps the answers it was filed with.",
     MeansPairTie: MEANS_PAIR_REFUSAL,
+    SuppPairTie: MEANS_SUPP_PAIR_REFUSAL,
     UnmappedChoice: (
         "One of your answers doesn't match a choice printed on this form, "
         "so it can't be filled in yet."
@@ -271,13 +283,28 @@ def _prepare(session: IntakeSession) -> None:
     completed before a rule existed is refused in the words Complete would use, and its callers
     don't work the means test out while a gate is open; the packet list, which never calls this,
     still does. Its callers are Generate, Generate All, Regenerate, an unfiled download, Mark as
-    Filed on an unfiled means-pair form, `mark_pair_filed` and the `time_packet` command.
+    Filed on an unfiled means form (`MEANS_FORMS`), `mark_pair_filed` and the `time_packet`
+    command.
     """
     _check_finished(session)
     gates = [gap for gap in completion_gaps(session) if gap.kind == Gap.GATE]
     if gates:
         raise gates[0]
     _recalculate_means_test(session)
+
+
+def _means_partner(session: IntakeSession) -> str | None:
+    """The form Form 122A-1 is filed with: Form 122A-2 or Form 122A-1Supp, whichever the packet
+    holds (never both), or None when it holds neither (below the median, no Supp outcome).
+
+    It reads the stored means test, so _prepare() runs first.
+    """
+    forms = packet(session)
+    if "form_122a2" in forms:
+        return "form_122a2"
+    if "form_122a1_supp" in forms:
+        return "form_122a1_supp"
+    return None
 
 
 def _resolve(form_type: str, session: IntakeSession) -> dict:
@@ -509,17 +536,20 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=["post"], url_path="mark_pair_filed")
     def mark_pair_filed(self, request):
         """
-        Mark Form 122A-1 and Form 122A-2 filed together, or neither (H43).
+        Mark Form 122A-1 and its partner filed together, or neither (H43, D4).
 
         POST /api/forms/mark_pair_filed/
         { "session_id": 1 }
 
-        In one locked transaction: the intake's checks and the means test once, then each form
-        not already filed is resolved and checked, 122A-2 first so a page gap names it, and only
-        then written, each by one update conditional on the row not being filed. A partner with
-        no row gets one; a form already filed is left as it is. A refusal rolls every write back,
-        the means test worked out again included, and names the form it is about, or no form
-        when the whole call is refused.
+        In one locked transaction: the intake's checks and the means test once, then the partner
+        is read from the packet (`_means_partner`: Form 122A-2 or Form 122A-1Supp), and each form
+        of the pair not already filed is resolved and checked, the partner first so its gap names
+        it, and only then written, each by one update conditional on the row not being filed.
+        With no partner in the packet (below the median, no Supp outcome) the pair is 122A-2's,
+        which is then refused as not in the packet. A form of the pair with no row gets one; a
+        form already filed is left as it is. A refusal rolls every write back, the means test
+        worked out again included, and names the form it is about, or no form when the whole call
+        is refused.
         """
         session, err = _session_or_error(request, request.data.get("session_id"))
         if err:
@@ -531,12 +561,13 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
                     _prepare(locked)
                 except Exception as exc:
                     raise _PairRefused(None, exc) from exc
+                pair = ("form_122a1", _means_partner(locked) or "form_122a2")
                 rows = {
                     ft: GeneratedForm.objects.filter(session=locked, form_type=ft).first()
-                    for ft in MEANS_PAIR
+                    for ft in pair
                 }
                 documents = {}
-                for ft in reversed(MEANS_PAIR):  # 122A-2 first: its gap names form_122a2
+                for ft in reversed(pair):  # the partner first: its gap names it
                     if rows[ft] is not None and rows[ft].status == "filed":
                         continue
                     try:
@@ -546,7 +577,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
                         raise _PairRefused(ft, exc) from exc
                     documents[ft] = document
                 # writes only after every check
-                for ft in (ft for ft in MEANS_PAIR if ft in documents):
+                for ft in (ft for ft in pair if ft in documents):
                     document = documents[ft]
                     # get_or_create: a Generate takes no lock, so its row can land between the
                     # read above and this write; that row is then filed, not made again
@@ -576,8 +607,8 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(body, status=code)
         return Response(
             {
-                "forms": [GeneratedFormSerializer(rows[ft]).data for ft in MEANS_PAIR],
-                "message": "Form 122A-1 and Form 122A-2 marked as filed with court",
+                "forms": [GeneratedFormSerializer(rows[ft]).data for ft in pair],
+                "message": f"Form 122A-1 and {_PARTNER_NAMES[pair[1]]} marked as filed with court",
             }
         )
 
@@ -633,28 +664,31 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
     def mark_filed(self, request, pk=None):
         """Mark form as filed with the court.
 
-        A 122A-1 or 122A-2 not yet filed is worked out again first, as its unfiled download is,
-        so the hold can't be gone around with a copy made before it (3h1 R7). Above the median
-        it is refused while its partner is unfiled or has no row: the two are marked together
-        through mark_pair_filed (H43). The document it was checked with is the one filed, and
-        the one conditional update is the only write to the GeneratedForm row. `_prepare` also
-        saves the means test it works out again, even when the filing is then refused. Any other
-        row, or one already filed, is marked as before.
+        A 122A-1, 122A-2 or 122A-1Supp not yet filed is worked out again first, as its unfiled
+        download is, so the hold can't be gone around with a copy made before it (3h1 R7). Then,
+        when the packet holds a partner for 122A-1 (`_means_partner`: 122A-2 above the median, or
+        the Supp under one of its outcomes) and the row is 122A-1 or that partner, it is refused
+        while the other form of the pair is unfiled or has no row: the two are marked together
+        through mark_pair_filed (H43, D4). A means form outside the packet is refused as not in
+        it. The document it was checked with is the one filed, and the one conditional update is
+        the only write to the GeneratedForm row. `_prepare` also saves the means test it works
+        out again, even when the filing is then refused. Any other row, or one already filed, is
+        marked as before.
         """
         generated_form = self.get_object()
 
-        if generated_form.form_type in MEANS_PAIR and generated_form.status != "filed":
+        if generated_form.form_type in MEANS_FORMS and generated_form.status != "filed":
             status_read = generated_form.status
-            partner = MEANS_PAIR[1] if generated_form.form_type == MEANS_PAIR[0] else MEANS_PAIR[0]
             try:
                 _prepare(generated_form.session)
-                if (
-                    "form_122a2" in packet(generated_form.session)
-                    and not GeneratedForm.objects.filter(
-                        session=generated_form.session, form_type=partner, status="filed"
-                    ).exists()
-                ):
-                    raise MeansPairTie()
+                partner = _means_partner(generated_form.session)
+                pair = ("form_122a1", partner)
+                if partner is not None and generated_form.form_type in pair:
+                    other = pair[1] if generated_form.form_type == pair[0] else pair[0]
+                    if not GeneratedForm.objects.filter(
+                        session=generated_form.session, form_type=other, status="filed"
+                    ).exists():
+                        raise MeansPairTie() if partner == "form_122a2" else SuppPairTie()
                 document = _resolve(generated_form.form_type, generated_form.session)
                 PDFFormFiller().check(generated_form.form_type, document)
                 _store(generated_form, document)
