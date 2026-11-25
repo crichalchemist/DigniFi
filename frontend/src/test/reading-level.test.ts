@@ -167,6 +167,43 @@ describe('Exemptions page gap sentences', () => {
   });
 });
 
+describe('Your Plans sentences as the filer reads them, a name filled in', () => {
+  // E7 approved INTENTION_GAP_NONE at 8.6 and LEASE_GAP_NONE at 8.5 "with a real name": scored
+  // above with the literal {name}, so here with the personas' own Demo creditors and lessor
+  const names = [
+    'Crestway Auto Credit',
+    'Kestrel Auto Finance',
+    'Harrowgate Home Loans',
+    'Northlight Auto Leasing',
+  ];
+  const gaps = Object.entries(copy).filter(
+    (entry): entry is [string, string] =>
+      /^(INTENTION|LEASE)_GAP_/.test(entry[0]) && typeof entry[1] === 'string'
+  );
+
+  it('finds every gap sentence', () => {
+    expect(gaps).toHaveLength(5);
+  });
+
+  describe.each(gaps)('%s', (_gap, sentence) => {
+    it.each(names)(`with %s is at or below grade ${MAX_GRADE}`, (name) => {
+      expect(fleschKincaidGrade(sentence.replace('{name}', name))).toBeLessThanOrEqual(MAX_GRADE);
+    });
+  });
+
+  // The too-long sentence (E4, E8) with each label and two forms named, its longest shape
+  it.each(Object.entries(copy.CLAIM_TEXT_LABELS))(
+    `the too-long sentence for %s is at or below grade ${MAX_GRADE}`,
+    (_key, label) => {
+      const sentence = copy.SCHEDULE_I_DETAIL_TOO_LONG.replace('{label}', label).replace(
+        '{form}',
+        'Form 108 and Schedule D'
+      );
+      expect(fleschKincaidGrade(sentence)).toBeLessThanOrEqual(MAX_GRADE);
+    }
+  );
+});
+
 describe('Shared cases with the backend scorer', () => {
   // test_exemption_catalog.py scores the same file with the backend's formula (P9).
   const cases = JSON.parse(rawCases) as { text: string; grade: number }[];

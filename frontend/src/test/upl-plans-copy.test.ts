@@ -94,3 +94,60 @@ describe("Your Plans' sentences are information, never advice", () => {
     expect(copySource).toMatch(new RegExp(`// DRAFT: counsel C-37\\nexport const ${name}\\b`));
   });
 });
+
+// Word for word, as the owner approved them (.superpowers/plan-4e/owner-copy.md, E7 and E8), as
+// upl-means-test-copy.test.ts pins 3h1's: a reworded sentence fails here until the owner approves
+// it. The gap sentences are pinned to the server's by test_intention_frontend_copy.py.
+describe("Your Plans' sentences are the owner's approved words", () => {
+  const APPROVED: Record<string, string> = {
+    PLANS_TITLE: 'Your plans for what you owe on',
+    PLANS_INTRO:
+      "These questions are for Form 108. It lists each debt secured by your property and each lease of personal property. For each one, you choose what the form says. DigniFi doesn't choose for you.",
+    PLANS_NOT_APPLICABLE:
+      "DigniFi isn't preparing Form 108. You listed no debt secured by your property and no lease of personal property. If that isn't right, go back to Amounts Owed or Contracts & Leases.",
+    PLANS_UNDECIDED: "I haven't decided yet.",
+    PLANS_UNDECIDED_INFO:
+      'You can leave a choice open and come back to it. While it is open, no choice is ticked for that row on Form 108.',
+    PLANS_EXPLAIN_LABEL: 'Your words for the form',
+    PLANS_EXEMPT_LISTED: 'Your Schedule C lists this property.',
+    PLANS_EXEMPT_NOT_CLAIMING: "Your Schedule C doesn't list this property.",
+    PLANS_EXEMPT_LATER:
+      'You answer Schedule C after you finish these steps. This box follows your answers there.',
+    PLANS_EXEMPT_NOT_NAMED:
+      "Your Schedule C answers don't name this property, so this box prints blank.",
+    PLANS_EXEMPT_NO_PROPERTY:
+      "This debt isn't linked to property on your Assets step, so this box prints blank.",
+    PLANS_EFFECTS_HELP:
+      "A licensed attorney can answer questions about your own case. The court's pro se help desk takes calls at (312) 229-6344.",
+    PLANS_FROM_DEBTS: 'From your Amounts Owed step',
+    PLANS_FROM_CONTRACTS: 'From your Contracts & Leases step',
+    PLANS_DEADLINE_LABEL: 'Form 108 says:',
+    WHAT_DOES_SURRENDER_MEAN: 'What does “surrender” mean on this form?',
+    WHAT_DOES_REDEEM_MEAN: 'What does “redeem” mean on this form?',
+    WHAT_DOES_REAFFIRM_MEAN: 'What is a “Reaffirmation Agreement” on this form?',
+    WHAT_DOES_EXPLAIN_MEAN: 'What does “retain” mean on this form?',
+    WHAT_DOES_ASSUME_MEAN: 'What does it mean for a lease to be “assumed”?',
+  };
+
+  it('pins every PLANS_ string', () => {
+    expect(
+      Object.keys(APPROVED)
+        .filter((name) => name.startsWith('PLANS_'))
+        .sort()
+    ).toEqual([...PLANS_NAMES].sort());
+  });
+
+  it.each(Object.entries(APPROVED))('%s', (name, words) => {
+    expect(strings[name]).toBe(words);
+  });
+
+  it('labels each too-long text in the approved words (E4, E8)', () => {
+    expect(copy.CLAIM_TEXT_LABELS).toEqual({
+      creditor_name: "the creditor's name",
+      collateral_description: 'the description of the property',
+      counterparty_name: "the lessor's name",
+      description: 'the description of the leased property',
+      explain: 'the explanation of your plan',
+    });
+  });
+});
