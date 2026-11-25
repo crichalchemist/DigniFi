@@ -8,6 +8,7 @@ from apps.eligibility.cmi import counted_spouse_income, income_step_gaps
 from apps.forms.registry import PreconditionMissing, _needs_county, _needs_ssn
 
 from .asset_lines import asset_step_gaps
+from .claim_rows import one_read_of_claims
 from .claims import claim_gap_parts
 from .income import deductions_blank, schedule_i_line4
 
@@ -83,7 +84,11 @@ def completion_gaps(session) -> list[Gap]:
 
     petition = petition_step_gaps(session)
     schedule_i = schedule_i_step_gaps(session)
-    texts = claim_text_gaps(session)
+    # One read of the claim rows serves Form 108's open rows, the too-long texts and their measure
+    # (D5)
+    with one_read_of_claims():
+        texts = claim_text_gaps(session)
+        plans = intention_step_gaps(session)
     gaps = []
 
     # The forms' own identity checks, so Complete and the forms say the same thing.
@@ -153,7 +158,7 @@ def completion_gaps(session) -> list[Gap]:
     gaps.extend(claims)
     # Your Plans (4e-R11): each open Form 108 row, then the too-long "[explain]" words, after
     # Codebtors' gaps and before the claims tail, which stays last (3c4). All details.
-    gaps.extend(intention_step_gaps(session))
+    gaps.extend(plans)
     gaps.extend(g for g in texts if g.step == "plans")
     gaps.extend(Gap(str(gap), gap.step, GATE) for gap in tail)
 

@@ -13,7 +13,9 @@ refuses, and never names a form the row doesn't print on.
 import json
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 
 import pytest
 from django.conf import settings
@@ -26,6 +28,7 @@ from apps.districts.models import District
 from apps.forms.services.explain_split import split_explain
 from apps.forms.services.intention_fit import too_long_texts
 from apps.forms.services.pdf_filler import PDFFormFiller, UnprintableLetter, ValueTooLong
+from apps.intake import claim_rows as claim_rows_module
 from apps.intake import intentions
 from apps.intake.claim_rows import claim_list_of
 from apps.intake.completion import Gap, completion_gaps
@@ -55,7 +58,8 @@ from apps.intake.tests.builders import (
 )
 from apps.users.models import User
 
-SCHEMAS = settings.BASE_DIR.parent / "data" / "forms" / "schemas"
+SCHEMAS = Path(settings.FORM_SCHEMAS_DIRECTORY)
+FRONTEND_SRC = settings.BASE_DIR.parent / "frontend" / "src"
 CASES = (
     settings.BASE_DIR.parent
     / "frontend"
@@ -497,7 +501,26 @@ def test_each_rows_cap_is_the_smallest_of_its_own_lists_boxes():
     assert row_cap("creditor_name", "unsecured") == (70, ("schedule_e_f",))
 
 
+def test_complete_reads_the_claim_rows_once(session):
+    # Form 108's open rows, the too-long texts and their box measure all read the claim rows:
+    # one read serves them all (D5), since each read decrypts every debt and contract again
+    debt = _secured(session)
+    _lease(session)
+    _choose(session, debt, intention="retain_explain", explain="Demo words")
+    with mock.patch.object(claim_rows_module, "_read", wraps=claim_rows_module._read) as read:
+        completion_gaps(IntakeSession.objects.get(pk=session.pk))
+    assert read.call_count == 1
+
+
+def test_a_missing_row_list_cases_file_fails_instead_of_skipping_where_the_frontend_is():
+    if not FRONTEND_SRC.is_dir():
+        pytest.skip("the frontend's source isn't here (compose's backend mounts backend/ only)")
+    assert CASES.is_file(), "the one pin between the server's row lists and the browser's is gone"
+
+
 def test_the_row_list_cases_are_what_the_server_says():
+    if not FRONTEND_SRC.is_dir():
+        pytest.skip("the frontend's source isn't here (compose's backend mounts backend/ only)")
     cases = json.loads(CASES.read_text())
     for case in cases["debts"]:
         assert claim_list_of(SimpleNamespace(**case["debt"])) == case["list"], case["name"]

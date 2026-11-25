@@ -108,7 +108,11 @@ _ONE_READ: ContextVar[dict | None] = ContextVar("one_read_of_claims", default=No
 
 @contextmanager
 def one_read_of_claims() -> Iterator[None]:
-    """Within the block, claim_rows reads each session's rows once: every binding asks."""
+    """Within the block, claim_rows reads each session's rows once: every binding asks. A block
+    opened inside another shares the outer one's read (D5)."""
+    if _ONE_READ.get() is not None:
+        yield
+        return
     token = _ONE_READ.set({})
     try:
         yield
