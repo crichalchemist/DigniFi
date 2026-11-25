@@ -14,7 +14,6 @@ import { DocumentsPage } from '../pages/documents.page';
 import { FilingFeePage } from '../pages/filing-fee.page';
 import { ExemptionsPage } from '../pages/exemptions.page';
 import { DashboardPage } from '../pages/dashboard.page';
-import { SOFAPage } from '../pages/sofa.page';
 
 test.describe('Sarah Chen — Simplest Case', () => {
   test('completes intake with no assets (fastest path)', async ({ page }) => {
@@ -25,7 +24,6 @@ test.describe('Sarah Chen — Simplest Case', () => {
     const filingFee = new FilingFeePage(page);
     const exemptions = new ExemptionsPage(page);
     const dashboard = new DashboardPage(page);
-    const sofa = new SOFAPage(page);
 
     await landing.goto();
     await landing.clickGetStarted();
@@ -89,11 +87,9 @@ test.describe('Sarah Chen — Simplest Case', () => {
     await filingFee.answer(SARAH.filing_fee.payment_choice, SARAH.filing_fee.waiver);
     await exemptions.answer(SARAH.exemptions);
 
-    // The filing-fee page continues to the exemptions page (DIG-149). This journey isn't about
-    // financial history, so skip SOFA to reach the forms dashboard. (The SOFA save path
-    // itself is covered by sofa-journey.spec.ts.)
-    await sofa.waitForLoad();
-    await sofa.skipForNow();
+    // The filing-fee page continues to the exemptions page (DIG-149), and the forms dashboard
+    // follows it.
+    await page.waitForURL('**/forms');
 
     // Generate all forms
     await dashboard.generateAllForms(16); // 15 forms + Form 103B (she asks for the waiver)

@@ -14,7 +14,6 @@ import { DocumentsPage } from '../pages/documents.page';
 import { FilingFeePage } from '../pages/filing-fee.page';
 import { ExemptionsPage } from '../pages/exemptions.page';
 import { DashboardPage } from '../pages/dashboard.page';
-import { SOFAPage } from '../pages/sofa.page';
 
 test.describe('Maria Torres — Happy Path', () => {
   test('completes full intake and generates all forms', async ({ page }) => {
@@ -25,7 +24,6 @@ test.describe('Maria Torres — Happy Path', () => {
     const filingFee = new FilingFeePage(page);
     const exemptions = new ExemptionsPage(page);
     const dashboard = new DashboardPage(page);
-    const sofa = new SOFAPage(page);
 
     // Landing → Register
     await landing.goto();
@@ -84,16 +82,34 @@ test.describe('Maria Torres — Happy Path', () => {
     await filingFee.answer(MARIA.filing_fee.payment_choice, MARIA.filing_fee.waiver);
     await exemptions.answer(MARIA.exemptions);
 
-    // The filing-fee page continues to the exemptions page (DIG-149). This journey isn't about
-    // financial history, so skip SOFA to reach the forms dashboard. (The SOFA save path
-    // itself is covered by sofa-journey.spec.ts.)
-    await sofa.waitForLoad();
-    await sofa.skipForNow();
+    // The filing-fee page continues to the exemptions page (DIG-149), and the forms dashboard
+    // follows it.
+    await page.waitForURL('**/forms');
 
     // Dashboard — generate all forms
     await dashboard.generateAllForms(16); // 15 forms + Form 103B (she asks for the waiver)
     const count = await dashboard.getGeneratedCount();
     expect(count).toBe(16);
+
+    // Download Form 107
+    const form107Card = page.locator('.form-card').filter({ hasText: /form 107/i });
+    await expect(form107Card).toBeVisible({ timeout: 10000 });
+
+    const downloadPromise = page.waitForEvent('download');
+    await form107Card.getByRole('button', { name: /download/i }).click();
+    const download = await downloadPromise;
+
+    // Assert the downloaded file is a PDF
+    expect(download.suggestedFilename()).toMatch(/\.pdf$/i);
+
+    // Read the file bytes to verify it's a valid PDF
+    const stream = await download.createReadStream();
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk as Buffer);
+    }
+    const head = Buffer.concat(chunks).subarray(0, 5).toString();
+    expect(head).toBe('%PDF-');
 
     // UPL disclaimer visible on dashboard
     await expect(dashboard.uplDisclaimer()).toBeVisible();

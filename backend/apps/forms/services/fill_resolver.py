@@ -641,8 +641,6 @@ def binding_fix(binding: str) -> dict[str, str]:
         # preparer prints on 106Dec and 107 too.
         form_type, _, _ = binding[len("answer:") :].partition(".")
         return {"page": f"/ask/{form_type}"}
-    if binding.startswith("sofa."):
-        return {"page": "/sofa"}
     if binding.startswith(("household.", "income.")):
         return {"step": "income_info"}
     if binding.startswith("assets."):

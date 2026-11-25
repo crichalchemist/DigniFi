@@ -124,7 +124,6 @@ function renderPage() {
             path="/means-test"
             element={<div>Form 122A-2: Chapter 7 Means Test Calculation</div>}
           />
-          <Route path="/sofa" element={<div>Statement of Financial Affairs</div>} />
         </Routes>
       </IntakeProvider>
     </MemoryRouter>

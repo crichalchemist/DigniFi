@@ -345,30 +345,4 @@ export const handlers = [
       message: 'Form 122A-1 and Form 122A-2 marked as filed with court',
     })
   ),
-
-  // -- SOFA Report ---------------------------------------------------------
-
-  http.get(`${API}/intake/sofa-report/:sessionId/`, () =>
-    HttpResponse.json({
-      id: 1,
-      session: 1,
-      has_prior_income: false,
-      has_creditor_payments: false,
-      has_business: false,
-      prior_income: [],
-      creditor_payments: [],
-    })
-  ),
-
-  http.patch(`${API}/intake/sofa-report/:sessionId/`, () =>
-    HttpResponse.json({
-      id: 1,
-      session: 1,
-      has_prior_income: false,
-      has_creditor_payments: false,
-      has_business: false,
-      prior_income: [],
-      creditor_payments: [],
-    })
-  ),
 ];

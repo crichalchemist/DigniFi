@@ -2,7 +2,7 @@
 A refused letter or length links the filer to where they change the value (3a2 spec §4.5).
 
 A derived value is fixed where its rule's input is entered (RULE_FIXES), an asked answer
-on its form's questions page, a SOFA answer on /sofa and a scanned value on /documents.
+on its form's questions page and a scanned value on /documents.
 A constant links nowhere: a constant that can't print is DigniFi's defect, and
 test_check.py's test_every_constant_prints keeps every constant printable.
 """
@@ -18,7 +18,7 @@ from apps.forms.registry import get_all_form_types
 from apps.forms.schema import FieldSpec, load_schema
 from apps.forms.services.answer_records import NEW_STEP_KEYS
 from apps.forms.services.derivations import DERIVATIONS, RULE_FIXES
-from apps.forms.services.fill_resolver import fix_for
+from apps.forms.services.fill_resolver import binding_fix, fix_for
 from apps.forms.views import IntakeNotFinished
 
 FRONTEND = settings.BASE_DIR.parent / "frontend" / "src"
@@ -124,7 +124,7 @@ def test_every_fix_is_a_step_or_page_the_dashboard_links():
         pytest.skip("the frontend's source isn't here (compose's backend mounts backend/ only)")
     targets = {"step": _wizard_steps() | set(NEW_STEP_KEYS), "page": _pages()}
     # Every fix a refusal can carry: each rule's, each text or combo binding's on the forms
-    # (an answer's questions page, a scan's), a SOFA list's, which no form binds yet, and
+    # (an answer's questions page, a scan's), and
     # each one an exception names itself: a missing precondition's, wherever it is raised,
     # income not entered by source and an unfinished intake.
     preconditions = _precondition_fixes()
@@ -138,7 +138,6 @@ def test_every_fix_is_a_step_or_page_the_dashboard_links():
             for f in load_schema(form_type).fields
             if f.type in ("text", "choice")
         ),
-        fix_for(_field("asked", binding="sofa.creditor_payments[].creditor_name")),
         *preconditions,
         {"step": IncomeNotSplit.step},
         {"page": IntakeNotFinished.page},
@@ -262,30 +261,35 @@ def test_a_rule_links_to_where_its_input_is_entered(rule, fix):
     [
         (_field("derived", rule="last_name"), {"step": "debtor_info"}),
         (_field("asked", binding="answer:form_107.gift_description"), {"page": "/ask/form_107"}),
-        (_field("asked", binding="sofa.creditor_payments[].creditor_name"), {"page": "/sofa"}),
         (_field("asked", binding="household.dependents[].relationship"), {"step": "income_info"}),
         (_field("ingested", ingest_key="paystub.employer_name"), {"page": "/documents"}),
         (_field("db_aggregate", ingest_key="paystub.employer_name"), {"page": "/documents"}),
         (_field("asked", binding="petition.name_suffix"), {"step": "debtor_info"}),
         (_field("asked", binding="affairs.l13_answer"), {"step": "last_few_years_2"}),
+        (_field("asked", binding="affairs.l6_rows[].name"), {"step": "last_few_years_1"}),
         (_field("constant", value="Individual"), {}),
         (_field("signature"), {}),
     ],
     ids=[
         "derived",
         "answer",
-        "sofa",
         "household",
         "ingested",
         "db_aggregate",
         "petition",
         "affairs",
+        "affairs_lines_1_12",
         "constant",
         "signature",
     ],
 )
 def test_a_refusal_sends_the_filer_to_where_the_value_came_from(field, fix):
     assert fix_for(field) == fix
+
+
+def test_no_fix_names_a_route_the_app_no_longer_serves():
+    assert binding_fix("sofa.creditor_payments[].creditor_name") == {}
+    assert {"page": "/sofa"} not in RULE_FIXES.values()
 
 
 def test_changing_a_refusals_fix_leaves_the_map_alone():

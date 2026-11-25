@@ -1,6 +1,6 @@
 /**
  * Means Test Page Object — Form 122A-2's questions, asked on the page after the exemptions page
- * to a filer the form applies to. Continues to /sofa.
+ * to a filer the form applies to. Continues to /forms.
  */
 
 import { expect, type Locator, type Page } from '@playwright/test';

@@ -21,7 +21,6 @@ import { DocumentUploadPage } from './pages/DocumentUploadPage';
 import { FilingFeePage } from './pages/FilingFeePage';
 import { ExemptionsPage } from './pages/ExemptionsPage';
 import { MeansTestPage } from './pages/MeansTestPage';
-import { SOFAStep } from './pages/SOFAStep';
 import { AskModulePage } from './pages/AskModulePage';
 import { Component, type ReactNode, type ErrorInfo } from 'react';
 
@@ -83,7 +82,6 @@ function App() {
                   <Route path="/exemptions" element={<ExemptionsPage />} />
                   <Route path="/means-test" element={<MeansTestPage />} />
                   <Route path="/fee-waiver" element={<Navigate to="/filing-fee" replace />} />
-                  <Route path="/sofa" element={<SOFAStep />} />
                   <Route path="/ask/:formType" element={<AskModulePage />} />
                 </Route>
               </Route>

@@ -93,7 +93,6 @@ function refusalOf(err: unknown, generic: string): Refusal {
 const PAGE_LINK_LABELS: Record<string, string> = {
   '/intake': 'Finish your intake',
   '/filing-fee': 'Go to How you will pay the filing fee',
-  '/sofa': 'Go to Statement of Financial Affairs',
   '/documents': 'Go to Upload your documents',
   '/exemptions': 'Go to The property you claim as exempt',
   '/means-test': 'Go to Form 122A-2: Chapter 7 Means Test Calculation',

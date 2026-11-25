@@ -16,7 +16,6 @@ import { DocumentsPage } from '../pages/documents.page';
 import { FilingFeePage } from '../pages/filing-fee.page';
 import { ExemptionsPage } from '../pages/exemptions.page';
 import { DashboardPage } from '../pages/dashboard.page';
-import { SOFAPage } from '../pages/sofa.page';
 
 // FORM_122A2_TITLE in src/constants/formText.ts, as the means test page object reads it
 const MEANS_TEST_TITLE = 'Form 122A-2: Chapter 7 Means Test Calculation';
@@ -32,7 +31,6 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
     const documents = new DocumentsPage(page);
     const filingFee = new FilingFeePage(page);
     const exemptions = new ExemptionsPage(page);
-    const sofa = new SOFAPage(page);
     const dashboard = new DashboardPage(page);
 
     await landing.goto();
@@ -81,9 +79,9 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
 
     // He pays in installments; the page says where to get Form 103A, then continues to the exemptions page
     await filingFee.answer(ANDRES.filing_fee.payment_choice);
-    // Below the median, he never sees the Form 122A-2 page. The page replaces itself with /sofa
+    // Below the median, he never sees the Form 122A-2 page. The page replaces itself with /forms
     // in the same document, which Playwright still reports as a navigation, so this watches what
-    // he would see: whether the page's heading is ever drawn between Continue and /sofa.
+    // he would see: whether the page's heading is ever drawn between Continue and /forms.
     await exemptions.waitForLoad();
     await page.evaluate((title) => {
       const watched = window as unknown as WatchedWindow;
@@ -101,10 +99,9 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
       });
     }, MEANS_TEST_TITLE);
     await exemptions.answer(ANDRES.exemptions);
-    await sofa.waitForLoad();
+    await page.waitForURL('**/forms');
     const seen = await page.evaluate(() => (window as unknown as WatchedWindow).meansTitleSeen);
     expect(seen).toBe(false);
-    await sofa.skipForNow();
 
     // He pays in installments, so no Form 103B; below median, so no Form 122A-2; his car loan
     // and his car lease bring Form 108

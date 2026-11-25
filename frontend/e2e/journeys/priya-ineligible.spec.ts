@@ -17,7 +17,6 @@ import { DocumentsPage } from '../pages/documents.page';
 import { FilingFeePage } from '../pages/filing-fee.page';
 import { ExemptionsPage } from '../pages/exemptions.page';
 import { MeansTestPage } from '../pages/means-test.page';
-import { SOFAPage } from '../pages/sofa.page';
 import { DashboardPage } from '../pages/dashboard.page';
 
 test.describe('Priya Sharma — Above the Median', () => {
@@ -29,7 +28,6 @@ test.describe('Priya Sharma — Above the Median', () => {
     const filingFee = new FilingFeePage(page);
     const exemptions = new ExemptionsPage(page);
     const meansTest = new MeansTestPage(page);
-    const sofa = new SOFAPage(page);
     const dashboard = new DashboardPage(page);
 
     await landing.goto();
@@ -117,8 +115,7 @@ test.describe('Priya Sharma — Above the Median', () => {
     );
 
     await meansTest.continue();
-    await sofa.waitForLoad();
-    await sofa.skipForNow();
+    await page.waitForURL('**/forms');
 
     // Above the median, her packet holds Form 122A-2, and her car loan Form 108: 15 forms plus
     // those two

@@ -19,7 +19,7 @@ import type { MeansCircumstance, MeansPage } from '../../types/api';
 
 export const URL = 'http://localhost:8000/api/intake/sessions/:id/means-test/';
 export const POLISH_URL = 'http://localhost:8000/api/intake/sessions/:id/means-test/polish/';
-export const SOFA = 'Statement of Financial Affairs';
+export const DASHBOARD = 'Forms dashboard';
 
 export type Body = Record<string, unknown>;
 
@@ -98,7 +98,7 @@ export function renderPage(entry = '/means-test') {
       <IntakeProvider>
         <Routes>
           <Route path="/means-test" element={<MeansTestPage />} />
-          <Route path="/sofa" element={<div>{SOFA}</div>} />
+          <Route path="/forms" element={<div>{DASHBOARD}</div>} />
           <Route path="/exemptions" element={<div>Exemptions</div>} />
         </Routes>
       </IntakeProvider>

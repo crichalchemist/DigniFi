@@ -39,6 +39,8 @@ import {
   MEANS_TABLE_MISSING,
 } from '../../constants/copy';
 import { FORM_122A1SUPP_AMENDED, PRESUMPTION_INSTRUCTIONS } from '../../constants/formText';
+import dashboardSource from '../FormDashboard.tsx?raw';
+import appSource from '../../App.tsx?raw';
 
 /**
  * FormDashboard requires IntakeProvider with an active session.
@@ -1142,8 +1144,8 @@ describe('FormDashboard', () => {
     });
 
     // The words of each link go to the owner with the plan (ruling R22). Each page is one a
-    // binding of that form can name: the filing-fee answers, a SOFA list (the synthetic Schedule D
-    // group's), the pay stub's employer name, and Form 107's asked answers.
+    // binding of that form can name: the filing-fee answers, the exemptions page (the synthetic
+    // Schedule D group's), the pay stub's employer name, and Form 107's asked answers.
     it('names each page that fixes a form Generate All refused', async () => {
       server.use(
         http.post('http://localhost:8000/api/forms/generate_all/', () =>
@@ -1151,7 +1153,7 @@ describe('FormDashboard', () => {
             generated: [],
             errors: [
               { form_type: 'form_103b', error: TOO_LONG, page: '/filing-fee' },
-              { form_type: 'schedule_d', error: TOO_LONG, page: '/sofa' },
+              { form_type: 'schedule_d', error: TOO_LONG, page: '/exemptions' },
               { form_type: 'schedule_i', error: TOO_LONG, page: '/documents' },
               { form_type: 'form_107', error: TOO_LONG, page: '/ask/form_107' },
             ],
@@ -1170,11 +1172,19 @@ describe('FormDashboard', () => {
         .map((link) => [link.textContent, link.getAttribute('href')]);
       expect(links).toEqual([
         ['Go to How you will pay the filing fee', '/filing-fee'],
-        ['Go to Statement of Financial Affairs', '/sofa'],
+        ['Go to The property you claim as exempt', '/exemptions'],
         ['Go to Upload your documents', '/documents'],
         ['Answer the questions for Form 107 - Financial Affairs', '/ask/form_107'],
       ]);
       expect(screen.queryByText(/try generating them individually/i)).not.toBeInTheDocument();
+    });
+
+    it('no refusal links to a page the app no longer serves', () => {
+      const block = dashboardSource.slice(dashboardSource.indexOf('const PAGE_LINK_LABELS'));
+      const labels = block.slice(0, block.indexOf('};'));
+      const pages = [...labels.matchAll(/'(\/[^']*)':/g)].map((m) => m[1]);
+      expect(pages.length).toBeGreaterThan(0);
+      for (const page of pages) expect(appSource).toContain(`path="${page}"`);
     });
 
     it('links a Schedule C refusal to the exemptions page', async () => {

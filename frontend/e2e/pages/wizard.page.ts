@@ -44,7 +44,7 @@ export class WizardPage {
   async completeIntake() {
     await this.page.getByRole('button', { name: /complete intake/i }).click();
     // Every filer answers Form 101 line 8 on the filing-fee page next (see IntakeWizard →
-    // /filing-fee), which continues to /sofa.
+    // /filing-fee), which continues to the exemptions page.
     await this.page.waitForURL(/\/filing-fee/);
   }
 
