@@ -760,10 +760,14 @@ export class WizardPage {
   async walkPlans(persona: Pick<PersonaData, 'plans'>) {
     const page = this.page;
     const { secured, leases } = persona.plans;
+    const notApplicable = page.getByText("DigniFi isn't preparing Form 108", { exact: false });
     if (secured.length === 0 && leases.length === 0) {
-      await expect(
-        page.getByText("DigniFi isn't preparing Form 108", { exact: false })
-      ).toBeVisible();
+      await expect(notApplicable).toBeVisible();
+    } else {
+      // Only the persona's own rows: each is found by its name below, so one row more (such as
+      // Andrés's residential lease, which Form 108 never asks about) is a row nobody named
+      await expect(notApplicable).toHaveCount(0);
+      await expect(page.locator('fieldset.plans-row')).toHaveCount(secured.length + leases.length);
     }
     for (const plan of secured) {
       const row = page.getByRole('group', { name: plan.creditor, exact: true });
