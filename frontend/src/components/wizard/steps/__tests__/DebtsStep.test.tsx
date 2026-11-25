@@ -1283,7 +1283,7 @@ describe('DebtsStep asks Form 101 line 16 and the military questions', () => {
 
 // E4: a name or description longer than a form's box takes is saved as typed and noted beside its
 // box, in Review's words; the note is never a gap, so Continue and the gap region stay as they were
-// (DIG-542)
+// (E4, B47)
 describe("Amounts Owed's too-long notes", () => {
   const tooLong = (label: string, form: string) =>
     fill(copy.SCHEDULE_I_DETAIL_TOO_LONG, { label, form });

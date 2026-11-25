@@ -1928,7 +1928,7 @@ export const PLANS_INTRO =
 // DRAFT: counsel C-37
 export const PLANS_NOT_APPLICABLE =
   "DigniFi isn't preparing Form 108. You listed no debt secured by your property and no lease of personal property. If that isn't right, go back to Amounts Owed or Contracts & Leases.";
-// The app's own fifth answer, after the form's choices (E8)
+// The app's own fifth answer, after the form's choices (E7)
 // DRAFT: counsel C-37
 export const PLANS_UNDECIDED = "I haven't decided yet.";
 // DRAFT: counsel C-37

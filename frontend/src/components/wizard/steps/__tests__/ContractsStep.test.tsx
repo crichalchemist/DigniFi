@@ -383,7 +383,7 @@ describe('ContractsStep', () => {
 
 // E4: a lessor's name or lease description longer than a form's box takes is saved as typed and
 // noted beside its box, in Review's words; the note is never a gap, so Continue and the gap region
-// stay as they were (DIG-542)
+// stay as they were (E4, B47)
 describe("Contracts & Leases' too-long notes", () => {
   const tooLong = (label: string, form: string) =>
     fill(copy.SCHEDULE_I_DETAIL_TOO_LONG, { label, form });

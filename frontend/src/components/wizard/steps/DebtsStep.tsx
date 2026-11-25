@@ -560,7 +560,7 @@ export function DebtsStep({
         const status = debt.claim_status;
         const lienKinds = debt.lien?.kinds ?? [];
         // A name or property too long for a box its row prints in: saved as typed, noted here, and
-        // never a gap that holds Continue (E4, DIG-542)
+        // never a gap that holds Continue (E4, B47)
         const nameNote = tooLongNote('creditor_name', debt, debt.creditor_name);
         const propertyNote = tooLongNote(
           'collateral_description',

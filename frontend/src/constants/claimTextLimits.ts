@@ -6,7 +6,7 @@ import type { ContractRow, DebtRow } from '../types/api';
  * R-EXPLAIN): the browser's copy of form_108.limits.json's box caps and of ROW_BOXES and row_cap
  * in apps/intake/intentions.py. test_intention_frontend_copy.py pins the caps and boxes;
  * claimTextRowCases.json pins which list a row is measured in. A text over its cap is stored as
- * typed and gets a note beside its box, never a gap that holds Continue (DIG-542).
+ * typed and gets a note beside its box, never a gap that holds Continue (E4, B47).
  */
 
 /** The texts that print in a claims box, and the "[explain]" words */

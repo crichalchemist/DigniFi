@@ -198,7 +198,7 @@ export function ContractsStep({
               : undefined;
           const nameId = `field-counterparty_name_${index}`;
           // A lessor's name or lease description too long for a box its row prints in: saved as
-          // typed, noted here, and never a gap that holds Continue (E4, DIG-542)
+          // typed, noted here, and never a gap that holds Continue (E4, B47)
           const nameNote = tooLongNote('counterparty_name', contract, contract.counterparty_name);
           const purposeNote = tooLongNote('description', contract, contract.description);
           const nameDescribedBy =
