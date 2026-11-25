@@ -181,16 +181,115 @@ describe('Your Plans', () => {
     const user = userEvent.setup();
     expect(box('plans_secured_0_explain')).toBeNull();
     expect(screen.getByText(copy.HIDDEN_ANSWERS)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: copy.SHOW_HIDDEN }));
-    expect(box('plans_secured_0_explain').value).toBe('Kept words');
-    // A new choice hides them again; Delete removes them and keeps the choice
-    await user.click(radios('plans_secured_0_intention').find((r) => r.value === 'retain_redeem')!);
-    expect(box('plans_secured_0_explain')).toBeNull();
-    await user.click(screen.getByRole('button', { name: copy.DELETE_HIDDEN }));
+    // Delete removes them and keeps the choice
+    await user.click(
+      screen.getByRole('button', { name: `Demo Auto Credit ${copy.DELETE_HIDDEN}` })
+    );
     expect(onAnswersChange).toHaveBeenLastCalledWith({
-      secured: { 7: { intention: 'retain_redeem' } },
+      secured: { 7: { intention: 'surrender' } },
     });
     expect(screen.queryByText(copy.HIDDEN_ANSWERS)).toBeNull();
+    expect(box('plans_secured_0_explain')).toBeNull();
+  });
+
+  // D1 (4d-R15, T6-show): Show fixes the box's visibility for the visit, so a new choice, or
+  // clearing the last letter, never takes the box away while the filer is in it
+  it('words shown again stay shown when the choice changes', async () => {
+    render(
+      <Harness initial={{ secured: { 7: { intention: 'surrender', explain: 'Kept words' } } }} />
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: `Demo Auto Credit ${copy.SHOW_HIDDEN}` }));
+    expect(box('plans_secured_0_explain').value).toBe('Kept words');
+
+    await user.click(radios('plans_secured_0_intention').find((r) => r.value === 'retain_redeem')!);
+    expect(box('plans_secured_0_explain').value).toBe('Kept words');
+    await user.clear(box('plans_secured_0_explain'));
+    expect(box('plans_secured_0_explain')).not.toBeNull();
+    await user.click(radios('plans_secured_0_intention').find((r) => r.value === 'undecided')!);
+    expect(box('plans_secured_0_explain')).not.toBeNull();
+  });
+
+  // F1 (S:326): the words box sits under the fourth choice, before the app's own fifth answer
+  it('puts the words box right under "Retain the property and [explain]:"', async () => {
+    render(<Harness />);
+    await userEvent
+      .setup()
+      .click(radios('plans_secured_0_intention').find((r) => r.value === 'retain_explain')!);
+    const [, , , fourth, undecided] = radios('plans_secured_0_intention');
+    const words = box('plans_secured_0_explain');
+    const follows = (a: Node, b: Node) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(fourth, words)).toBe(true);
+    expect(follows(words, undecided)).toBe(true);
+  });
+
+  // F10: each row's box and buttons are named by the row too, with no new words
+  it("names each row's words box and Show and Delete by the row's creditor", async () => {
+    const both = {
+      secured: {
+        7: { intention: 'retain_explain' as const, explain: 'Car words' },
+        8: { intention: 'surrender' as const, explain: 'Home words' },
+      },
+    };
+    render(<Harness debts={[car, home]} initial={both} />);
+    expect(
+      screen.getByRole('textbox', { name: `Demo Auto Credit ${copy.PLANS_EXPLAIN_LABEL}` })
+    ).toBe(box('plans_secured_0_explain'));
+    expect(
+      screen.getByRole('button', { name: `Demo Home Loans ${copy.SHOW_HIDDEN}` })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: `Demo Home Loans ${copy.DELETE_HIDDEN}` })
+    ).toBeInTheDocument();
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: `Demo Home Loans ${copy.SHOW_HIDDEN}` }));
+    const names = screen
+      .getAllByRole('textbox')
+      .map((element) => element.getAttribute('aria-labelledby'))
+      .map((ids) =>
+        ids!
+          .split(' ')
+          .map((id) => document.getElementById(id)!.textContent)
+          .join(' ')
+      );
+    expect(names).toEqual([
+      `Demo Auto Credit ${copy.PLANS_EXPLAIN_LABEL}`,
+      `Demo Home Loans ${copy.PLANS_EXPLAIN_LABEL}`,
+    ]);
+  });
+
+  // F11: the form's question describes each row's group of choices; the exempt question and its
+  // sentence describe it too, where shown
+  it("describes each row's choices by the form's question", () => {
+    render(<Harness debts={[car, home]} contracts={[carLease]} exempt={{ 7: 'listed' }} />);
+    expect(row('Demo Auto Credit')).toHaveAccessibleDescription(
+      `${formText.FORM_108_INTENTION_QUESTION} ${formText.FORM_108_EXEMPT_QUESTION} ${copy.PLANS_EXEMPT_LISTED}`
+    );
+    expect(row('Demo Home Loans')).toHaveAccessibleDescription(
+      formText.FORM_108_INTENTION_QUESTION
+    );
+    expect(row('Demo Leasing')).toHaveAccessibleDescription(formText.FORM_108_ASSUMED_QUESTION);
+  });
+
+  // D2: the noun for a nameless row names its group only; the form's label shows the blank
+  it("shows a blank name under the form's label, and the noun only in the legend", () => {
+    render(
+      <Harness
+        debts={[{ ...car, creditor_name: '' }]}
+        contracts={[{ ...carLease, counterparty_name: '' }]}
+      />
+    );
+    const debtRow = row(copy.NAMELESS_DEBT);
+    const leaseRow = row(copy.NAMELESS_CONTRACT);
+    expect(within(debtRow).getByText(FORM_108_CREDITOR_LABEL).parentElement!.textContent).toBe(
+      `${FORM_108_CREDITOR_LABEL} `
+    );
+    expect(within(leaseRow).getByText(FORM_108_LESSOR_LABEL).parentElement!.textContent).toBe(
+      `${FORM_108_LESSOR_LABEL} `
+    );
   });
 
   it('a too-long explanation shows its note and leaves Continue enabled', () => {

@@ -212,18 +212,28 @@ export function HiddenLine({
   sentence,
   onShow,
   onDelete,
+  labelledby,
 }: {
   sentence: string;
   onShow: () => void;
   onDelete: () => void;
+  /** The id of the words naming the row, read before each button's own, where rows repeat */
+  labelledby?: string;
 }) {
+  const named = (action: string) =>
+    labelledby
+      ? {
+          id: `${labelledby}-${action}`,
+          'aria-labelledby': `${labelledby} ${labelledby}-${action}`,
+        }
+      : {};
   return (
     <div className="form-field">
       <p className="form-help-text">{sentence}</p>
-      <Button variant="outline" size="sm" type="button" onClick={onShow}>
+      <Button variant="outline" size="sm" type="button" onClick={onShow} {...named('show')}>
         {SHOW_HIDDEN}
       </Button>{' '}
-      <Button variant="outline" size="sm" type="button" onClick={onDelete}>
+      <Button variant="outline" size="sm" type="button" onClick={onDelete} {...named('delete')}>
         {DELETE_HIDDEN}
       </Button>
     </div>

@@ -7,7 +7,7 @@
  * Controlled: the wizard holds the answers by server id (R-SHAPE) and builds the save from the
  * rows this step shows (plansBody).
  */
-import { useEffect, useState, type ChangeEvent } from 'react';
+import { Fragment, useEffect, useState, type ChangeEvent } from 'react';
 import { Button, FormTextarea } from '../../common';
 import { tooLongNote } from '../../../constants/claimTextLimits';
 import {
@@ -89,6 +89,10 @@ const EXEMPT_SENTENCES: Record<ExemptState, string> = {
   no_property: PLANS_EXEMPT_NO_PROPERTY,
 };
 
+// The form's questions, which describe each row's group of choices (fix wave F11)
+const INTENTION_QUESTION_ID = 'plans_intention_question';
+const ASSUMED_QUESTION_ID = 'plans_assumed_question';
+
 // The two step names in PLANS_NOT_APPLICABLE, each a way back to its step
 const DEBTS_PHRASE = 'Amounts Owed';
 const CONTRACTS_PHRASE = 'Contracts & Leases';
@@ -148,7 +152,7 @@ export function PlansStep({
       {secured.length > 0 && (
         <section className="form-section">
           <h4 className="section-title">{FORM_108_PART_1_HEADING}</h4>
-          <p>{FORM_108_INTENTION_QUESTION}</p>
+          <p id={INTENTION_QUESTION_ID}>{FORM_108_INTENTION_QUESTION}</p>
           <SecuredDefinitions />
           {secured.map((debt, index) => {
             const id = String(debt.id);
@@ -157,33 +161,80 @@ export function PlansStep({
             const explaining = entry.intention === 'retain_explain';
             const kept = !explaining && (entry.explain ?? '').trim() !== '';
             const boxName = `plans_secured_${index}_explain`;
+            const legendId = `plans_secured_${index}_legend`;
+            const exemptId = `plans_secured_${index}_exempt`;
             const note = explaining ? tooLongNote('explain', debt, entry.explain) : null;
             const state = exempt[id];
+            // Under the fourth choice, before the app's own "I haven't decided yet." (S:326)
+            const words =
+              explaining || shown[id] ? (
+                <>
+                  <FormTextarea
+                    label={PLANS_EXPLAIN_LABEL}
+                    name={boxName}
+                    value={entry.explain ?? ''}
+                    maxLength={EXPLAIN_CEILING}
+                    rows={2}
+                    onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+                      setSecured(id, { ...entry, explain: e.target.value })
+                    }
+                    aria-labelledby={`${legendId} field-${boxName}-label`}
+                    aria-describedby={note ? `field-${boxName}-note` : undefined}
+                  />
+                  {note && (
+                    <p id={`field-${boxName}-note`} className="form-help-text">
+                      {note}
+                    </p>
+                  )}
+                </>
+              ) : (
+                kept && (
+                  <HiddenLine
+                    sentence={HIDDEN_ANSWERS}
+                    labelledby={legendId}
+                    onShow={() => setShown((current) => ({ ...current, [id]: true }))}
+                    onDelete={() => {
+                      const rest = { ...entry };
+                      delete rest.explain;
+                      setSecured(id, rest);
+                    }}
+                  />
+                )
+              );
             return (
-              <fieldset key={debt._key} className="plans-row">
-                <legend>{name}</legend>
+              <fieldset
+                key={debt._key}
+                className="plans-row"
+                aria-describedby={
+                  state
+                    ? `${INTENTION_QUESTION_ID} ${exemptId}_question ${exemptId}`
+                    : INTENTION_QUESTION_ID
+                }
+              >
+                <legend id={legendId}>{name}</legend>
                 <p className="form-help-text">{PLANS_FROM_DEBTS}</p>
                 <p>
-                  <span className="form-label">{FORM_108_CREDITOR_LABEL}</span> {name}
+                  <span className="form-label">{FORM_108_CREDITOR_LABEL}</span>{' '}
+                  {debt.creditor_name ?? ''}
                 </p>
                 <p>
                   <span className="form-label">{FORM_108_PROPERTY_LABEL}</span>{' '}
                   {debt.collateral_description ?? ''}
                 </p>
                 {INTENTIONS.map((choice) => (
-                  <label key={choice} className="ab-choice">
-                    <input
-                      type="radio"
-                      name={`plans_secured_${index}_intention`}
-                      value={choice}
-                      checked={entry.intention === choice}
-                      onChange={() => {
-                        setShown((current) => ({ ...current, [id]: false }));
-                        setSecured(id, { ...entry, intention: choice });
-                      }}
-                    />
-                    {FORM_108_INTENTIONS[choice]}
-                  </label>
+                  <Fragment key={choice}>
+                    <label className="ab-choice">
+                      <input
+                        type="radio"
+                        name={`plans_secured_${index}_intention`}
+                        value={choice}
+                        checked={entry.intention === choice}
+                        onChange={() => setSecured(id, { ...entry, intention: choice })}
+                      />
+                      {FORM_108_INTENTIONS[choice]}
+                    </label>
+                    {choice === 'retain_explain' && words}
+                  </Fragment>
                 ))}
                 <label className="ab-choice">
                   <input
@@ -191,51 +242,20 @@ export function PlansStep({
                     name={`plans_secured_${index}_intention`}
                     value="undecided"
                     checked={entry.intention === 'undecided'}
-                    onChange={() => {
-                      setShown((current) => ({ ...current, [id]: false }));
-                      setSecured(id, { ...entry, intention: 'undecided' });
-                    }}
+                    onChange={() => setSecured(id, { ...entry, intention: 'undecided' })}
                   />
                   {PLANS_UNDECIDED}
                 </label>
-                {explaining || shown[id] ? (
-                  <>
-                    <FormTextarea
-                      label={PLANS_EXPLAIN_LABEL}
-                      name={boxName}
-                      value={entry.explain ?? ''}
-                      maxLength={EXPLAIN_CEILING}
-                      rows={2}
-                      onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
-                        setSecured(id, { ...entry, explain: e.target.value })
-                      }
-                      aria-describedby={note ? `field-${boxName}-note` : undefined}
-                    />
-                    {note && (
-                      <p id={`field-${boxName}-note`} className="form-help-text">
-                        {note}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  kept && (
-                    <HiddenLine
-                      sentence={HIDDEN_ANSWERS}
-                      onShow={() => setShown((current) => ({ ...current, [id]: true }))}
-                      onDelete={() => {
-                        const rest = { ...entry };
-                        delete rest.explain;
-                        setSecured(id, rest);
-                      }}
-                    />
-                  )
-                )}
                 {state && (
                   <>
                     <p>
-                      <span className="form-label">{FORM_108_EXEMPT_QUESTION}</span>
+                      <span id={`${exemptId}_question`} className="form-label">
+                        {FORM_108_EXEMPT_QUESTION}
+                      </span>
                     </p>
-                    <p className="form-help-text">{EXEMPT_SENTENCES[state]}</p>
+                    <p id={exemptId} className="form-help-text">
+                      {EXEMPT_SENTENCES[state]}
+                    </p>
                   </>
                 )}
               </fieldset>
@@ -248,18 +268,23 @@ export function PlansStep({
         <section className="form-section">
           <h4 className="section-title">{FORM_108_PART_2_HEADING}</h4>
           <p>{FORM_108_ASSUME_SENTENCE}</p>
-          <p>{FORM_108_ASSUMED_QUESTION}</p>
+          <p id={ASSUMED_QUESTION_ID}>{FORM_108_ASSUMED_QUESTION}</p>
           <LeaseDefinition />
           {leases.map((contract, index) => {
             const id = String(contract.id);
             const assumed = answers.leases?.[id]?.assumed;
             const name = claimRowName(contract.counterparty_name, NAMELESS_CONTRACT);
             return (
-              <fieldset key={contract._key} className="plans-row">
+              <fieldset
+                key={contract._key}
+                className="plans-row"
+                aria-describedby={ASSUMED_QUESTION_ID}
+              >
                 <legend>{name}</legend>
                 <p className="form-help-text">{PLANS_FROM_CONTRACTS}</p>
                 <p>
-                  <span className="form-label">{FORM_108_LESSOR_LABEL}</span> {name}
+                  <span className="form-label">{FORM_108_LESSOR_LABEL}</span>{' '}
+                  {contract.counterparty_name ?? ''}
                 </p>
                 <p>
                   <span className="form-label">{FORM_108_LEASED_PROPERTY_LABEL}</span>{' '}
