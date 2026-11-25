@@ -966,7 +966,7 @@ def test_check_agrees_with_the_drawing_on_every_letter():
 
 _SHEET = SheetSpec(
     "Official Form 106A/B, Schedule A/B: Property",
-    (SheetColumn("Make", "sofa.creditor_payments[].creditor_name", 300.0),),
+    (SheetColumn("Make", "affairs.l6_rows[].name", 300.0),),
 )
 
 

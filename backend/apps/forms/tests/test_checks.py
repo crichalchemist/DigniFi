@@ -277,7 +277,7 @@ def _row(tag, row):
         **_text("Assistance 8f", 2, tag),
         "source": "asked",
         "value": None,
-        "binding": "sofa.creditor_payments[].creditor_name",
+        "binding": "affairs.l6_rows[].name",
         "repeat": "cp",
         "repeat_capacity": 2,
         "row": row,
@@ -494,7 +494,7 @@ def _slots(change, first_only=False):
         ),
         (
             # The group would print in part: some of a row's boxes, and not the others.
-            _slots({"conditional_on": "has_creditor_payments"}, first_only=True),
+            _slots({"conditional_on": "affairs_l6_rows"}, first_only=True),
             "repeat group 'd_part_1' has more than one conditional_on",
         ),
     ],
@@ -746,7 +746,7 @@ def _part_2(declaration):
                     **_text(box, 3, None),
                     "source": "asked",
                     "value": None,
-                    "binding": "sofa.creditor_payments[].creditor_name",
+                    "binding": "affairs.l6_rows[].name",
                     "repeat": "d_part_2",
                     "repeat_capacity": 6,
                     "row": row,
@@ -777,7 +777,7 @@ def test_two_groups_cannot_continue_on_copies_of_one_page(schedule_d_with_copies
                 **_text("Creditors Name_2", 1, None),
                 "source": "asked",
                 "value": None,
-                "binding": "sofa.creditor_payments[].creditor_name",
+                "binding": "affairs.l6_rows[].name",
                 "repeat": "other",
                 "repeat_capacity": 1,
                 "row": 1,
@@ -822,9 +822,7 @@ def test_a_group_on_a_sheet_passes_beside_a_group_on_copies(
     # A sheet's pages aren't copies of the form's, so they number none of its pages (R56).
     sheet = {
         "title": "Official Form 106D, Schedule D: Creditors Who Have Claims Secured by Property",
-        "columns": [
-            {"label": "Name", "binding": "sofa.creditor_payments[].creditor_name", "width": 300}
-        ],
+        "columns": [{"label": "Name", "binding": "affairs.l6_rows[].name", "width": 300}],
     }
     _edit(schedule_d_with_copies, "schedule_d", _part_2({"number": "3.{n}", "sheet": sheet}))
     assert _errors("schedule_d") == []
@@ -852,11 +850,11 @@ def _totals(change):
             ),
         ),
         (
-            _totals(lambda t: t.update(column="sofa.creditor_payments[].nothing")),
+            _totals(lambda t: t.update(column="affairs.l6_rows[].nothing")),
             (
                 "forms.E007",
                 "schedule_d: group 'd_part_1': its totals add "
-                "'sofa.creditor_payments[].nothing', which isn't a text slot of the group",
+                "'affairs.l6_rows[].nothing', which isn't a text slot of the group",
             ),
         ),
         (
@@ -919,13 +917,13 @@ def test_a_total_over_a_column_that_holds_no_amount_is_refused(schedule_d_with_t
     _edit(
         schedule_d_with_totals,
         "schedule_d",
-        _totals(lambda t: t.update(column="sofa.creditor_payments[].creditor_name")),
+        _totals(lambda t: t.update(column="affairs.l6_rows[].name")),
     )
     assert _errors("schedule_d") == [
         (
             "forms.E007",
             "schedule_d: group 'd_part_1': its total adds "
-            "'sofa.creditor_payments[].creditor_name', which holds no amount",
+            "'affairs.l6_rows[].name', which holds no amount",
         )
     ]
 
@@ -933,8 +931,9 @@ def test_a_total_over_a_column_that_holds_no_amount_is_refused(schedule_d_with_t
 def test_a_claims_binding_passes_the_namespace_check(schedule_d_with_totals):
     def rebind(d):
         for f in d["fields"]:
-            if f["binding"] == "sofa.creditor_payments[].creditor_name":
+            if f["binding"] == "affairs.l6_rows[].name":
                 f["binding"] = "claims.secured[].name"
+        assert any(f["binding"] == "claims.secured[].name" for f in d["fields"])
 
     _edit(schedule_d_with_totals, "schedule_d", rebind)
     assert not [e for e in _errors("schedule_d") if "unknown binding namespace" in e[1]]
@@ -943,8 +942,9 @@ def test_a_claims_binding_passes_the_namespace_check(schedule_d_with_totals):
 def test_an_exemptions_binding_passes_the_namespace_check(schedule_d_with_totals):
     def rebind(d):
         for f in d["fields"]:
-            if f["binding"] == "sofa.creditor_payments[].creditor_name":
+            if f["binding"] == "affairs.l6_rows[].name":
                 f["binding"] = "exemptions.claims[].description"
+        assert any(f["binding"] == "exemptions.claims[].description" for f in d["fields"])
 
     _edit(schedule_d_with_totals, "schedule_d", rebind)
     assert not [e for e in _errors("schedule_d") if "unknown binding namespace" in e[1]]
@@ -961,8 +961,9 @@ def test_an_exemptions_binding_passes_the_namespace_check(schedule_d_with_totals
 def test_an_answer_record_binding_passes_the_namespace_check(schedule_d_with_totals, binding):
     def rebind(d):
         for f in d["fields"]:
-            if f["binding"] == "sofa.creditor_payments[].creditor_name":
+            if f["binding"] == "affairs.l6_rows[].name":
                 f["binding"] = binding
+        assert any(f["binding"] == binding for f in d["fields"])
 
     _edit(schedule_d_with_totals, "schedule_d", rebind)
     assert not [e for e in _errors("schedule_d") if "unknown binding namespace" in e[1]]
@@ -973,8 +974,9 @@ def test_an_intentions_binding_is_refused_as_an_unknown_namespace(schedule_d_wit
     # reserved would bind any key and print it blank with no startup check.
     def rebind(d):
         for f in d["fields"]:
-            if f["binding"] == "sofa.creditor_payments[].creditor_name":
+            if f["binding"] == "affairs.l6_rows[].name":
                 f["binding"] = "intentions.secured"
+        assert any(f["binding"] == "intentions.secured" for f in d["fields"])
 
     _edit(schedule_d_with_totals, "schedule_d", rebind)
     assert [e for e in _errors("schedule_d") if "unknown binding namespace" in e[1]]
@@ -993,8 +995,9 @@ def test_a_claims_list_may_be_a_sheet_column():
 def test_a_misspelt_answer_record_namespace_is_still_refused(schedule_d_with_totals):
     def rebind(d):
         for f in d["fields"]:
-            if f["binding"] == "sofa.creditor_payments[].creditor_name":
+            if f["binding"] == "affairs.l6_rows[].name":
                 f["binding"] = "petitions.name_suffix"
+        assert any(f["binding"] == "petitions.name_suffix" for f in d["fields"])
 
     _edit(schedule_d_with_totals, "schedule_d", rebind)
     assert [e for e in _errors("schedule_d") if "unknown binding namespace" in e[1]]
@@ -1221,7 +1224,7 @@ def test_a_total_box_another_binding_fills_is_reported(schedule_d_with_totals):
 
 def test_a_group_on_a_sheet_has_no_total_boxes(schedule_a_b_with_sheet):
     def add(d):
-        d["groups"]["ab_line_3"]["totals"] = {"column": "sofa.creditor_payments[].total_paid"}
+        d["groups"]["ab_line_3"]["totals"] = {"column": "affairs.l6_rows[].paid"}
 
     _edit(schedule_a_b_with_sheet, "schedule_a_b", add)
     assert (
@@ -1248,7 +1251,7 @@ def _column(n, **change):
 def _makes_asked_on_ask_page(d):
     # The slots and the column bind one answer: a binding, but no list of rows.
     for f in d["fields"]:
-        if f["repeat"] == "ab_line_3" and f["binding"].endswith("creditor_name"):
+        if f["repeat"] == "ab_line_3" and f["binding"].endswith("name"):
             f["binding"] = "answer:schedule_a_b.make"
     d["groups"]["ab_line_3"]["sheet"]["columns"][0]["binding"] = "answer:schedule_a_b.make"
 
@@ -1263,7 +1266,7 @@ def _community_property_boxes(d):
                 "source": "asked",
                 "value": None,
                 "choices": {"true": "/On"},
-                "binding": "sofa.creditor_payments[].dates_of_payments",
+                "binding": "affairs.l6_rows[].date_1",
                 "repeat": "ab_line_3",
                 "repeat_capacity": 4,
                 "row": row,
@@ -1286,7 +1289,7 @@ def _a_column_of_boxes(d):
     columns.append(
         {
             "label": "Community property",
-            "binding": "sofa.creditor_payments[].dates_of_payments",
+            "binding": "affairs.l6_rows[].date_1",
             "width": 100,
         }
     )
@@ -1314,9 +1317,7 @@ def _ab_slot(**binding):
 def _another_lists_column(d):
     columns = d["groups"]["ab_line_3"]["sheet"]["columns"]
     columns[0]["width"] = 200
-    columns.append(
-        {"label": "Paid on", "binding": "sofa.creditor_payments[].dates_of_payments", "width": 100}
-    )
+    columns.append({"label": "Paid on", "binding": "affairs.l6_rows[].date_1", "width": 100})
 
 
 def _ab_slots(change):
@@ -1398,7 +1399,7 @@ _AB = "schedule_a_b: group 'ab_line_3'"
             (
                 "forms.E007",
                 f"{_AB}: sheet column 'Paid on' binds "
-                "'sofa.creditor_payments[].dates_of_payments', which no slot of the group binds",
+                "'affairs.l6_rows[].date_1', which no slot of the group binds",
             ),
         ),
         (
@@ -1424,7 +1425,7 @@ _AB = "schedule_a_b: group 'ab_line_3'"
             _sheet(lambda g: g["sheet"].update(columns=g["sheet"]["columns"][:1])),
             (
                 "forms.E007",
-                f"{_AB}: no sheet column prints 'sofa.creditor_payments[].total_paid', "
+                f"{_AB}: no sheet column prints 'affairs.l6_rows[].paid', "
                 "which a slot of the group binds",
             ),
         ),
@@ -1437,7 +1438,7 @@ _AB = "schedule_a_b: group 'ab_line_3'"
                 source="asked",
                 value=None,
                 choices={},
-                binding="sofa.creditor_payments[].creditor_name",
+                binding="affairs.l6_rows[].name",
             ),
             (
                 "forms.E007",
@@ -1555,7 +1556,7 @@ def test_a_box_slot_no_column_prints_is_refused_as_a_text_slot_is(schedule_a_b_w
     assert _errors("schedule_a_b") == [
         (
             "forms.E007",
-            f"{_AB}: no sheet column prints 'sofa.creditor_payments[].dates_of_payments', "
+            f"{_AB}: no sheet column prints 'affairs.l6_rows[].date_1', "
             "which a slot of the group binds",
         )
     ]
@@ -1642,7 +1643,7 @@ def _means_slots(d):
     for f in d["fields"]:
         if f["repeat"] == "ab_line_3":
             f["binding"] = f["binding"].replace(
-                "sofa.creditor_payments[].creditor_name", "means.line_9b[].creditor"
+                "affairs.l6_rows[].name", "means.line_9b[].creditor"
             )
     d["groups"]["ab_line_3"]["sheet"]["columns"][0]["binding"] = "means.line_9b[].creditor"
 
@@ -1775,7 +1776,7 @@ _COMMUNITY = "assets.line_3[].community"
 
 def _on_asset_rows(d, slots="assets.line_3"):
     """The synthetic group's slots and columns as Schedule A/B binds them: one line's rows."""
-    attrs = {"creditor_name": "make", "total_paid": "value", "dates_of_payments": "community"}
+    attrs = {"name": "make", "paid": "value", "date_1": "community"}
 
     def rebound(binding):
         return f"{slots}[].{attrs[binding.partition('[].')[2]]}"
@@ -1863,7 +1864,7 @@ def test_a_covering_column_may_cover_nothing_and_print_an_attribute_no_slot_bind
     [
         ("assets.line_3", "assets.line_4[].interest"),  # a boat's words beside a car
         ("assets.line_17_checking", "assets.line_17[].description"),  # every kind's rows
-        ("assets.line_3", "sofa.creditor_payments[].creditor_name"),
+        ("assets.line_3", "affairs.l6_rows[].name"),
     ],
 )
 def test_a_sworn_sheet_cannot_print_another_rows_words_beside_a_row(
@@ -1968,7 +1969,7 @@ def test_a_slot_may_bind_an_asset_list(schedule_a_b_with_sheet):
         for f in d["fields"]:
             if f["repeat"] == "ab_line_3":
                 f["binding"] = f["binding"].replace(
-                    "sofa.creditor_payments[].creditor_name", "assets.line_3[].make"
+                    "affairs.l6_rows[].name", "assets.line_3[].make"
                 )
         d["groups"]["ab_line_3"]["sheet"]["columns"][0]["binding"] = "assets.line_3[].make"
 

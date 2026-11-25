@@ -23,16 +23,19 @@ from apps.intake.models import (
     Household,
     IncomeInfo,
     IntakeSession,
-    SOFACreditorPayment,
-    SOFAReport,
 )
-from apps.intake.tests.builders import answer_household, finish_intake
+from apps.intake.tests.builders import (
+    answer_financial_affairs,
+    answer_household,
+    answer_petition,
+    finish_intake,
+)
 
 User = get_user_model()
 
-# A slot's boxes, (box, label, the SOFA creditor payment attribute it prints).
-_NAME = ("Creditor's name", "creditor_name")
-_AMOUNT = ("Amount of claim", "total_paid")
+# A slot's boxes, (box, label, the line 6 row cell it prints).
+_NAME = ("Creditor's name", "name")
+_AMOUNT = ("Amount of claim", "paid")
 # Schedule D Part 1's rows as (page, boxes), each a creditor's name and a Column A amount:
 # 2.1 and 2.2 on page 1, then page 2's three rows, which the filer numbers from 2.3.
 _D_PART_1 = [
@@ -66,10 +69,10 @@ _EF_GROUPS = {
     "ef_part_3": (5, ["Creditors Name_12", "Creditors Name_13", "Creditors Name_14"]),
 }
 # Schedule A/B line 3's four vehicles, 3.1 and 3.2 on page 2, 3.3 and 3.4 on page 3: each a
-# make and the current value of the portion the filer owns, kept as a SOFA creditor payment's
+# make and the current value of the portion the filer owns, kept as a line 6 row's
 # name and amount (R19: no new list source in 3a2).
-_MAKE = ("Make", "creditor_name")
-_VALUE = ("Current value of the portion you own", "total_paid")
+_MAKE = ("Make", "name")
+_VALUE = ("Current value of the portion you own", "paid")
 _AB_LINE_3 = [
     (2, [("3 1", *_MAKE), ("undefined_15", *_VALUE)]),
     (2, [("If you own or have more than one describe here", *_MAKE), ("undefined_17", *_VALUE)]),
@@ -79,10 +82,10 @@ _AB_LINE_3 = [
 _AB_SHEET = {
     "title": "Official Form 106A/B, Schedule A/B: Property",
     "columns": [
-        {"label": "Make", "binding": "sofa.creditor_payments[].creditor_name", "width": 300},
+        {"label": "Make", "binding": "affairs.l6_rows[].name", "width": 300},
         {
             "label": "Current value of the portion you own",
-            "binding": "sofa.creditor_payments[].total_paid",
+            "binding": "affairs.l6_rows[].paid",
             "width": 168,
         },
     ],
@@ -92,12 +95,12 @@ _D_SHEET = {
     "columns": [
         {
             "label": "Creditor's name",
-            "binding": "sofa.creditor_payments[].creditor_name",
+            "binding": "affairs.l6_rows[].name",
             "width": 300,
         },
         {
             "label": "Amount of claim",
-            "binding": "sofa.creditor_payments[].total_paid",
+            "binding": "affairs.l6_rows[].paid",
             "width": 168,
         },
     ],
@@ -143,7 +146,7 @@ def _with_group(tmp_path, settings, form_type, group, rows, declaration, page_nu
     """
     Copy the real schemas into tmp_path, unless an earlier fixture of the test has, and point
     FORM_SCHEMAS_DIRECTORY there, with a synthetic repeat group on form_type: row n's slot is
-    rows[n - 1], (page, boxes), each box bound to that SOFA creditor payment's attribute; the
+    rows[n - 1], (page, boxes), each box bound to that line 6 row's cell; the
     group's declaration is `declaration`, beside any group added before. Returns the
     schemas directory.
     """
@@ -174,7 +177,7 @@ def _with_group(tmp_path, settings, form_type, group, rows, declaration, page_nu
                     "value": None,
                     "rule": None,
                     "ingest_key": None,
-                    "binding": f"sofa.creditor_payments[].{attr}",
+                    "binding": f"affairs.l6_rows[].{attr}",
                     "repeat": group,
                     "repeat_capacity": len(rows),
                     "row": row,
@@ -193,7 +196,7 @@ def _with_group(tmp_path, settings, form_type, group, rows, declaration, page_nu
 def schedule_d_with_copies(tmp_path, settings):
     """
     A copy of the real schemas whose Schedule D has a synthetic repeat group (3a2 spec
-    §5.4, R18, R19): Part 1's five rows, each a SOFA creditor payment's name and amount,
+    §5.4, R18, R19): Part 1's five rows, each a line 6 row's name and amount,
     continued on copies of page 2, numbered "2.{n}", with the page-number boxes of pages
     1 to 3. Yields the schemas directory. The schema cache is cleared before and after,
     so the synthetic Schedule D never poisons, or is poisoned by, the real one.
@@ -261,7 +264,7 @@ def schedule_d_with_totals(tmp_path, settings):
     declaration = {
         "extra_page": 2,
         "totals": {
-            "column": "sofa.creditor_payments[].total_paid",
+            "column": "affairs.l6_rows[].paid",
             "page_boxes": {"1": "undefined_9", "2": "undefined_23"},
             "last_page_box": "undefined_24",
         },
@@ -276,7 +279,7 @@ def schedule_d_with_totals(tmp_path, settings):
 def schedule_g_numbered(tmp_path, settings):
     """
     Schedule G's rows as 3c5 declares them (3c spec §9.1): five on page 1, whose numbers the
-    form prints, and eight on page 2, each a SOFA creditor payment's name with its number in
+    form prints, and eight on page 2, each a line 6 row's name with its number in
     the box after the printed "2.", continued on copies of page 2.
     """
     rows = [(1 if n <= 5 else 2, [(f"Company Name 2.{n}", *_NAME)]) for n in range(1, 14)]
@@ -309,8 +312,8 @@ def schedule_d_with_totals_and_part_2(tmp_path, settings, schedule_d_with_totals
 def schedule_e_f_with_copies(tmp_path, settings):
     """
     write(capacities, reverse): Schedule E/F with three groups on the real names of pages 2, 4
-    and 5, the nth holding capacities[n] rows of that page's three, every row a SOFA creditor
-    payment's name, continued on copies of its page, with the form's page-number boxes. With
+    and 5, the nth holding capacities[n] rows of that page's three, every row a line 6
+    row's name, continued on copies of its page, with the form's page-number boxes. With
     reverse, the schema declares the groups last page first.
     """
 
@@ -461,23 +464,21 @@ def household_list():
 
 
 @pytest.fixture
-def creditor_payments():
+def affairs_rows():
     """
-    add(session, count, names=None): that many SOFA creditor payments, the nth named
-    names[n - 1] (by default a firm), each at n00.00.
+    add(session, count, names=None): that many Form 107 line 6 rows, the nth named
+    names[n - 1] (by default a firm), each paid n00.00. Returns the stored rows (dicts).
     """
 
     def add(session, count, names=None):
         names = names or _CREDITORS
-        report = SOFAReport.objects.create(session=session, has_creditor_payments=True)
-        return [
-            SOFACreditorPayment.objects.create(
-                report=report,
-                creditor_name=names[n - 1] if n <= len(names) else f"Creditor {n}",
-                total_paid=Decimal(f"{n}00.00"),
-            )
+        rows = [
+            {"name": names[n - 1] if n <= len(names) else f"Creditor {n}", "paid": f"{n}00.00"}
             for n in range(1, count + 1)
         ]
+        answer_petition(session, debt_nature="consumer")
+        answer_financial_affairs(session, l6_answer="yes", l6_branch="consumer", l6_rows=rows)
+        return rows
 
     return add
 
