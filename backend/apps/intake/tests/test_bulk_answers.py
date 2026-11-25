@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from django.db import IntegrityError
 from rest_framework.test import APIClient
 
 from apps.districts.models import District
@@ -122,3 +123,19 @@ class TestBulkAnswerView:
         assert response.status_code == 400
         data = response.json()
         assert "answers" in data
+        # The refusal is one fixed sentence: it never repeats what was sent.
+        assert data == {
+            "answers": [{"binding": ["Invalid binding prefix. Must start with 'answer:'."]}]
+        }
+        assert binding not in response.content.decode()
+
+
+def test_one_stored_answer_per_session_form_and_box(auth_client_with_session):
+    # A form prints one answer a box: the table refuses a second row for the same session, form
+    # and box, so a save can only update the stored one.
+    _, session = auth_client_with_session
+    FormAnswer.objects.create(session=session, form_type="form_107", field_key="q9", value="No")
+    with pytest.raises(IntegrityError):
+        FormAnswer.objects.create(
+            session=session, form_type="form_107", field_key="q9", value="Yes"
+        )

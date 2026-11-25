@@ -8,7 +8,6 @@ row is and whether a payment fell in the 90 days before filing (DIG-167). An old
 report, whose tables stay until 4i, changes nothing the form prints.
 """
 
-import json
 from datetime import date
 from decimal import Decimal
 
@@ -16,7 +15,6 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
-from apps.forms.field_index import index_path
 from apps.forms.registry import build_field_values
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
@@ -66,12 +64,6 @@ def _fill(session):
     return PDFFormFiller().fill("form_107", resolve(load_schema("form_107"), session))
 
 
-def _boxes_on_lines(*lines):
-    """Every box the field index places on these lines of Form 107."""
-    rows = json.loads(index_path(load_schema("form_107").template_filename).read_text())
-    return {row["full_name"] for row in rows if row["line"] in lines}
-
-
 @pytest.mark.slow
 def test_the_filers_name_heads_every_page(session):
     printed = read_drawn("form_107", _fill(session))
@@ -83,7 +75,11 @@ def test_the_filers_name_heads_every_page(session):
     assert [w.value for w in printed if w.full_name == "Debtor 2"] == [""]
 
 
-def test_an_old_sofa_report_changes_nothing_form_107_prints(session):
+def test_an_old_sofa_report_alone_changes_nothing_form_107_prints(session):
+    # "Alone": this session has no stored answer:form_107 FormAnswer. Under one of the 28 boxes
+    # the two kept predicates (has_prior_income, has_creditor_payments) gate, such a FormAnswer
+    # still prints while an old report says Yes, as at 228371f, until 4f-ii's T-ii.2 rewrites
+    # those bindings (ledger H6, ruling FR-SOFA-TEST).
     before = build_field_values("form_107", session)
     report = SOFAReport.objects.create(
         session=session, has_prior_income=True, has_creditor_payments=True, has_business=True

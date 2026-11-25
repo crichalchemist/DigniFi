@@ -156,15 +156,23 @@ def test_the_year_label_never_moves_while_an_amount_it_labels_is_stored(filer, m
     assert _patch(client, session, {"l4_current_wages": "1200"}).status_code == 200
     assert _stored(session)["l4_year"] == 2026
     _on(monkeypatch, datetime.date(2027, 1, 5))
-    assert _patch(client, session, {"l9_answer": "no"}).status_code == 200
+    reply = _patch(client, session, {"l9_answer": "no"})
+    assert reply.status_code == 200
     assert _stored(session)["l4_year"] == 2026
+    # The reply carries both years, so the browser can tell the label is last year's.
+    read = reply.data["financial_affairs"]
+    assert (read["l4_year"], read["fill_year"]) == (2026, 2027)
     assert _patch(client, session, {"l4_current_wages": "1300"}).status_code == 200
     assert _stored(session)["l4_year"] == 2026
     cleared = dict.fromkeys(FinancialAffairsAnswers.L4_AMOUNT_KEYS, None)
-    assert _patch(client, session, cleared).status_code == 200
+    reply = _patch(client, session, cleared)
+    assert reply.status_code == 200
     assert "l4_year" not in _stored(session)
-    assert _patch(client, session, {"l4_last_wages": "900"}).status_code == 200
+    assert "l4_year" not in reply.data["financial_affairs"]
+    reply = _patch(client, session, {"l4_last_wages": "900"})
+    assert reply.status_code == 200
     assert _stored(session)["l4_year"] == 2027
+    assert reply.data["financial_affairs"]["l4_year"] == 2027
 
 
 def test_continue_after_new_year_resends_the_whole_body_and_moves_nothing(filer, monkeypatch):

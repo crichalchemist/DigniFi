@@ -15,9 +15,13 @@ from django.contrib.auth import get_user_model
 from apps.districts.models import District
 from apps.forms.field_index import export_state, load_index, option_text
 from apps.forms.services.answer_records import (
+    _DATE_CELLS,
+    _STATUSES,
+    _TICK_CELLS,
     AFFAIRS_CELLS,
     AFFAIRS_COMPUTED_CELLS,
     AFFAIRS_LIST_CELLS,
+    AFFAIRS_MONEY_CELLS,
     PAID_FOR_WORDS,
     WHAT_HAPPENED_WORDS,
     affairs_statement,
@@ -58,6 +62,25 @@ def _reread(s):
 
 def test_the_printed_cell_table_is_the_records():
     assert AFFAIRS_LIST_CELLS == FinancialAffairsAnswers.LIST_CELLS
+
+
+def test_each_kind_of_cell_prints_as_the_record_stores_it():
+    # The printers keep their own copies of the record's kinds, so the module imports no model.
+    # A cell the record gains as an amount, a date, a tick or a status must print as one: left
+    # out of a copy, it would print as typed, a malformed amount or date included.
+    assert AFFAIRS_MONEY_CELLS == FinancialAffairsAnswers.AMOUNT_CELLS
+    assert _TICK_CELLS == FinancialAffairsAnswers.TICK_CELLS
+    assert _DATE_CELLS == FinancialAffairsAnswers.DATE_CELLS
+    assert _STATUSES == FinancialAffairsAnswers.STATUSES
+
+
+def test_a_state_and_a_zip_print_as_typed():  # Ruling FR-STATE
+    # Only a date, an amount and a last 4 print blank when malformed. A state that isn't two
+    # letters and a malformed ZIP print what the filer typed, alone and in a folded address.
+    assert AFFAIRS_CELLS["l2_rows"]["state"]({"state": "Illinois"}) == "Illinois"
+    assert AFFAIRS_CELLS["l2_rows"]["zip"]({"zip": "6060A"}) == "6060A"
+    row = {"city": "Chicago", "state": "Illinois", "zip": "6060A"}
+    assert AFFAIRS_CELLS["l2_rows"]["address"](row) == "Chicago, Illinois 6060A"
 
 
 def test_every_stored_and_computed_cell_has_its_own_printer():
