@@ -824,11 +824,17 @@ export function IntakeWizard() {
     intentionAnswers,
   ]);
 
+  // Your Plans with no row to show has nothing to save (its body is null), so it is kept under a
+  // name of its own: the first view with rows is then the copy a visit is compared with, and a
+  // row that appears later (a scanned debt confirmed) sends nothing by being shown (fix wave R1)
+  const stepSaveKey =
+    currentStepKey === 'plans' && currentStepBody === null ? 'plans-no-rows' : currentStepKey;
+
   const { saveStatus, saveNow, lastSavedAt } = useAutoSave({
     data: currentStepBody,
     // Until the read returns, the steps hold empty placeholders, not the session's data, so
     // they are kept under no step's name.
-    dataKey: sessionRead === 'done' ? currentStepKey : undefined,
+    dataKey: sessionRead === 'done' ? stepSaveKey : undefined,
     onSave: (body) => saveCurrentStepData(body),
     // Only autosave a complete, valid step (see architecture rationale), but for the steps in
     // ALWAYS_AUTOSAVE_STEPS, whose half-filled rows save too: a row is kept by what is on it,
@@ -978,10 +984,8 @@ export function IntakeWizard() {
   const saveCurrentStepData = async (body: StepBody | null): Promise<StepBody | void> => {
     if (!session) return;
 
-    if (body === null) {
-      console.log(`Saving data for ${currentStepKey} not yet implemented`);
-      return;
-    }
+    // Review, and Your Plans with no row, have nothing to save
+    if (body === null) return;
 
     // Each list saves through its own PUT, which takes the bare list and replies in the order
     // sent, and then the step's claim answers go in a session PATCH of their own (R16). Either
