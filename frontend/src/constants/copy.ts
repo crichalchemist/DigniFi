@@ -1905,7 +1905,7 @@ export const SCHEDULE_I_TEXT_LABELS: Record<ScheduleITextKey, string> = {
 // owed" / "one contract"
 // DRAFT: counsel C-37
 export const INTENTION_GAP_NONE =
-  "Choose what you plan to do with the property for {name}, or say you haven't decided.";
+  "Choose what you plan to do with the property for {name}. Or say you haven't decided.";
 // DRAFT: counsel C-37
 export const INTENTION_GAP_UNDECIDED =
   'Your choice for {name} is open, so Form 108 shows no choice for it.';
@@ -1913,7 +1913,7 @@ export const INTENTION_GAP_UNDECIDED =
 export const INTENTION_GAP_EXPLAIN = 'Type your words for {name}, or choose another answer.';
 // DRAFT: counsel C-37
 export const LEASE_GAP_NONE =
-  "Say if the lease with {name} will be assumed, or that you haven't decided yet.";
+  "Say if the lease with {name} will be assumed. Or say you haven't decided yet.";
 // DRAFT: counsel C-37
 export const LEASE_GAP_UNDECIDED =
   'Your answer for the lease with {name} is open, so Form 108 shows no answer for it.';

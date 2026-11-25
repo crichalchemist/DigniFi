@@ -32,14 +32,14 @@ from .schedule_i import DETAIL_TOO_LONG
 # or lessor's name, or "one amount owed" / "one contract" (4e-R21).
 # DRAFT: counsel C-37
 INTENTION_GAP_NONE = (
-    "Choose what you plan to do with the property for {name}, or say you haven't decided."
+    "Choose what you plan to do with the property for {name}. Or say you haven't decided."
 )
 # DRAFT: counsel C-37
 INTENTION_GAP_UNDECIDED = "Your choice for {name} is open, so Form 108 shows no choice for it."
 # DRAFT: counsel C-37
 INTENTION_GAP_EXPLAIN = "Type your words for {name}, or choose another answer."
 # DRAFT: counsel C-37
-LEASE_GAP_NONE = "Say if the lease with {name} will be assumed, or that you haven't decided yet."
+LEASE_GAP_NONE = "Say if the lease with {name} will be assumed. Or say you haven't decided yet."
 # DRAFT: counsel C-37
 LEASE_GAP_UNDECIDED = (
     "Your answer for the lease with {name} is open, so Form 108 shows no answer for it."

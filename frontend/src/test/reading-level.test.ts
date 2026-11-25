@@ -168,13 +168,15 @@ describe('Exemptions page gap sentences', () => {
 });
 
 describe('Your Plans sentences as the filer reads them, a name filled in', () => {
-  // E7 approved INTENTION_GAP_NONE at 8.6 and LEASE_GAP_NONE at 8.5 "with a real name": scored
-  // above with the literal {name}, so here with the personas' own Demo creditors and lessor
+  // Scored above with the literal {name}, so here with the personas' own Demo creditors and
+  // lessor, among them Copperline: E9 split INTENTION_GAP_NONE and LEASE_GAP_NONE into two
+  // sentences each after that name took E7's one-sentence wording over grade 9
   const names = [
     'Crestway Auto Credit',
     'Kestrel Auto Finance',
     'Harrowgate Home Loans',
     'Northlight Auto Leasing',
+    'Copperline Auto Finance',
   ];
   const gaps = Object.entries(copy).filter(
     (entry): entry is [string, string] =>
