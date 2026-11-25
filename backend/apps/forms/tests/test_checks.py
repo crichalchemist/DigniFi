@@ -1067,6 +1067,116 @@ def test_a_schedule_i_binding_naming_no_key_is_refused(schema_copy, binding, err
     assert _errors("schedule_i") == [("forms.E007", error)]
 
 
+def _rebind_d_part_1(name=None, amount=None):
+    """Rebind the synthetic Schedule D group's name and amount slots, found by their labels."""
+
+    def change(d):
+        for target, label in ((name, "Creditor's name"), (amount, "Amount of claim")):
+            if target is None:
+                continue
+            for f in d["fields"]:
+                if f["repeat"] == "d_part_1" and f["label"] == label:
+                    f["binding"] = target
+            assert any(f["binding"] == target for f in d["fields"])
+
+    return change
+
+
+@pytest.mark.parametrize(
+    "binding,error",
+    [
+        ("affairs.l6_nmae", "'affairs.l6_nmae': not a key FinancialAffairsAnswers asks"),
+        (
+            "affairs.l6_rows",
+            "'affairs.l6_rows': 'l6_rows' is a row list, so its binding names a cell",
+        ),
+        (
+            "affairs.l2_answer[].street",
+            "'affairs.l2_answer[].street': 'l2_answer' is not a row list",
+        ),
+        (
+            "affairs.l6_rows[].nmae",
+            "'affairs.l6_rows[].nmae': 'nmae' is not a cell of the 'l6_rows' rows",
+        ),
+        ("affairs.l13_answer", "'affairs.l13_answer': not a key FinancialAffairsAnswers asks"),
+    ],
+)
+def test_an_affairs_binding_naming_no_stored_or_computed_cell_is_a_startup_error(
+    schedule_d_with_totals, binding, error
+):
+    # An affairs. cell the record never stores reads blank, or raises, at resolve time: Form
+    # 107 would print an empty box for an answer the filer gave, or refuse the whole form (R-11).
+    _edit(schedule_d_with_totals, "schedule_d", _rebind_d_part_1(name=binding))
+    assert ("forms.E007", f"schedule_d: {error}") in _errors("schedule_d")
+
+
+def test_a_misspelt_cell_in_a_covers_list_is_refused_and_a_computed_one_passes(
+    schedule_a_b_with_sheet,
+):
+    # A covering column prints its words for the boxes it names; a misspelt one would print
+    # nothing for them, while a computed cell such as name_and_address is printed by the engine.
+    # Only _affairs_binding_error's own words are this test's: the slots here bind assets. rows,
+    # so the group's own refusals of an affairs. column also quote the binding.
+    own = ("is not a cell of the", "not a key FinancialAffairsAnswers asks")
+    column = "affairs.l6_rows[].name_and_address"
+    _edit(
+        schedule_a_b_with_sheet,
+        "schedule_a_b",
+        _a_covering_column(["affairs.l6_rows[].name", "affairs.l6_rows[].stret"], binding=column),
+    )
+    assert (
+        "forms.E007",
+        "schedule_a_b: 'affairs.l6_rows[].stret': 'stret' is not a cell of the 'l6_rows' rows",
+    ) in _errors("schedule_a_b")
+    assert [e for e in _errors("schedule_a_b") if any(w in e[1] for w in own)] == [
+        (
+            "forms.E007",
+            "schedule_a_b: 'affairs.l6_rows[].stret': 'stret' is not a cell of the 'l6_rows' rows",
+        )
+    ]
+
+    _edit(
+        schedule_a_b_with_sheet,
+        "schedule_a_b",
+        lambda d: d["groups"]["ab_line_3"]["sheet"]["columns"][-1].update(
+            covers=["affairs.l6_rows[].name", "affairs.l6_rows[].street"]
+        ),
+    )
+    load_schema.cache_clear()  # the first check cached the schema it read
+    assert not [e for e in _errors("schedule_a_b") if any(w in e[1] for w in own)]
+
+
+def test_an_affairs_amount_column_takes_a_total_and_a_name_column_does_not(
+    schedule_d_with_totals,
+):
+    # A total adds amounts only: a sum of creditors' names would print words in a dollar box.
+    _edit(
+        schedule_d_with_totals,
+        "schedule_d",
+        _rebind_d_part_1(name="affairs.l6_rows[].name", amount="affairs.l6_rows[].paid"),
+    )
+    _edit(
+        schedule_d_with_totals,
+        "schedule_d",
+        _totals(lambda t: t.update(column="affairs.l6_rows[].paid")),
+    )
+    assert _errors("schedule_d") == []
+
+    _edit(
+        schedule_d_with_totals,
+        "schedule_d",
+        _totals(lambda t: t.update(column="affairs.l6_rows[].name")),
+    )
+    load_schema.cache_clear()  # the first check cached the schema it read
+    assert _errors("schedule_d") == [
+        (
+            "forms.E007",
+            "schedule_d: group 'd_part_1': its total adds "
+            "'affairs.l6_rows[].name', which holds no amount",
+        )
+    ]
+
+
 def test_a_petition_sheet_column_that_names_no_stored_cell_is_a_startup_error(schema_copy):
     # The rows past a slot group's boxes print on the sheet: its column is checked like a slot.
     def rename(d):
@@ -1279,7 +1389,7 @@ _AB = "schedule_a_b: group 'ab_line_3'"
                 "income.statement[].<attr>, assets.line_<key>[].<attr>, "
                 "means.line_<key>[].<attr>, claims.<list>[].<attr>, "
                 "petition.<key>[].<attr>, schedule_i.<key>[].<attr> or "
-                "affairs.<key>[].<attr> list",
+                "affairs.<list>[].<cell> list",
             ),
         ),
         (
@@ -1509,9 +1619,22 @@ def test_a_statement_column_binding_another_list_is_reported(schema_copy):
     assert (
         "forms.E007",
         "schedule_i: group 'i_line_8a': statement column 'Income of' binds "
-        "'household.dependents[].age', not an income.statement[].<attr> or "
-        "means.line_43[].<attr> list",
+        "'household.dependents[].age', not an income.statement[].<attr>, "
+        "means.line_43[].<attr> or affairs.l12_statement[].text list",
     ) in _errors("schedule_i")
+
+
+def test_a_statement_column_may_bind_line_12s_statement(schema_copy):  # P5
+    # Form 107 line 12's statement prints on an attached sheet from one list, as Schedule I's
+    # line 8a and Form 122A-2's line 43 do.
+    def change(d):
+        column = d["groups"]["i_line_8a"]["sheet"]["columns"][0]
+        column["binding"] = "affairs.l12_statement[].text"
+
+    _edit(schema_copy, "schedule_i", change)
+
+    refusal = "'affairs.l12_statement[].text', not an"
+    assert not [e for e in _errors("schedule_i") if refusal in e[1]]
 
 
 def _means_slots(d):
@@ -1550,8 +1673,8 @@ def _an_asked_means_box(d):
             (
                 "forms.E007",
                 "schedule_i: group 'i_line_8a': statement column 'Income of' binds "
-                "'means.line_43[].happened', not an income.statement[].<attr> or "
-                "means.line_43[].<attr> list",
+                "'means.line_43[].happened', not an income.statement[].<attr>, "
+                "means.line_43[].<attr> or affairs.l12_statement[].text list",
             ),
         ),
         ("schedule_a_b", _means_slots, None),

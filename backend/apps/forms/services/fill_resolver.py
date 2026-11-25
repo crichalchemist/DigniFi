@@ -31,7 +31,12 @@ from apps.forms.schema import (
     is_statement_group,
     number_box_keys,
 )
-from apps.forms.services.answer_records import ANSWER_NAMESPACES, record_step, record_value
+from apps.forms.services.answer_records import (
+    AFFAIRS_MONEY_CELLS,
+    ANSWER_NAMESPACES,
+    record_step,
+    record_value,
+)
 from apps.forms.services.derivations import (
     ANSWER_BOX_RULES,
     DERIVATIONS,
@@ -435,6 +440,8 @@ CLAIM_MONEY_CELLS = frozenset(
     {"amount", "value", "unsecured", "priority_amount", "nonpriority_amount"}
 )
 _CLAIM_BINDING = re.compile(r"claims\.(\w+)\[\]\.(\w+)")
+# Form 107's row cells (4f-i): a group's total may add only AFFAIRS_MONEY_CELLS.
+_AFFAIRS_ROWS_BINDING = re.compile(r"affairs\.(\w+)\[\]\.(\w+)")
 # The Form 108 cells of a secured row that Your Plans asks (4e-R10).
 _PLANS_CELLS = frozenset({"intention", "explain", "explain_1", "explain_2"})
 # Schedule C's slot columns, one getter per ExemptionRow field (3g2 R1).
@@ -455,6 +462,9 @@ def is_money_binding(binding: str) -> bool:
     match = _CLAIM_BINDING.fullmatch(binding.strip())
     if match:
         return match[2] in CLAIM_MONEY_CELLS
+    match = _AFFAIRS_ROWS_BINDING.fullmatch(binding.strip())
+    if match:
+        return match[2] in AFFAIRS_MONEY_CELLS
     return binding.strip() == "sofa.creditor_payments[].total_paid"
 
 

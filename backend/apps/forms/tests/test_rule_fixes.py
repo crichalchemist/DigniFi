@@ -16,6 +16,7 @@ from django.conf import settings
 from apps.eligibility.cmi import IncomeNotSplit
 from apps.forms.registry import get_all_form_types
 from apps.forms.schema import FieldSpec, load_schema
+from apps.forms.services.answer_records import NEW_STEP_KEYS
 from apps.forms.services.derivations import DERIVATIONS, RULE_FIXES
 from apps.forms.services.fill_resolver import fix_for
 from apps.forms.views import IntakeNotFinished
@@ -121,7 +122,7 @@ def test_every_fix_is_a_step_or_page_the_dashboard_links():
     # otherwise drop the link and tell the filer to try again.
     if not FRONTEND.is_dir():
         pytest.skip("the frontend's source isn't here (compose's backend mounts backend/ only)")
-    targets = {"step": _wizard_steps(), "page": _pages()}
+    targets = {"step": _wizard_steps() | set(NEW_STEP_KEYS), "page": _pages()}
     # Every fix a refusal can carry: each rule's, each text or combo binding's on the forms
     # (an answer's questions page, a scan's), a SOFA list's, which no form binds yet, and
     # each one an exception names itself: a missing precondition's, wherever it is raised,

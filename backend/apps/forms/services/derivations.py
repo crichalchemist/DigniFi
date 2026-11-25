@@ -31,7 +31,12 @@ from apps.eligibility.means_lines import (
     SUPP_OUTCOMES,
     supp_line_3_reached,
 )
-from apps.forms.services.answer_records import PETITION_STEP_OF_KEY, is_itin, record_value
+from apps.forms.services.answer_records import (
+    PETITION_STEP_OF_KEY,
+    branch_of,
+    is_itin,
+    record_value,
+)
 from apps.intake.asset_lines import (
     LINE_BY_KEY,
     LINES,
@@ -1422,6 +1427,35 @@ _SCHEDULE_I_PREDICATES: dict[str, Callable[..., bool]] = {
 }
 
 
+def _affairs_answer(session: IntakeSession, key: str) -> str:
+    """A FinancialAffairsAnswers key as text; "" when unanswered or with no record (4f-i)."""
+    return record_value(session, f"affairs.{key}")
+
+
+def _affairs_rows_under_yes(line: int) -> Callable[..., bool]:
+    return lambda s, answer_cache=None: _affairs_answer(s, f"l{line}_answer") == "yes"
+
+
+def _affairs_l6_rows(session: IntakeSession, answer_cache=None) -> bool:
+    """Line 6's rows print only under its Yes and only for the branch of Form 101 line 16 they
+    were given for (R-5): a changed or cleared line 16 prints none (Ruling T1-PAIR: no branch
+    stored prints none either)."""
+    branch = branch_of(_petition(session, "debt_nature"))
+    return (
+        _affairs_answer(session, "l6_answer") == "yes"
+        and branch is not None
+        and _affairs_answer(session, "l6_branch") == branch
+    )
+
+
+# Form 107 lines 2 and 5-11's rows print only under their own Yes (4f-i, D§5.3); no schema binds
+# them until 4f-ii.
+_AFFAIRS_PREDICATES: dict[str, Callable[..., bool]] = {
+    **{f"affairs_l{n}_rows": _affairs_rows_under_yes(n) for n in (2, 5, 7, 8, 9, 10, 11)},
+    "affairs_l6_rows": _affairs_l6_rows,
+}
+
+
 # ---------------------------------------------------------------------------
 # DERIVATIONS dict (all referenced functions must be defined above)
 # ---------------------------------------------------------------------------
@@ -1918,4 +1952,5 @@ PREDICATES: dict[str, Callable[[IntakeSession], bool]] = {
     **_MEANS_ROUTE_PREDICATES,
     **_SUPP_PREDICATES,
     **_SCHEDULE_I_PREDICATES,
+    **_AFFAIRS_PREDICATES,
 }

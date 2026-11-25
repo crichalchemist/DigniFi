@@ -173,15 +173,22 @@ def test_a_binding_outside_the_three_namespaces_is_unrecognized():
 
 
 @pytest.mark.parametrize(
-    "line,record,other",
+    "line,record,other,rows_key,cell,extra",
     [
-        (1, "financial_affairs", "property_affairs"),
-        (12, "financial_affairs", "property_affairs"),
-        (13, "property_affairs", "financial_affairs"),
-        (28, "property_affairs", "financial_affairs"),
+        (2, "financial_affairs", "property_affairs", "l2_rows", "street", {}),
+        (
+            12,
+            "financial_affairs",
+            "property_affairs",
+            "l12_statement",
+            "text",
+            {"l12_answer": "yes"},
+        ),
+        (13, "property_affairs", "financial_affairs", "l13_rows", "street", {}),
+        (28, "property_affairs", "financial_affairs", "l28_rows", "street", {}),
     ],
 )
-def test_a_form_107_line_reads_the_record_that_asks_it(line, record, other):
+def test_a_form_107_line_reads_the_record_that_asks_it(line, record, other, rows_key, cell, extra):
     # Lines 1 to 12 are asked in last_few_years_1 and stored in financial_affairs; lines 13 to
     # 28 in last_few_years_2 and property_affairs. Reading the wrong record prints another
     # line's answer, or blank, on the statement of financial affairs.
@@ -190,8 +197,8 @@ def test_a_form_107_line_reads_the_record_that_asks_it(line, record, other):
     assert record_value(asked, key) == "yes"
     elsewhere = _stub(other, {f"l{line}_answer": "yes"})
     assert record_value(elsewhere, key) == ""
-    rows = _stub(record, {f"l{line}_rows": [{"street": "1 Demo St"}]})
-    assert record_value(rows, f"affairs.l{line}_rows[].street") == ["1 Demo St"]
+    rows = _stub(record, {**extra, rows_key: [{cell: "1 Demo St"}]})
+    assert record_value(rows, f"affairs.{rows_key}[].{cell}") == ["1 Demo St"]
 
 
 @pytest.mark.parametrize(
