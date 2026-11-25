@@ -212,6 +212,14 @@ def test_a_line_5_amount_alone_stamps_the_year(filer):
     assert _stored(session)["l4_year"] == 2026
 
 
+def test_an_amount_of_only_spaces_stamps_no_year(filer):
+    # Spaces are no figure: a year stamped by them would pin a label over nothing (R-4).
+    client, session = filer
+    assert _patch(client, session, {"l4_current_wages": "   "}).status_code == 200
+    assert _stored(session)["l4_current_wages"] == "   "  # stored as typed (B47)
+    assert "l4_year" not in _stored(session)
+
+
 def test_a_sent_year_or_fill_year_is_ignored(filer):
     client, session = filer
     assert _patch(client, session, {"l4_current_wages": "1200"}).status_code == 200
@@ -258,6 +266,9 @@ def test_line_6_answer_and_branch_travel_together(filer):
         ({"l6_rows": [{"paid": "1" * 33}]}, "1" * 33),
         ({"l2_rows": [{"city": "Demo"}] * 101}, "Demo"),
         ({"l2_rows": [{"city": "\ud800"}]}, None),
+        ({"l4_current_wages": "1" * 33}, "1" * 33),
+        ({"l4_current_wages": "\ud800"}, None),
+        ({"l6_branch": "business", "l6_answer": "yes"}, "business"),
     ],
     ids=[
         "unknown_key",
@@ -276,6 +287,9 @@ def test_line_6_answer_and_branch_travel_together(filer):
         "amount_over_32",
         "over_100_rows",
         "lone_surrogate",
+        "line_4_amount_over_32",
+        "line_4_amount_lone_surrogate",
+        "branch_outside_its_set",
     ],
 )
 def test_an_unknown_key_wrong_type_or_value_over_its_ceiling_is_a_400_naming_the_key_not_the_value(
