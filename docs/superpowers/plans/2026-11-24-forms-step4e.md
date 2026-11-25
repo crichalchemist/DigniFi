@@ -43,7 +43,7 @@
 - **The step.** `PlansStep.tsx` is a controlled step (`answers`, `onAnswersChange`):
   - the wizard holds `intentionAnswers` and builds the step 9 body from in-scope rows only, keyed by server id, the same way from loaded and edited data;
   - `WIZARD_STEPS`, `WIZARD_STEP_COUNT`, the intake `0049` shift and the journeys' `walkPlans` land in one task;
-  - `DebtsStep` and `ContractsStep` gain box notes for the E4 caps, outside their Continue gaps (DIG-542).
+  - `DebtsStep` and `ContractsStep` gain box notes for the E4 caps, outside their Continue gaps (E4, B47).
 
 **Tech Stack:** No new dependency.
 - Backend: Django 5.0 + DRF and pytest-django (sqlite, plus the throwaway Postgres for `postgres`-marked cases).
@@ -378,7 +378,7 @@ Five conditions most likely to pass a task review while wrong:
 3. **The step 9 body is built the same way from loaded and edited data, in the server's scope** (4e-R2, 4e-R3, R-PRUNE).
    - Task 7 `a visit to Your Plans sends nothing`, `a scanned secured debt confirmed on Amounts Owed gets a row on Your Plans`, `Go Back to Amounts Owed after confirming a draft sends nothing`, `a draft never confirmed gets no row` and `with no secured debt or lease, Continue sends nothing`.
    - Task 2 `test_a_save_prunes_ids_that_are_no_longer_in_scope` (drafts, unsecured, residential, another session's id) and `test_one_patch_dropping_a_secured_debt_and_keying_a_choice_to_it_stores_none` (R-SAVE-ORDER).
-4. **No detail turns into a gate, and no box note holds Continue** (E4, R-EXPLAIN, DIG-542).
+4. **No detail turns into a gate, and no box note holds Continue** (E4, R-EXPLAIN, B47).
    - Task 5 `test_too_long_and_open_choices_never_hold_complete`.
    - Task 6 `a too-long creditor name shows its note and leaves Continue enabled` (DebtsStep and ContractsStep).
    - Task 5 `GapsNotice leaves the claims too-long details out of the blank count` (passes at once; its see-it-fail is named there).
@@ -787,7 +787,7 @@ The step's layout, top to bottom (Part blocks only while they have rows):
     - `the body is null with no row in scope`;
     - `the browser's gaps are the server's` (runs `intentionGapCases.json`);
     - `a lease of personal property is any lease but residential` (runs the lease-scope cases of `claimTextRowCases.json`, which `test_the_row_list_cases_are_what_the_server_says` also runs through `is_form_108_lease`; Task 2's unit `test_a_form_108_lease_is_any_lease_but_residential` keeps its inline values).
-  - `DebtsStep.test.tsx` and `ContractsStep.test.tsx`: `a too-long creditor name shows its note and leaves Continue enabled`, `a too-long collateral description shows its note`, and `a too-long lessor name or lease description shows its note`. Each note is `SCHEDULE_I_DETAIL_TOO_LONG` filled with the approved label and `claimTextLimits`' form words. None enters `debtGaps.ts` or `contractGaps.ts` (DIG-542): the test asserts the step's `role="status"` gap region is unchanged.
+  - `DebtsStep.test.tsx` and `ContractsStep.test.tsx`: `a too-long creditor name shows its note and leaves Continue enabled`, `a too-long collateral description shows its note`, and `a too-long lessor name or lease description shows its note`. Each note is `SCHEDULE_I_DETAIL_TOO_LONG` filled with the approved label and `claimTextLimits`' form words. None enters `debtGaps.ts` or `contractGaps.ts` (E4, B47): the test asserts the step's `role="status"` gap region is unchanged.
   - `upl-plans-copy.test.ts`: every new `copy.ts` name is checked against `ADVICE` and carries its C-37 mark, the `upl-petition-copy.test.ts:16-36` pattern.
   - `test_form_108_frontend_copy.py`: each `FORM_108_*` string appears in `form_b108.pdf`'s page text (pages 1–2; the `_page_words` and `_squeezed` helpers of `test_petition_frontend_copy.py:216-218,350`), and `FORM_REVISIONS.form_108` is the page 1 edition mark `12/15`. The `FORM_108_` prefix is owned by this file: a `FORM_108_` name it doesn't list fails.
   - A vitest pin of each `STATUTE_*` constant, literal `toBe`, in `PlansStep.test.tsx` (the `DebtNatureQuestion.test.tsx:589-602` pattern); `STATUTE_521_A_2_A`'s literal is the five lines of 4e-R7, its two "[…]" included.
