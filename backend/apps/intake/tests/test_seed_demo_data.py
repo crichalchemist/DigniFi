@@ -9,6 +9,7 @@ section 11), so the demos and the journeys meet no gap, and no figure the means 
 moves.
 """
 
+import json
 import re
 from datetime import date
 from decimal import Decimal
@@ -29,8 +30,10 @@ from apps.forms.services.answer_records import PETITION_STEP_OF_KEY
 from apps.forms.services.exemption_items import exemption_items
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.intake.asset_lines import LINE_BY_KEY, ordered_assets, rows_on, shown_lines
+from apps.intake.claim_rows import claim_rows
 from apps.intake.claims import claim_step_gaps, total_monthly_expenses
 from apps.intake.completion import Gap, completion_gaps
+from apps.intake.intentions import claim_text_gaps, intention_step_gaps
 from apps.intake.management.commands.seed_demo_data import (
     PERSONAS,
     _andres_kettleby,
@@ -130,7 +133,7 @@ LINE_8 = {
     "james": "pay_in_full",
     "priya": "pay_in_full",
 }
-PACKET_SIZE = {"maria": 16, "sarah": 16, "deshawn": 15, "andres": 15, "james": 15, "priya": 16}
+PACKET_SIZE = {"maria": 16, "sarah": 16, "deshawn": 16, "andres": 16, "james": 16, "priya": 17}
 
 
 EXPENSE_TOTAL = {
@@ -353,7 +356,7 @@ def test_a_gig_drivers_business_entry_leaves_his_debts_as_he_classed_them_and_he
 
     assert classed == [d["consumer_business_classification"] for d in _andres_kettleby()["debts"]]
     assert classed.count("business") == 2
-    assert len(packet(session)) == 15
+    assert len(packet(session)) == 16
 
 
 @pytest.mark.django_db
@@ -870,10 +873,9 @@ def test_every_persona_answers_line_16_and_both_military_gates():
 
 
 @pytest.mark.django_db
-def test_no_persona_gets_the_supp_and_every_packet_count_is_unchanged():
-    # 4d adds a form and three outcomes to the routing; no persona's packet moves. Priya's
-    # presumption keeps 122A-2 and every other persona is below the median, and none holds the
-    # Supp. The counts are the ones pinned above.
+def test_no_persona_gets_the_supp():
+    # Form 108 joins four packets; the Supp joins none. Priya's presumption keeps 122A-2 and
+    # every other persona is below the median. The counts are the ones pinned above.
     call_command("loaddata", "ilnd_2025_data", verbosity=0)
     call_command("seed_demo_data", stdout=StringIO())
 
@@ -917,3 +919,105 @@ def test_no_seed_builder_or_fixture_writes_a_4i_key():
 
     assert all(written)
     assert [sorted(forbidden & set(answers)) for answers in written] == [[]] * len(written)
+
+
+# The owner's Form 108 choices (4e, E5), by creditor or counterparty name. None surrenders the
+# property, and Maria and Sarah, who hold no secured debt and no lease Form 108 asks about, have
+# no record.
+FORM_108_CHOICES = {
+    "james": {"secured": {"Crestway Auto Credit": {"intention": "retain_reaffirm"}}},
+    "priya": {"secured": {"Kestrel Auto Finance": {"intention": "retain_redeem"}}},
+    "deshawn": {
+        "secured": {
+            "Harrowgate Home Loans": {
+                "intention": "retain_explain",
+                "explain": "I am current on the mortgage and will keep paying as agreed",
+            }
+        }
+    },
+    "andres": {
+        "secured": {
+            "Copperline Auto Finance": {
+                "intention": "retain_explain",
+                "explain": "My brother Mateo, the co-owner, keeps paying the loan.",
+            }
+        },
+        "leases": {"Northlight Auto Leasing": {"assumed": "yes"}},
+    },
+    "maria": None,
+    "sarah": None,
+}
+
+
+@pytest.mark.django_db
+def test_each_persona_makes_the_owners_form_108_choice():
+    # The choice is the filer's own: the seed stores what each persona's brief says, against the
+    # creditor named, and no persona surrenders the property.
+    assert set(FORM_108_CHOICES) == set(PERSONAS)
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", stdout=StringIO())
+
+    for persona, expected in FORM_108_CHOICES.items():
+        session = IntakeSession.objects.get(user__username=f"demo_{persona}")
+        record = getattr(session, "intention_answers", None)
+        if expected is None:
+            assert record is None, persona
+            continue
+        wanted = {}
+        for key, entries in expected.items():
+            kind = "debt" if key == "secured" else "contract"
+            wanted[key] = {
+                claim_links(session, [(kind, name)])[0]["id"]: entry
+                for name, entry in entries.items()
+            }
+        stored = {
+            key: {int(row_id): entry for row_id, entry in entries.items()}
+            for key, entries in record.get_answers().items()
+        }
+        assert stored == wanted, persona
+        assert record.answered_on == fill_date().isoformat(), persona
+        assert "surrender" not in json.dumps(stored), persona
+
+
+@pytest.mark.django_db
+def test_no_personas_explanation_is_too_long():
+    # DeShawn's 59 characters and Andres's 54 sit under the tool's cap of about 62 (4e-R5), so a
+    # cap below 59 fails here. Every persona is checked on every step (ruling F2): none meets a
+    # claims text detail on any of them.
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", stdout=StringIO())
+
+    sessions = list(IntakeSession.objects.filter(status="completed"))
+    assert len(sessions) == len(PERSONAS)
+    for session in sessions:
+        assert claim_text_gaps(session) == [], session.user.username
+
+
+@pytest.mark.django_db
+def test_every_personas_form_108_row_has_a_printed_choice():
+    # E5: the owner set a choice for every row, so a secured debt or a lease of personal property
+    # a later seed edit adds without one would print its Form 108 row blank and fail here (F8)
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", stdout=StringIO())
+
+    printed = {"surrender", "retain_redeem", "retain_reaffirm", "retain_explain"}
+    sessions = list(IntakeSession.objects.filter(status="completed"))
+    assert len(sessions) == len(PERSONAS)
+    rows_seen = 0
+    for session in sessions:
+        name = session.user.username
+        assert intention_step_gaps(session) == [], name
+        record = getattr(session, "intention_answers", None)
+        answers = record.get_answers() if record is not None else {}
+        rows = claim_rows(session)
+        for row in rows.secured:
+            entry = answers.get("secured", {}).get(str(row.debt.pk), {})
+            assert entry.get("intention") in printed, (name, row.debt.creditor_name)
+            if entry["intention"] == "retain_explain":
+                assert entry.get("explain", "").strip(), (name, row.debt.creditor_name)
+        for row in rows.leases:
+            entry = answers.get("leases", {}).get(str(row.contract.pk), {})
+            assert entry.get("assumed") in {"yes", "no"}, (name, row.contract.counterparty_name)
+        rows_seen += len(rows.secured) + len(rows.leases)
+    # Four secured debts and Andrés's vehicle lease, so a reader that found no row can't pass
+    assert rows_seen == 5

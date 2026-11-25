@@ -540,8 +540,14 @@ def _rows(session):
         session, creditor_name="Prairie Card Services", amount_owed=Decimal("1000.00")
     )
     return {
+        # A lease of personal property, which Form 108 asks about, so the intention_answers PATCH
+        # below stores its answer instead of pruning it (a residential lease is never asked)
         "contract": complete_contract(
-            session, counterparty_name="Oak Street Apartments", contract_type="lease"
+            session,
+            counterparty_name="Demo Equipment Leasing",
+            contract_type="lease",
+            lease_kind="other_personal_property",
+            description="Equipment lease",
         ),
         "codebtor": complete_codebtor(session, name="Sam Doe", relationship="relative"),
         "asset": car,
@@ -602,6 +608,12 @@ WRITES = {
         "patch",
         _session_url(s),
         {"schedule_i_answers": {"line_13_answer": "no"}},
+        200,
+    ),
+    "intention_answers PATCH": lambda s, r: (
+        "patch",
+        _session_url(s),
+        {"intention_answers": {"leases": {str(r["contract"].pk): {"assumed": "no"}}}},
         200,
     ),
     "Continue to step 7": lambda s, r: (

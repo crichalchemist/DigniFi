@@ -1280,3 +1280,62 @@ describe('DebtsStep asks Form 101 line 16 and the military questions', () => {
     expect(lastValidity(onValidity)).toBe(true);
   });
 });
+
+// E4: a name or description longer than a form's box takes is saved as typed and noted beside its
+// box, in Review's words; the note is never a gap, so Continue and the gap region stay as they were
+// (E4, B47)
+describe("Amounts Owed's too-long notes", () => {
+  const tooLong = (label: string, form: string) =>
+    fill(copy.SCHEDULE_I_DETAIL_TOO_LONG, { label, form });
+
+  it('a too-long creditor name shows its note and leaves Continue enabled', async () => {
+    const onValidity = vi.fn();
+    const onChange = vi.fn();
+    render(<Harness initial={[complete]} onValidity={onValidity} onChange={onChange} />);
+    const user = userEvent.setup();
+    const name = 'Demo Card Services of the Greater Demo Metropolitan Area';
+    await user.clear(field('creditor_name_0'));
+    await user.paste(name);
+
+    // An unsecured debt is measured on Schedule E/F Part 2's box alone (70), so this name fits
+    expect(screen.queryByText(/is too long for its box/)).toBeNull();
+    await user.paste(' and Its Many Demo Branches');
+    const note = tooLong(copy.CLAIM_TEXT_LABELS.creditor_name, 'Schedule E/F');
+    // Read with the box's own help, never in place of it
+    expect(field('creditor_name_0')).toHaveAccessibleDescription(
+      `Company or person you owe money to ${note}`
+    );
+    expect(lastRows(onChange)[0].creditor_name).toBe(`${name} and Its Many Demo Branches`);
+    expect(status()).toBeEmptyDOMElement();
+    expect(lastValidity(onValidity)).toBe(true);
+  });
+
+  it("a secured debt's name is measured on Schedule D's narrower box", () => {
+    render(<Harness initial={[{ ...secured, creditor_name: 'D'.repeat(44) }]} assets={[car]} />);
+    expect(
+      screen.getByText(tooLong(copy.CLAIM_TEXT_LABELS.creditor_name, 'Schedule D'))
+    ).toBeInTheDocument();
+    expect(status()).toBeEmptyDOMElement();
+  });
+
+  it('a too-long collateral description shows its note', () => {
+    const onValidity = vi.fn();
+    render(
+      <Harness
+        initial={[{ ...secured, collateral_description: 'p'.repeat(58) }]}
+        assets={[car]}
+        onValidity={onValidity}
+      />
+    );
+    const note = tooLong(copy.CLAIM_TEXT_LABELS.collateral_description, 'Schedule D');
+    expect(screen.getByText(note)).toBeInTheDocument();
+    expect(field('collateral_description_0')).toHaveAccessibleDescription(note);
+    expect(status()).toBeEmptyDOMElement();
+    expect(lastValidity(onValidity)).toBe(true);
+  });
+
+  it('a name and description that fit show no note', () => {
+    render(<Harness initial={[secured]} assets={[car]} />);
+    expect(screen.queryByText(/is too long for its box/)).toBeNull();
+  });
+});

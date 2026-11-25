@@ -955,7 +955,6 @@ def test_an_exemptions_binding_passes_the_namespace_check(schedule_d_with_totals
     [
         "petition.name_suffix",
         "schedule_i.employer_name",
-        "intentions.secured",
         "affairs.l13_answer",
     ],
 )
@@ -967,6 +966,28 @@ def test_an_answer_record_binding_passes_the_namespace_check(schedule_d_with_tot
 
     _edit(schedule_d_with_totals, "schedule_d", rebind)
     assert not [e for e in _errors("schedule_d") if "unknown binding namespace" in e[1]]
+
+
+def test_an_intentions_binding_is_refused_as_an_unknown_namespace(schedule_d_with_totals):
+    # 4e-R1: Form 108 prints through claims.secured[] and claims.leases[]; the namespace 4a
+    # reserved would bind any key and print it blank with no startup check.
+    def rebind(d):
+        for f in d["fields"]:
+            if f["binding"] == "sofa.creditor_payments[].creditor_name":
+                f["binding"] = "intentions.secured"
+
+    _edit(schedule_d_with_totals, "schedule_d", rebind)
+    assert [e for e in _errors("schedule_d") if "unknown binding namespace" in e[1]]
+
+
+def test_a_claims_list_may_be_a_sheet_column():
+    # Form 108's sheets continue Part 1's and Part 2's rows from claims.secured[] and
+    # claims.leases[] (4e-R9): forms.E007 takes a claims list as a sheet column.
+    schema = load_schema("form_108")
+    columns = [c.binding for g in schema.groups.values() for c in g.sheet.columns]
+    assert "claims.secured[].name" in columns
+
+    assert not [e for e in _errors("form_108") if "sheet column" in e[1]]
 
 
 def test_a_misspelt_answer_record_namespace_is_still_refused(schedule_d_with_totals):
@@ -1256,8 +1277,8 @@ _AB = "schedule_a_b: group 'ab_line_3'"
                 f"{_AB}: sheet column 'Make' binds 'answer:schedule_a_b.make', "
                 "not a sofa.<collection>[].<attr>, household.dependents[].<attr>, "
                 "income.statement[].<attr>, assets.line_<key>[].<attr>, "
-                "means.line_<key>[].<attr>, petition.<key>[].<attr>, "
-                "schedule_i.<key>[].<attr>, intentions.<key>[].<attr> or "
+                "means.line_<key>[].<attr>, claims.<list>[].<attr>, "
+                "petition.<key>[].<attr>, schedule_i.<key>[].<attr> or "
                 "affairs.<key>[].<attr> list",
             ),
         ),

@@ -31,6 +31,7 @@ from apps.forms.services.answer_records import evicted_renter, landlord_missing
 from apps.forms.services.exemption_items import exemption_items
 from apps.forms.services.fill_resolver import resolve, resolve_parts
 from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.intake.claim_rows import claim_rows
 from apps.intake.exemptions import exemption_gaps
 from apps.intake.means_test import means_test_gaps
 from apps.intake.models import IntakeSession
@@ -284,6 +285,16 @@ def _supp_applies(session: IntakeSession) -> bool:
     return means_test is not None and means_test.outcome in SUPP_OUTCOMES
 
 
+def _form_108_applies(session: IntakeSession) -> bool:
+    """
+    Form 108 is in the packet exactly when it has a row to print (4e): a confirmed debt secured
+    by property, or a lease of personal property (R-LEASE-GATE: never a residential lease). Its
+    rows are the claims rows Schedules D and G print, so a draft never brings it. Never raises.
+    """
+    rows = claim_rows(session)
+    return bool(rows.secured or rows.leases)
+
+
 def _needs_supp_answers(session: IntakeSession) -> None:
     """The Supp's first open question or unreadable date, in Complete's own words, fixed on the
     Amounts Owed step: a gate, or one of the Supp's details (never Form 101 line 16c's words)."""
@@ -303,6 +314,7 @@ FORM_REGISTRY: dict[str, PacketForm] = {
     "form_106dec": PacketForm(_always, _nothing),
     "form_106sum": PacketForm(_always, _nothing),
     "form_107": PacketForm(_always, _nothing),
+    "form_108": PacketForm(_form_108_applies, _nothing),
     "form_121": PacketForm(_always, _needs_ssn),
     "list_of_creditors": PacketForm(_always, _nothing),
     "form_122a1": PacketForm(_always, _needs_means_test_and_form_122a2),

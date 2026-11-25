@@ -29,6 +29,7 @@ import {
   SCHEDULE_G_NAME_LABEL,
   SCHEDULE_G_PURPOSE_LABEL,
 } from '../../../constants/formText';
+import { tooLongNote } from '../../../constants/claimTextLimits';
 import { CONTRACT_TYPE_WORDS, LEASE_KIND_WORDS } from '../../../constants/claims';
 import { WIZARD_STEPS } from '../../../constants/wizardSteps';
 import { isBlankContract, keptRows } from '../../../utils/claimRows';
@@ -196,6 +197,14 @@ export function ContractsStep({
               ? CONTRACT_GAP_NO_NAME
               : undefined;
           const nameId = `field-counterparty_name_${index}`;
+          // A lessor's name or lease description too long for a box its row prints in: saved as
+          // typed, noted here, and never a gap that holds Continue (E4, B47)
+          const nameNote = tooLongNote('counterparty_name', contract, contract.counterparty_name);
+          const purposeNote = tooLongNote('description', contract, contract.description);
+          const nameDescribedBy =
+            [nameGap && `${nameId}-error`, nameNote && `${nameId}-note`]
+              .filter(Boolean)
+              .join(' ') || undefined;
           const isLease = contract.contract_type === 'lease';
           const isVehicle = isLease && contract.lease_kind === 'vehicle';
           return (
@@ -215,12 +224,17 @@ export function ContractsStep({
                     placeholder="e.g., Landlord Inc."
                     maxLength={255}
                     aria-required="true"
-                    aria-describedby={nameGap ? `${nameId}-error` : undefined}
+                    aria-describedby={nameDescribedBy}
                     aria-invalid={nameGap ? 'true' : 'false'}
                   />
                   {nameGap && (
                     <p id={`${nameId}-error`} className="form-error">
                       {nameGap}
+                    </p>
+                  )}
+                  {nameNote && (
+                    <p id={`${nameId}-note`} className="form-help-text">
+                      {nameNote}
                     </p>
                   )}
                 </div>
@@ -246,7 +260,13 @@ export function ContractsStep({
                 value={contract.description}
                 onChange={(e) => updateContract(index, { description: e.target.value })}
                 placeholder="e.g., Apartment lease, car lease"
+                aria-describedby={purposeNote ? `field-description_${index}-note` : undefined}
               />
+              {purposeNote && (
+                <p id={`field-description_${index}-note`} className="form-help-text">
+                  {purposeNote}
+                </p>
+              )}
 
               <p className="form-help-text">{CONTRACT_ADDRESS_HELP}</p>
               <AddressFields

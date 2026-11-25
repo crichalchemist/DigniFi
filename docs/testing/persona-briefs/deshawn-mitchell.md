@@ -115,6 +115,8 @@ Amounts Owed: debts primarily consumer; not a disabled veteran; not a Reservist 
 
 **Contracts and leases:** No. **Codebtors:** No. Not in a community property state in the last 8 years.
 
+**Your Plans (step 9, Form 108):** For Harrowgate Home Loans (your home), choose "Retain the property and [explain]:" and type "I am current on the mortgage and will keep paying as agreed". This is DeShawn's own choice for the demo, not a recommended one.
+
 **Form 101 rent question (Contracts & Leases step):** Answer No to "Do you rent your residence?" No eviction question follows.
 
 **Exemptions (Schedule C, on the page after the filing-fee page):** Line 1: You are claiming state and federal nonbankruptcy exemptions. You claim: 7823 S Sangamon St (line 1.1): 735 ILCS 5/12-901, $20,000; Ford F-150 2012 (line 3.1): 735 ILCS 5/12-1001(c), $3,600; Ford F-150 2012 (line 3.1): 735 ILCS 5/12-1001(b), $4,000; Everyday clothes and work boots (line 11): 735 ILCS 5/12-1001(a), 100% of fair market value, up to any applicable statutory limit; Fidelity (line 21): 735 ILCS 5/12-1006, 100% of fair market value, up to any applicable statutory limit. Line 3: No.

@@ -70,7 +70,10 @@ test.describe('Sarah Chen — Simplest Case', () => {
     // Step 8: Codebtors (answered from the persona)
     await wizard.walkCodebtors(SARAH);
 
-    // Step 9: Review & Complete
+    // Step 9: Your Plans (Form 108 doesn't apply)
+    await wizard.walkPlans(SARAH);
+
+    // Step 10: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
 

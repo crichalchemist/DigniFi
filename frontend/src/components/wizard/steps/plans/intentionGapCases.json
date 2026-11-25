@@ -1,0 +1,121 @@
+[
+  {
+    "name": "a secured row with no answer",
+    "kind": "secured",
+    "row": "Demo Auto Finance",
+    "entry": {},
+    "expect": "INTENTION_GAP_NONE"
+  },
+  {
+    "name": "a secured row with only words, no choice",
+    "kind": "secured",
+    "row": "Demo Auto Finance",
+    "entry": { "explain": "I keep paying as agreed." },
+    "expect": "INTENTION_GAP_NONE"
+  },
+  {
+    "name": "I haven't decided yet",
+    "kind": "secured",
+    "row": "Demo Auto Finance",
+    "entry": { "intention": "undecided" },
+    "expect": "INTENTION_GAP_UNDECIDED"
+  },
+  {
+    "name": "explain with no words",
+    "kind": "secured",
+    "row": "Demo Auto Finance",
+    "entry": { "intention": "retain_explain" },
+    "expect": "INTENTION_GAP_EXPLAIN"
+  },
+  {
+    "name": "explain with empty words",
+    "kind": "secured",
+    "row": "Demo Auto Finance",
+    "entry": { "intention": "retain_explain", "explain": "" },
+    "expect": "INTENTION_GAP_EXPLAIN"
+  },
+  {
+    "name": "explain with only spaces (R-BLANK-EXPLAIN)",
+    "kind": "secured",
+    "row": "Demo Auto Finance",
+    "entry": { "intention": "retain_explain", "explain": "   " },
+    "expect": "INTENTION_GAP_EXPLAIN"
+  },
+  {
+    "name": "explain with words",
+    "kind": "secured",
+    "row": "Demo Auto Finance",
+    "entry": { "intention": "retain_explain", "explain": "I keep paying as agreed." },
+    "expect": null
+  },
+  {
+    "name": "surrender",
+    "kind": "secured",
+    "row": "Demo Auto Finance",
+    "entry": { "intention": "surrender" },
+    "expect": null
+  },
+  {
+    "name": "retain and redeem",
+    "kind": "secured",
+    "row": "Demo Auto Finance",
+    "entry": { "intention": "retain_redeem" },
+    "expect": null
+  },
+  {
+    "name": "retain and reaffirm",
+    "kind": "secured",
+    "row": "Demo Auto Finance",
+    "entry": { "intention": "retain_reaffirm" },
+    "expect": null
+  },
+  {
+    "name": "words kept under another choice ask for nothing",
+    "kind": "secured",
+    "row": "Demo Auto Finance",
+    "entry": { "intention": "surrender", "explain": "   " },
+    "expect": null
+  },
+  {
+    "name": "a nameless secured row",
+    "kind": "secured",
+    "row": "one amount owed",
+    "entry": {},
+    "expect": "INTENTION_GAP_NONE"
+  },
+  {
+    "name": "a lease with no answer",
+    "kind": "lease",
+    "row": "Demo Leasing",
+    "entry": {},
+    "expect": "LEASE_GAP_NONE"
+  },
+  {
+    "name": "a lease left undecided",
+    "kind": "lease",
+    "row": "Demo Leasing",
+    "entry": { "assumed": "undecided" },
+    "expect": "LEASE_GAP_UNDECIDED"
+  },
+  {
+    "name": "a lease assumed",
+    "kind": "lease",
+    "row": "Demo Leasing",
+    "entry": { "assumed": "yes" },
+    "expect": null
+  },
+  {
+    "name": "a lease not assumed",
+    "kind": "lease",
+    "row": "Demo Leasing",
+    "entry": { "assumed": "no" },
+    "expect": null
+  },
+  {
+    "name": "a nameless lease",
+    "kind": "lease",
+    "row": "one contract",
+    "entry": {},
+    "expect": "LEASE_GAP_NONE"
+  }
+]

@@ -749,7 +749,41 @@ export class WizardPage {
     await this.nextStep();
   }
 
-  // ── Step 9: Review ──────────────────────────────────────────────
+  // ── Step 9: Your Plans ──────────────────────────────────────────
+
+  /**
+   * Form 108's choices (4e-R8). Each row is a fieldset whose legend is its creditor's or lessor's
+   * name; rows follow the wizard's list order, so a row is found by its name, never by position.
+   * With nothing to ask, the step says Form 108 doesn't apply (PLANS_NOT_APPLICABLE; e2e imports
+   * nothing from src/, so the words are matched as a literal, ruling F13).
+   */
+  async walkPlans(persona: Pick<PersonaData, 'plans'>) {
+    const page = this.page;
+    const { secured, leases } = persona.plans;
+    const notApplicable = page.getByText("DigniFi isn't preparing Form 108", { exact: false });
+    if (secured.length === 0 && leases.length === 0) {
+      await expect(notApplicable).toBeVisible();
+    } else {
+      // Only the persona's own rows: each is found by its name below, so one row more (such as
+      // Andrés's residential lease, which Form 108 never asks about) is a row nobody named
+      await expect(notApplicable).toHaveCount(0);
+      await expect(page.locator('fieldset.plans-row')).toHaveCount(secured.length + leases.length);
+    }
+    for (const plan of secured) {
+      const row = page.getByRole('group', { name: plan.creditor, exact: true });
+      await row.locator(`input[name$="_intention"][value="${plan.intention}"]`).check();
+      if (plan.explain !== undefined) {
+        await row.locator('textarea[name$="_explain"]').fill(plan.explain);
+      }
+    }
+    for (const plan of leases) {
+      const row = page.getByRole('group', { name: plan.lessor, exact: true });
+      await row.locator(`input[name$="_assumed"][value="${plan.assumed}"]`).check();
+    }
+    await this.nextStep();
+  }
+
+  // ── Step 10: Review ─────────────────────────────────────────────
 
   async fillReview() {
     // Review step may just need a confirmation/acknowledgment

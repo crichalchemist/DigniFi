@@ -68,7 +68,10 @@ test.describe('James Washington — Borderline', () => {
     // Step 8: Codebtors (answered from the persona)
     await wizard.walkCodebtors(JAMES);
 
-    // Step 9: Review & Complete
+    // Step 9: Your Plans (Form 108, the persona's choices)
+    await wizard.walkPlans(JAMES);
+
+    // Step 10: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
 
@@ -81,9 +84,9 @@ test.describe('James Washington — Borderline', () => {
     await sofa.skipForNow();
 
     // Forms generated (passes means test). James pays in full, so Form 103B is not in his
-    // packet.
-    await dashboard.generateAllForms(15);
+    // packet; his car loan brings Form 108.
+    await dashboard.generateAllForms(16);
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(15);
+    expect(count).toBe(16);
   });
 });

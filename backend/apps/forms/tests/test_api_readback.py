@@ -42,6 +42,32 @@ APPLIES = {"maria", "sarah"}
 # out (3h3), and the five personas below the median print 122A-1 as before.
 
 
+# What each persona who answers Your Plans sends (E5), by creditor or counterparty name and
+# written out here, not read from the seed: a seed that stored another choice would then print a
+# different Form 108 than the API's, and this test would fail.
+FORM_108_CHOICES = {
+    "james": {"secured": {"Crestway Auto Credit": {"intention": "retain_reaffirm"}}},
+    "priya": {"secured": {"Kestrel Auto Finance": {"intention": "retain_redeem"}}},
+    "deshawn": {
+        "secured": {
+            "Harrowgate Home Loans": {
+                "intention": "retain_explain",
+                "explain": "I am current on the mortgage and will keep paying as agreed",
+            }
+        }
+    },
+    "andres": {
+        "secured": {
+            "Copperline Auto Finance": {
+                "intention": "retain_explain",
+                "explain": "My brother Mateo, the co-owner, keeps paying the loan.",
+            }
+        },
+        "leases": {"Northlight Auto Leasing": {"assumed": "yes"}},
+    },
+}
+
+
 def _step_bodies(data):
     """
     Each wizard step's session save, as the step's autosave body sends it: one PATCH per
@@ -186,6 +212,21 @@ def _send_through_the_api(persona):
     # seed block the serializer would refuse fails here (PF2-T7-6).
     response = client.patch(session_url, {"petition_answers": data["petition"]}, format="json")
     assert response.status_code == 200, response.data
+
+    # Form 108's choices (Your Plans, step 9), keyed by the ids the API gave the debts and the
+    # contracts, found by name as the links are. Before Complete: a PATCH after it would reopen
+    # the intake. Both top keys go, an empty one as {}, as the wizard's plansBody sends them.
+    if persona in FORM_108_CHOICES:
+        kinds = {"secured": "debt", "leases": "contract"}
+        sent = {
+            key: {
+                str(claim_links(session, [(kind, name)])[0]["id"]): entry
+                for name, entry in FORM_108_CHOICES[persona].get(key, {}).items()
+            }
+            for key, kind in kinds.items()
+        }
+        response = client.patch(session_url, {"intention_answers": sent}, format="json")
+        assert response.status_code == 200, response.data
 
     # Complete Intake, then the pages that follow it. Their saves keep the intake complete.
     # No means-test call: Generate All works it out from the stored intake (spec §5.6).

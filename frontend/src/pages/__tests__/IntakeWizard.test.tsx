@@ -41,6 +41,8 @@ import {
   PAYSTUB_EMPLOYER_HINT,
   PETITION_ADD_OTHER_NAME,
   PETITION_GATE_EVICTION,
+  PLANS_EXEMPT_LATER,
+  PLANS_EXEMPT_NOT_NAMED,
   REPLACE_SAVED,
   REVIEW_GAPS_UNAVAILABLE,
   REVIEW_NO_DEBTS,
@@ -82,11 +84,11 @@ const LATER_PETITION_GATES = {
   rents_residence: 'no' as const,
 };
 
-const sessionAtStep9 = {
+const sessionOnReview = {
   id: 1,
   user: 1,
   district: 1,
-  current_step: 9,
+  current_step: 10,
   status: 'in_progress' as const,
   created_at: '2026-01-20T10:00:00Z',
   updated_at: '2026-01-20T10:00:00Z',
@@ -261,16 +263,19 @@ const STEP_1_PETITION_KEYS = [
 
 describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
   beforeEach(() => {
-    // POST (createSession) return step 9 (Review & Results — the last step)
+    // POST (createSession) return step 10 (Review & Results — the last step)
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(sessionAtStep9)
+        HttpResponse.json(sessionOnReview)
       ),
       http.post('http://localhost:8000/api/intake/sessions/', () =>
-        HttpResponse.json({ session: sessionAtStep9, message: 'Session created.' }, { status: 201 })
+        HttpResponse.json(
+          { session: sessionOnReview, message: 'Session created.' },
+          { status: 201 }
+        )
       ),
       http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(sessionAtStep9)
+        HttpResponse.json(sessionOnReview)
       )
     );
   });
@@ -423,7 +428,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
         'http://localhost:8000/api/intake/sessions/:id/update_step/',
         async ({ request }) => {
           stepUpdates.push(await request.json());
-          return HttpResponse.json({ session: sessionAtStep9, message: 'Step updated.' });
+          return HttpResponse.json({ session: sessionOnReview, message: 'Step updated.' });
         }
       )
     );
@@ -435,7 +440,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(sessionAtStep9)
+        HttpResponse.json(sessionOnReview)
       )
     );
   });
@@ -523,7 +528,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
     // Amounts Owed lets the filer continue once it holds a debt
     // and every claim question is answered, set here so the shared sessions keep theirs
     const sessionWithDebt = {
-      ...sessionAtStep9,
+      ...sessionOnReview,
       debts: [storedDebt],
       claim_answers: { contracts_answer: 'no', codebtors_answer: 'no', community_lived: 'no' },
     };
@@ -547,7 +552,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
         HttpResponse.json({ gaps: [] })
       )
     );
-    for (const next of ['Contracts & Leases', 'Codebtors', 'Review & Results']) {
+    for (const next of ['Contracts & Leases', 'Codebtors', 'Your Plans', 'Review & Results']) {
       const continueBtn = screen.getByRole('button', { name: 'Continue' });
       await waitFor(() => expect(continueBtn).toBeEnabled());
       await userEvent.click(continueBtn);
@@ -562,7 +567,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
     // Continue from Codebtors waits until Schedule H's two questions are answered (No to both,
     // with no one listed), and saves its claim answers with a session PATCH too
     const answered = {
-      ...sessionAtStep9,
+      ...sessionOnReview,
       claim_answers: { codebtors_answer: 'no', community_lived: 'no' },
     };
     server.use(
@@ -577,20 +582,27 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
     await pressComplete();
     await screen.findByText(NO_EXPENSES.message);
 
+    // Back past Your Plans to Codebtors
     await userEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    await expectStep('Your Plans');
+    await userEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    await expectStep('Codebtors');
     // The filer fixed it while away: the server's list is empty when Review reads it again
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
         HttpResponse.json({ gaps: [] })
       )
     );
-    // On Codebtors, the step before Review
-    const continueBtn = await screen.findByRole('button', { name: 'Continue' });
-    await waitFor(() => expect(continueBtn).toBeEnabled());
-    await userEvent.click(continueBtn);
+    // Continue from Codebtors to Your Plans, then on to Review
+    for (const next of ['Your Plans', 'Review & Results']) {
+      const continueBtn = await screen.findByRole('button', { name: 'Continue' });
+      await waitFor(() => expect(continueBtn).toBeEnabled());
+      await userEvent.click(continueBtn);
+      await expectStep(next);
+    }
 
     await screen.findByRole('heading', { name: /review & results/i, level: 2 });
-    expect(stepUpdates).toEqual([{ current_step: 9 }]);
+    expect(stepUpdates).toEqual([{ current_step: 9 }, { current_step: 10 }]);
     expect(await screen.findByText(REVIEW_NOTHING_MISSING)).toBeInTheDocument();
     expect(screen.queryByText(NO_EXPENSES.message)).not.toBeInTheDocument();
   });
@@ -600,7 +612,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
     // Review, fix what was missing and come back. Continue from Codebtors waits until Schedule H's
     // two questions are answered
     const answered = {
-      ...sessionAtStep9,
+      ...sessionOnReview,
       claim_answers: { codebtors_answer: 'no', community_lived: 'no' },
     };
     server.use(
@@ -615,7 +627,11 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
     await pressComplete();
     await screen.findByText(NO_EXPENSES.message);
 
+    // Back past Your Plans to Codebtors
     await userEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    await expectStep('Your Plans');
+    await userEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    await expectStep('Codebtors');
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
         HttpResponse.json({ gaps: [] })
@@ -634,10 +650,13 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
         )
       )
     );
-    // On Codebtors, the step before Review
-    const continueBtn = await screen.findByRole('button', { name: 'Continue' });
-    await waitFor(() => expect(continueBtn).toBeEnabled());
-    await userEvent.click(continueBtn);
+    // Continue from Codebtors to Your Plans, then on to Review
+    for (const next of ['Your Plans', 'Review & Results']) {
+      const continueBtn = await screen.findByRole('button', { name: 'Continue' });
+      await waitFor(() => expect(continueBtn).toBeEnabled());
+      await userEvent.click(continueBtn);
+      await expectStep(next);
+    }
     await screen.findByRole('heading', { name: /review & results/i, level: 2 });
 
     await pressComplete();
@@ -773,7 +792,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
  * and the debt amounts arrive as decimal strings.
  */
 const completedSession = {
-  ...sessionAtStep9,
+  ...sessionOnReview,
   status: 'completed' as const,
   completed_at: '2026-10-12T10:00:00Z',
   debtor_info: {
@@ -882,6 +901,7 @@ describe('IntakeWizard stepping back', { timeout: 30_000 }, () => {
     vi.useFakeTimers();
     try {
       for (const step of [
+        'Your Plans',
         'Codebtors',
         'Contracts & Leases',
         'Amounts Owed',
@@ -1227,7 +1247,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
   // The dashboard links a refusal to the step that fixes it (step 3a2 spec §4.5)
   it('opens at the step a link names, without moving the filer’s saved place', async () => {
     // The intake is complete, so it would open at Review
-    const stepUpdates = savedAs({ ...sessionAtStep9, status: 'completed' });
+    const stepUpdates = savedAs({ ...sessionOnReview, status: 'completed' });
 
     renderWizard('/intake?step=expense_info');
 
@@ -1250,7 +1270,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
   // already loaded when a link opens the wizard, so an update_step sent through the context, as
   // Continue sends it, would reach the server
   it('opens the step a dashboard link names, the session already loaded, without moving the filer’s saved place', async () => {
-    const stepUpdates = savedAs({ ...sessionAtStep9, status: 'completed' });
+    const stepUpdates = savedAs({ ...sessionOnReview, status: 'completed' });
     localStorage.setItem('current_session_id', '1');
     render(
       <MemoryRouter initialEntries={['/forms']}>
@@ -1273,7 +1293,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
 
   // A refresh then opens the saved step, and Back leaves the wizard rather than reopening the link
   it('drops the step from the address once it has opened it, without a new history entry', async () => {
-    const stepUpdates = savedAs({ ...sessionAtStep9, status: 'completed' });
+    const stepUpdates = savedAs({ ...sessionOnReview, status: 'completed' });
     localStorage.setItem('current_session_id', '1');
     render(
       <MemoryRouter initialEntries={['/forms', '/intake?step=expense_info']} initialIndex={1}>
@@ -1304,11 +1324,11 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         serverBusy
           ? HttpResponse.json({ detail: 'Request was throttled.' }, { status: 429 })
-          : HttpResponse.json({ ...sessionAtStep9, status: 'completed' })
+          : HttpResponse.json({ ...sessionOnReview, status: 'completed' })
       ),
       http.post('http://localhost:8000/api/intake/sessions/:id/update_step/', () => {
         stepUpdates.count += 1;
-        return HttpResponse.json({ session: sessionAtStep9, message: 'Step updated.' });
+        return HttpResponse.json({ session: sessionOnReview, message: 'Step updated.' });
       })
     );
     localStorage.setItem('current_session_id', '1');
@@ -2612,7 +2632,7 @@ describe('IntakeWizard a new debt after Complete', { timeout: 30_000 }, () => {
     ]) {
       fireEvent.click(document.querySelector(`input[name="${control}"][value="${value}"]`)!);
     }
-    for (const next of ['Contracts & Leases', 'Codebtors', 'Review & Results']) {
+    for (const next of ['Contracts & Leases', 'Codebtors', 'Your Plans', 'Review & Results']) {
       const continueBtn = screen.getByRole('button', { name: 'Continue' });
       await waitFor(() => expect(continueBtn).toBeEnabled());
       await userEvent.click(continueBtn);
@@ -2626,7 +2646,7 @@ describe('IntakeWizard a new debt after Complete', { timeout: 30_000 }, () => {
 
     vi.useFakeTimers();
     try {
-      for (const step of ['Codebtors', 'Contracts & Leases', 'Amounts Owed']) {
+      for (const step of ['Your Plans', 'Codebtors', 'Contracts & Leases', 'Amounts Owed']) {
         fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
         await waitSeconds(3);
         expect(stepTitle()).toHaveTextContent(step);
@@ -5155,7 +5175,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     [
       8,
       'Codebtors',
-      'Review & Results',
+      'Your Plans',
       [],
       [storedCodebtor],
       () => codebtorSaves,
@@ -5260,6 +5280,9 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     } finally {
       vi.useRealTimers();
     }
+    await expectStep('Your Plans');
+    // Your Plans asks nothing here (the one lease is residential, the debt unsecured): on to Review
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
     await expectStep('Review & Results');
 
     expect(codebtorSaves).toEqual([
@@ -5286,7 +5309,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   });
 
   it('shows the saved contracts and codebtors on Review to a filer who resumes there', async () => {
-    serveFiler(9, [storedLease], [storedCodebtor]);
+    serveFiler(10, [storedLease], [storedCodebtor]);
     renderWizard();
     await expectStep('Review & Results');
 
@@ -5385,7 +5408,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
 
     await userEvent.click(screen.getByRole('button', { name: /add another amount owed/i }));
     await userEvent.click(screen.getByRole('button', { name: NO_DEBTS_BUTTON }));
-    for (const title of ['Contracts & Leases', 'Codebtors', 'Review & Results']) {
+    for (const title of ['Contracts & Leases', 'Codebtors', 'Your Plans', 'Review & Results']) {
       const next = await screen.findByRole('button', { name: 'Continue' });
       await waitFor(() => expect(next).toBeEnabled());
       await userEvent.click(next);
@@ -6342,7 +6365,7 @@ describe('IntakeWizard Review household', { timeout: 15_000 }, () => {
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         HttpResponse.json({
-          ...sessionAtStep9,
+          ...sessionOnReview,
           household: { county: 'Kane', members: [], family_size: 2, fee_waiver_household_size: 3 },
         })
       )
@@ -7089,5 +7112,472 @@ describe('IntakeWizard legacy payment on Amounts Owed', { timeout: 15_000 }, () 
 
     expect(screen.queryByRole('button', { name: LEGACY_REMOVE })).toBeNull();
     expect(screen.queryByText(/a month for a car/)).toBeNull();
+  });
+});
+
+// ===========================================================================
+// Your Plans, step 9 (forms step 4e): Form 108's choices
+// ===========================================================================
+
+describe('IntakeWizard Your Plans', { timeout: 30_000 }, () => {
+  /** The car on line 3 a secured debt is linked to */
+  const planCar = {
+    id: 3,
+    session: 1,
+    ab_line: '3',
+    asset_type: null,
+    data_source: 'manual',
+    description: '',
+    current_value: '9000.00',
+    entire_value: '9000.00',
+    details: { make: 'Demo', model: 'Sedan', who: 'only_you' },
+  };
+  /** A confirmed secured debt with every answer Amounts Owed asks, linked to the car */
+  const carLoan = {
+    ...storedDebt,
+    id: 21,
+    creditor_name: 'Demo Auto Credit',
+    debt_type: 'auto_loan',
+    amount_owed: '6000.00',
+    monthly_payment: '300.00',
+    is_secured: true,
+    secured_by: 3,
+    collateral_description: '2019 Demo Sedan',
+    lien: { kinds: ['agreement'] },
+    offset_answer: null,
+    priority_answer: null,
+  };
+  /** The same debt read from a scanned bill and not yet confirmed */
+  const scannedCarLoan = { ...carLoan, data_source: 'uploaded_document', is_draft: true };
+  /** A lease of personal property, which Form 108 Part 2 asks about */
+  const carLease = {
+    ...storedLease,
+    id: 31,
+    counterparty_name: 'Demo Auto Leasing',
+    description: 'Demo hatchback lease',
+    lease_kind: 'vehicle',
+    vehicle_asset: null,
+  };
+
+  let bodies: Record<string, unknown>[];
+  let stepUpdates: number[];
+  /** Given a PATCH body, a promise of the fields its reply carries instead, to keep it back */
+  let holdReply:
+    | ((body: Record<string, unknown>) => Promise<Record<string, unknown>> | undefined)
+    | undefined;
+
+  /**
+   * A filer on `step` whose session holds `fields`, and contracts `contracts`. A session PATCH
+   * stores the debts it carries, giving a new row the next id from 101, and replies with each
+   * stored secured debt's exempt state ("later", nothing answered on Schedule C yet), as the
+   * server works it out on every read.
+   */
+  function serveFiler(
+    step: number,
+    fields: Record<string, unknown>,
+    contracts: Record<string, unknown>[] = []
+  ) {
+    let stored: Record<string, unknown> = {
+      ...sessionAtStep1,
+      current_step: step,
+      debtor_info: { first_name: 'Jane', last_name: 'Doe' },
+      assets: [planCar],
+      debts: [],
+      claim_answers: {
+        no_debts: null,
+        contracts_answer: contracts.length > 0 ? 'yes' : 'no',
+        codebtors_answer: 'no',
+        community_lived: 'no',
+      },
+      petition_answers: LATER_PETITION_GATES,
+      intention_exempt: {},
+      ...fields,
+    };
+    let nextId = 101;
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () => HttpResponse.json(stored)),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        bodies.push(body);
+        const sent = body.debts as Record<string, unknown>[] | undefined;
+        if (sent) {
+          const heldIds = (stored.debts as Record<string, unknown>[]).map((row) => row.id);
+          stored = {
+            ...stored,
+            debts: sent.map((row) => ({
+              ...row,
+              id: heldIds.includes(row.id) ? row.id : nextId++,
+            })),
+          };
+        }
+        const secured = (stored.debts as Record<string, unknown>[]).filter((row) => row.is_secured);
+        const reply = {
+          ...stored,
+          intention_exempt: Object.fromEntries(secured.map((row) => [String(row.id), 'later'])),
+        };
+        // A test may keep a reply back and change what it carries when it lands
+        const held = holdReply?.(body);
+        return HttpResponse.json(held ? { ...reply, ...(await held) } : reply);
+      }),
+      http.get('http://localhost:8000/api/intake/sessions/:id/contracts/', () =>
+        HttpResponse.json(contracts)
+      ),
+      http.put('http://localhost:8000/api/intake/sessions/:id/contracts/', async ({ request }) =>
+        HttpResponse.json(await request.json())
+      ),
+      http.get('http://localhost:8000/api/intake/sessions/:id/codebtors/', () =>
+        HttpResponse.json([])
+      ),
+      http.post(
+        'http://localhost:8000/api/intake/sessions/:id/update_step/',
+        async ({ request }) => {
+          const { current_step } = (await request.json()) as { current_step: number };
+          stepUpdates.push(current_step);
+          return HttpResponse.json({
+            session: { ...stored, current_step },
+            message: 'Step updated.',
+          });
+        }
+      )
+    );
+  }
+
+  async function pressContinue() {
+    const button = await screen.findByRole('button', { name: 'Continue' });
+    await waitFor(() => expect(button).toBeEnabled());
+    await userEvent.click(button);
+  }
+
+  beforeEach(() => {
+    bodies = [];
+    stepUpdates = [];
+    holdReply = undefined;
+    server.use(
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+  });
+
+  it('a visit to Your Plans sends nothing', async () => {
+    // A stale answer for an unsecured debt (7) and a residential lease (4) stays stored until the
+    // next save prunes it (R-PRUNE): the step's copy holds only the rows it shows
+    serveFiler(
+      9,
+      {
+        debts: [carLoan, storedDebt],
+        intention_answers: {
+          secured: {
+            '21': { intention: 'retain_explain', explain: 'Demo words' },
+            '7': { intention: 'surrender' },
+          },
+          leases: { '31': { assumed: 'yes' }, '4': { assumed: 'no' } },
+          answered_on: '2026-10-16',
+        },
+        intention_exempt: { '21': 'listed' },
+      },
+      [carLease, storedLease]
+    );
+    renderWizard();
+    await expectStep('Your Plans');
+
+    vi.useFakeTimers();
+    try {
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(bodies).toEqual([]);
+
+    // Continue always saves: what it sends is the copy a visit is compared with
+    await pressContinue();
+    await expectStep('Review & Results');
+    expect(bodies).toEqual([
+      {
+        intention_answers: {
+          secured: { '21': { intention: 'retain_explain', explain: 'Demo words' } },
+          leases: { '31': { assumed: 'yes' } },
+        },
+      },
+    ]);
+  });
+
+  it("choosing a plan saves it by the debt's id", async () => {
+    serveFiler(9, { debts: [carLoan] }, [carLease]);
+    renderWizard();
+    await expectStep('Your Plans');
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(
+        document.querySelector(
+          'input[name="plans_secured_0_intention"][value="retain_reaffirm"]'
+        ) as HTMLElement
+      );
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toEqual([
+      {
+        intention_answers: {
+          secured: { '21': { intention: 'retain_reaffirm' } },
+          leases: {},
+        },
+      },
+    ]);
+  });
+
+  it('a scanned secured debt confirmed on Amounts Owed gets a row on Your Plans', async () => {
+    serveFiler(6, { debts: [scannedCarLoan] });
+    renderWizard();
+    await expectStep('Amounts Owed');
+
+    // Continue on Amounts Owed confirms the scanned row (update_step 7), then on to step 9
+    for (const next of ['Contracts & Leases', 'Codebtors', 'Your Plans']) {
+      await pressContinue();
+      await expectStep(next);
+    }
+
+    expect(stepUpdates).toEqual([7, 8, 9]);
+    expect(screen.getByRole('group', { name: 'Demo Auto Credit' })).toBeInTheDocument();
+  });
+
+  it('Go Back to Amounts Owed after confirming a draft sends nothing', async () => {
+    serveFiler(6, { debts: [scannedCarLoan] });
+    renderWizard();
+    await expectStep('Amounts Owed');
+    await pressContinue();
+    await expectStep('Contracts & Leases');
+    const savesBefore = bodies.length;
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+      await waitSeconds(3);
+      expect(document.querySelector('.step-title')).toHaveTextContent('Amounts Owed');
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toHaveLength(savesBefore);
+  });
+
+  it('a draft never confirmed gets no row', async () => {
+    serveFiler(6, { debts: [scannedCarLoan] });
+    renderWizard('/intake?step=plans');
+    await expectStep('Your Plans');
+
+    expect(screen.queryByRole('group', { name: 'Demo Auto Credit' })).not.toBeInTheDocument();
+    expect(document.querySelector('input[name="plans_secured_0_intention"]')).toBeNull();
+  });
+
+  // R1: the step shown with no row is kept apart from the step with rows, so the first view with
+  // rows is the copy a visit is compared with, not the empty one before it
+  it('Your Plans first seen with no row sends nothing once a confirmed draft gives it one', async () => {
+    serveFiler(6, { debts: [scannedCarLoan] });
+    renderWizard('/intake?step=plans');
+    await expectStep('Your Plans');
+
+    for (const back of ['Codebtors', 'Contracts & Leases', 'Amounts Owed']) {
+      await userEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+      await expectStep(back);
+    }
+    // Continue on Amounts Owed confirms the scanned row (update_step 7), then on to step 9
+    for (const next of ['Contracts & Leases', 'Codebtors']) {
+      await pressContinue();
+      await expectStep(next);
+    }
+    const button = await screen.findByRole('button', { name: 'Continue' });
+    await waitFor(() => expect(button).toBeEnabled());
+    // The clock is faked before step 9 shows, so an autosave it starts would run in the wait
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(button);
+      await waitSeconds(3);
+      expect(document.querySelector('.step-title')).toHaveTextContent('Your Plans');
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(screen.getByRole('group', { name: 'Demo Auto Credit' })).toBeInTheDocument();
+    expect(stepUpdates).toEqual([7, 8, 9]);
+    expect(bodies.filter((body) => 'intention_answers' in body)).toEqual([]);
+
+    // A choice still saves
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(
+        document.querySelector('input[name="plans_secured_0_intention"][value="surrender"]')!
+      );
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(bodies.filter((body) => 'intention_answers' in body)).toEqual([
+      { intention_answers: { secured: { '21': { intention: 'surrender' } }, leases: {} } },
+    ]);
+  });
+
+  it('with no secured debt or lease, Continue sends nothing', async () => {
+    // An unsecured debt and a residential lease: Form 108 asks about neither
+    serveFiler(9, { debts: [storedDebt] }, [storedLease]);
+    renderWizard();
+    await expectStep('Your Plans');
+
+    await pressContinue();
+    await expectStep('Review & Results');
+
+    expect(bodies).toEqual([]);
+    expect(stepUpdates).toEqual([10]);
+  });
+
+  // F12: the step names in the not-applicable sentence open their steps, and Go Back works as on
+  // any step; none of them saves anything or moves the stored step
+  it.each([
+    ['Amounts Owed', 'Amounts Owed'],
+    ['Contracts & Leases', 'Contracts & Leases'],
+  ])('with no secured debt or lease, the %s button opens that step', async (button, title) => {
+    serveFiler(9, { debts: [storedDebt] }, [storedLease]);
+    renderWizard();
+    await expectStep('Your Plans');
+
+    const step = document.querySelector('.plans-step') as HTMLElement;
+    await userEvent.click(within(step).getByRole('button', { name: button }));
+    await expectStep(title);
+
+    expect(bodies).toEqual([]);
+    expect(stepUpdates).toEqual([]);
+  });
+
+  it('with no secured debt or lease, Go Back lands on Codebtors and sends nothing', async () => {
+    serveFiler(9, { debts: [storedDebt] }, [storedLease]);
+    renderWizard();
+    await expectStep('Your Plans');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    await expectStep('Codebtors');
+
+    expect(bodies).toEqual([]);
+    expect(stepUpdates).toEqual([]);
+  });
+
+  it('Go Back from Review lands on Your Plans and Continue sends 10', async () => {
+    serveFiler(10, {});
+    renderWizard();
+    await expectStep('Review & Results');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    await expectStep('Your Plans');
+    expect(stepUpdates).toEqual([]);
+
+    await pressContinue();
+    await expectStep('Review & Results');
+    expect(stepUpdates).toEqual([10]);
+  });
+
+  it('a refusal naming plans opens Your Plans', async () => {
+    // The forms dashboard links a refusal's step as ?step=<key>; the intake is complete, on Review
+    serveFiler(10, { status: 'completed', debts: [carLoan] });
+    renderWizard('/intake?step=plans');
+
+    await expectStep('Your Plans');
+    expect(screen.getByRole('group', { name: 'Demo Auto Credit' })).toBeInTheDocument();
+    expect(stepUpdates).toEqual([]);
+
+    // Shown with no edit, it sends nothing, so the completed intake stays complete (D10). A real
+    // wait: an autosave started while the step showed runs on the real clock
+    await act(() => new Promise((resolve) => setTimeout(resolve, 2500)));
+    expect(bodies).toEqual([]);
+  });
+
+  // F1: the wizard reads the session at mount, before any debt exists, so the exempt state of a
+  // debt added on Amounts Owed comes from that save's reply
+  it('a secured debt added on Amounts Owed shows its exempt sentence on Your Plans without a reload', async () => {
+    serveFiler(6, {});
+    renderWizard();
+    await expectStep('Amounts Owed');
+
+    fireEvent.change(field('debt_type_0'), { target: { value: 'auto_loan' } });
+    fireEvent.change(field('creditor_name_0'), { target: { value: 'Demo Auto Credit' } });
+    fireEvent.input(field('amount_owed_0'), { target: { value: '6000' } });
+    fireEvent.input(field('monthly_payment_0'), { target: { value: '300' } });
+    fireEvent.change(field('street_address_0'), { target: { value: '1 Demo Street' } });
+    fireEvent.change(field('city_0'), { target: { value: 'Demo City' } });
+    fireEvent.change(field('state_0'), { target: { value: 'IL' } });
+    fireEvent.change(field('zip_code_0'), { target: { value: '60601' } });
+    fireEvent.click(document.querySelector('input[name="is_secured_0"][value="yes"]')!);
+    fireEvent.change(field('secured_by_0'), { target: { value: '3' } });
+    fireEvent.click(document.querySelector('input[name="lien_0"][value="agreement"]')!);
+    fireEvent.change(field('collateral_description_0'), { target: { value: '2019 Demo Sedan' } });
+    fireEvent.click(document.querySelector('input[name="claim_status_0"][value="none"]')!);
+    fireEvent.click(document.querySelector('input[name="notice_0"][value="no"]')!);
+
+    for (const next of ['Contracts & Leases', 'Codebtors', 'Your Plans']) {
+      await pressContinue();
+      await expectStep(next);
+    }
+
+    const row = screen.getByRole('group', { name: 'Demo Auto Credit' });
+    expect(within(row).getByText(PLANS_EXEMPT_LATER)).toBeInTheDocument();
+  });
+
+  // D14, F1's assets clause: the exempt state reads the property rows, so a reply to a save of
+  // the assets that a later save of them has overtaken is not what the server holds
+  it('an assets reply a later save has overtaken never sets the exempt sentence', async () => {
+    const everyLineNo = Object.fromEntries(
+      ASSET_LINES.filter((line) => line.gate === null).map((line) => [line.key, 'no'])
+    );
+    serveFiler(6, { debts: [carLoan], asset_lines: { ...everyLineNo, '3': 'yes' } });
+    let release: (fields: Record<string, unknown>) => void = () => {};
+    holdReply = (body) => {
+      const sent = body.assets as { details?: { make?: string } }[] | undefined;
+      if (sent?.[0]?.details?.make !== 'Demo Two') return undefined;
+      holdReply = undefined;
+      return new Promise((resolve) => (release = resolve));
+    };
+    renderWizard();
+    await expectStep('Amounts Owed');
+
+    // Back to the Assets step, where every line is answered: it opens at Part 1
+    await userEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    expect(await screen.findByText('Part 1 of 7')).toBeInTheDocument();
+    await pressContinue();
+    expect(await screen.findByText('Part 2 of 7')).toBeInTheDocument();
+
+    // An edit autosaves, and that save's reply is kept back
+    fireEvent.change(field('line_3_0_make'), { target: { value: 'Demo Two' } });
+    await waitFor(
+      () =>
+        expect(
+          bodies.some(
+            (body) =>
+              (body.assets as { details?: { make?: string } }[] | undefined)?.[0]?.details?.make ===
+              'Demo Two'
+          )
+        ).toBe(true),
+      { timeout: 4000 }
+    );
+
+    // Continue saves the assets again (a later save), then on through every Part to Your Plans
+    for (let part = 3; part <= 7; part++) {
+      await pressContinue();
+      expect(await screen.findByText(`Part ${part} of 7`)).toBeInTheDocument();
+    }
+    for (const next of ['Amounts Owed', 'Contracts & Leases', 'Codebtors', 'Your Plans']) {
+      await pressContinue();
+      await expectStep(next);
+    }
+    const row = screen.getByRole('group', { name: 'Demo Auto Credit' });
+    expect(within(row).getByText(PLANS_EXEMPT_LATER)).toBeInTheDocument();
+
+    // The kept-back reply lands last, with another state: the step keeps the newer one
+    await act(async () => {
+      release({ intention_exempt: { '21': 'not_named' } });
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    });
+    expect(within(row).getByText(PLANS_EXEMPT_LATER)).toBeInTheDocument();
+    expect(within(row).queryByText(PLANS_EXEMPT_NOT_NAMED)).not.toBeInTheDocument();
   });
 });

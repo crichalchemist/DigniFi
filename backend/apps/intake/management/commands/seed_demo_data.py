@@ -36,6 +36,7 @@ from apps.intake.models import (
     Household,
     IncomeInfo,
     IntakeSession,
+    IntentionAnswers,
     MeansTestAnswers,
     PetitionAnswers,
     ScheduleIAnswers,
@@ -222,6 +223,21 @@ def _schedule_i(*line_1: dict) -> dict:
         "line_13_answer": "no",
         "schedule_j_line_24_answer": "no",
     }
+
+
+def _intentions(secured: list[tuple[str, str, str | None]], leases: list[tuple[str, str]]) -> dict:
+    """Form 108's answers (4e, E5), each row named by its creditor or counterparty: a secured
+    row is (name, intention, explain words or None) and a lease (name, assumed). A key with no
+    row is left out, so a persona with none has no record."""
+    answers: dict = {}
+    if secured:
+        answers["secured"] = {
+            name: {"intention": intention, **({} if explain is None else {"explain": explain})}
+            for name, intention, explain in secured
+        }
+    if leases:
+        answers["leases"] = {name: {"assumed": assumed} for name, assumed in leases}
+    return answers
 
 
 def claim_links(session, pairs) -> list[dict]:
@@ -587,6 +603,8 @@ def _james_washington() -> dict:
         "claims": {"contracts_answer": "yes", "codebtors_answer": "no", "community_lived": "no"},
         # Form 101's own questions on steps 1, 5 and 7 (4b-ii): he rents.
         "petition": _petition("yes"),
+        # Form 108's choice for his car loan (4e, E5)
+        "intentions": _intentions([("Crestway Auto Credit", "retain_reaffirm", None)], []),
         # Schedule I line 1 and lines 11, 13 and J 24 (4c)
         "schedule_i": _schedule_i(
             _employer(
@@ -827,6 +845,8 @@ def _priya_sharma() -> dict:
         "claims": {"contracts_answer": "yes", "codebtors_answer": "yes", "community_lived": "no"},
         # Form 101's own questions on steps 1, 5 and 7 (4b-ii): she rents.
         "petition": _petition("yes"),
+        # Form 108's choice for her car loan (4e, E5)
+        "intentions": _intentions([("Kestrel Auto Finance", "retain_redeem", None)], []),
         # Schedule I line 1, hers and her husband's, and lines 11, 13 and J 24 (4c)
         "schedule_i": _schedule_i(
             _employer(
@@ -1082,6 +1102,17 @@ def _deshawn_mitchell() -> dict:
         "claims": {"contracts_answer": "no", "codebtors_answer": "no", "community_lived": "no"},
         # Form 101's own questions on steps 1, 5 and 7 (4b-ii): he owns the home he lives in.
         "petition": _petition("no"),
+        # Form 108's choice for his mortgage (4e, E5)
+        "intentions": _intentions(
+            [
+                (
+                    "Harrowgate Home Loans",
+                    "retain_explain",
+                    "I am current on the mortgage and will keep paying as agreed",
+                )
+            ],
+            [],
+        ),
         # Schedule I line 1, his and his wife's, and lines 11, 13 and J 24 (4c)
         "schedule_i": _schedule_i(
             _employer(
@@ -1566,6 +1597,17 @@ def _andres_kettleby() -> dict:
             business_zip="60505",
             business_kind="none",
         ),
+        # Form 108's choices for his car loan and his vehicle lease (4e, E5)
+        "intentions": _intentions(
+            [
+                (
+                    "Copperline Auto Finance",
+                    "retain_explain",
+                    "My brother Mateo, the co-owner, keeps paying the loan.",
+                )
+            ],
+            [("Northlight Auto Leasing", "yes")],
+        ),
         # Schedule I line 1 and lines 11, 13 and J 24 (4c): he works for himself, so no employer
         # name (owner ruling P1), which leaves Schedule I's employer box blank, a detail.
         "schedule_i": _schedule_i(
@@ -1765,6 +1807,24 @@ class Command(BaseCommand):
             answers=json.dumps(data["schedule_i"]),
             answered_on=fill_date().isoformat(),
         )
+
+        # Form 108's choices (4e), each row found by its creditor or counterparty name, never by
+        # pk; a persona with none has no record.
+        intentions = data.get("intentions")
+        if intentions:
+            kinds = {"secured": "debt", "leases": "contract"}
+            stored = {
+                key: {
+                    str(claim_links(session, [(kinds[key], name)])[0]["id"]): entry
+                    for name, entry in entries.items()
+                }
+                for key, entries in intentions.items()
+            }
+            IntentionAnswers.objects.create(
+                session=session,
+                answers=json.dumps(stored),
+                answered_on=fill_date().isoformat(),
+            )
 
         # Create SOFA report and related data (Form 107)
         sofa_data = dict(data.get("sofa", {}))

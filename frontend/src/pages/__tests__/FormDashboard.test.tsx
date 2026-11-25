@@ -66,7 +66,7 @@ const completedSession = {
   id: 1,
   user: 1,
   district: 1,
-  current_step: 9,
+  current_step: 10,
   status: 'completed',
   created_at: '2026-01-20T10:00:00Z',
   updated_at: '2026-01-20T10:00:00Z',
@@ -519,6 +519,45 @@ describe('FormDashboard', () => {
       await userEvent.click(within(card).getByRole('button', { name: 'Answer Questions' }));
 
       expect(screen.getByTestId('where-now')).toHaveTextContent('/intake?step=contracts');
+    });
+  });
+
+  // Form 108 is in the packet of a filer with a secured debt or a personal property lease only
+  // (4e), so the default packet stays the 15 forms and this test gives its own
+  describe('Form 108 on the dashboard', () => {
+    const CARD_108 = 'Form 108 - Statement of Intention';
+
+    // Form 108 has no `/ask` page: a refusal that names no step falls back to Your Plans (4e-R13)
+    it('sends a refused Form 108 card’s Answer Questions to Your Plans', async () => {
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () =>
+          HttpResponse.json({ session: 1, form_types: ['form_101', 'form_108', 'form_121'] })
+        ),
+        http.post('http://localhost:8000/api/forms/generate/', () =>
+          HttpResponse.json(
+            { form_type: 'form_108', error: 'Demo refusal with no step.' },
+            { status: 422 }
+          )
+        )
+      );
+      localStorage.setItem('current_session_id', '1');
+      render(
+        <MemoryRouter>
+          <IntakeProvider>
+            <FormDashboard />
+            <WhereNow />
+          </IntakeProvider>
+        </MemoryRouter>
+      );
+
+      const card = await screen.findByRole('article', { name: CARD_108 });
+      await userEvent.click(within(card).getByRole('button', { name: 'Generate' }));
+      await userEvent.click(screen.getByRole('checkbox'));
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+      expect(await within(card).findByText('Demo refusal with no step.')).toBeInTheDocument();
+      await userEvent.click(within(card).getByRole('button', { name: 'Answer Questions' }));
+
+      expect(screen.getByTestId('where-now')).toHaveTextContent('/intake?step=plans');
     });
   });
 

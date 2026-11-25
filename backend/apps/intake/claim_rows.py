@@ -1,4 +1,4 @@
-"""The rows Schedules D, E/F, G and H print (3c5 spec §9), read once.
+"""The rows Schedules D, E/F, G and H print (3c5 spec §9), and Form 108's (4e), read once.
 
 Business intent: every confirmed debt, notice party, contract and codebtor sits on its own row,
 numbered over the printed lists alone, so a draft never shifts a line and every citation (D
@@ -12,11 +12,18 @@ Formatting to text is CLAIM_CELLS' job in fill_resolver.py.
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 from typing import Any
 
-from apps.intake.claims import PRIORITY_TYPES, asks_who, link_is_live, ordered_debts
+from apps.intake.claims import (
+    PRIORITY_TYPES,
+    asks_who,
+    is_form_108_lease,
+    link_is_live,
+    ordered_debts,
+)
+from apps.intake.exemptions import EXEMPT_BOX, exempt_states
 
 CLAIM_LISTS = (
     "secured",
@@ -26,6 +33,7 @@ CLAIM_LISTS = (
     "unsecured_notices",
     "contracts",
     "codebtors",
+    "leases",
 )
 
 # The wizard's words (constants/claims.ts); test_claims_frontend_copy.py pins them.
@@ -51,6 +59,11 @@ class DebtRow:
     with_another: bool
     value: Decimal | None
     unsecured: Decimal | None
+    # Form 108 Part 1 (4e-R22), on a secured row only: the printed choice (blank for one left
+    # open, and for "[explain]" with no words), the words as stored, and the exempt box's answer.
+    intention: str = ""
+    explain: str = ""
+    exempt: str = ""
 
 
 @dataclass(frozen=True)
@@ -64,6 +77,8 @@ class NoticeRow:
 class ContractRow:
     line: str
     contract: Any
+    # Form 108 Part 2 (4e-R22), on a lease row only: "yes", "no" or blank for an open answer.
+    assumed: str = ""
 
 
 @dataclass(frozen=True)
@@ -83,6 +98,8 @@ class ClaimRows:
     unsecured_notices: tuple[NoticeRow, ...]
     contracts: tuple[ContractRow, ...]
     codebtors: tuple[CodebtorRow, ...]
+    # Form 108 Part 2: the contracts rows of the leases it asks about, in Schedule G's order.
+    leases: tuple[ContractRow, ...]
 
 
 # Session id -> its rows, while one_read_of_claims is open (as asset_lines.one_read_of_assets).
@@ -91,7 +108,11 @@ _ONE_READ: ContextVar[dict | None] = ContextVar("one_read_of_claims", default=No
 
 @contextmanager
 def one_read_of_claims() -> Iterator[None]:
-    """Within the block, claim_rows reads each session's rows once: every binding asks."""
+    """Within the block, claim_rows reads each session's rows once: every binding asks. A block
+    opened inside another shares the outer one's read (D5)."""
+    if _ONE_READ.get() is not None:
+        yield
+        return
     token = _ONE_READ.set({})
     try:
         yield
@@ -162,13 +183,80 @@ def _codebtor_rows(codebtors, secured, priority, unsecured, contracts) -> tuple:
     return tuple(rows)
 
 
+def claim_list_of(debt) -> str:
+    """The list a debt's row prints in: secured (Schedule D), priority (E/F Part 1, the filer's
+    answer alone moves it there, B15) or unsecured (E/F Part 2)."""
+    if debt.is_secured:
+        return "secured"
+    return "priority" if debt.priority_answer in PRIORITY_TYPES else "unsecured"
+
+
+def _entries(record, key: str) -> dict:
+    """The record's entries under `key` by id string; an absent, empty or malformed key is none
+    (T2-H2)."""
+    if record is None:
+        return {}
+    entries = record.get_answers().get(key)
+    return entries if isinstance(entries, dict) else {}
+
+
+def _entry(entries: dict, pk) -> dict:
+    entry = entries.get(str(pk))
+    return entry if isinstance(entry, dict) else {}
+
+
+def _printed_intention(entry: dict, form_intentions: tuple[str, ...]) -> str:
+    """The choice Form 108 ticks (4e-R22): one of its four, never an open one, and never
+    "[explain]" whose words are blank (R-BLANK-EXPLAIN)."""
+    intention = entry.get("intention")
+    if intention not in form_intentions:
+        return ""
+    if intention == "retain_explain" and not str(entry.get("explain") or "").strip():
+        return ""
+    return intention
+
+
+def _with_intentions(rows: tuple, session, record) -> tuple:
+    """Each secured row with its Form 108 answers, joined by the debt's id (R-SHAPE)."""
+    entries = _entries(record, "secured")
+    # The model's own list, read off the record this module is handed (F11: no model import).
+    form_intentions = type(record).FORM_INTENTIONS if record is not None else ()
+    states = exempt_states(session)
+    out = []
+    for row in rows:
+        entry = _entry(entries, row.debt.pk)
+        explain = entry.get("explain")
+        out.append(
+            replace(
+                row,
+                intention=_printed_intention(entry, form_intentions),
+                explain=explain if isinstance(explain, str) else "",
+                exempt=EXEMPT_BOX.get(states.get(row.debt.pk), ""),
+            )
+        )
+    return tuple(out)
+
+
+def _lease_rows(contract_rows: tuple, record) -> tuple:
+    """The leases Form 108 Part 2 asks about, each with its answer, joined by id (R-SHAPE)."""
+    entries = _entries(record, "leases")
+    out = []
+    for row in contract_rows:
+        if not is_form_108_lease(row.contract):
+            continue
+        assumed = _entry(entries, row.contract.pk).get("assumed")
+        out.append(replace(row, assumed=assumed if assumed in ("yes", "no") else ""))
+    return tuple(out)
+
+
 def _read(session) -> ClaimRows:
     debts = ordered_debts(list(session.debts.confirmed().select_related("secured_by")))
     contracts = sorted(session.executory_contracts.all(), key=lambda row: row.pk)
     codebtors = sorted(session.codebtors.all(), key=lambda row: row.pk)
     contract_rows = tuple(ContractRow(f"2.{n}", c) for n, c in enumerate(contracts, start=1))
-    secured_debts = [d for d in debts if d.is_secured]
-    unsecured_debts = [d for d in debts if not d.is_secured]
+    record = getattr(session, "intention_answers", None)
+    secured_debts = [d for d in debts if claim_list_of(d) == "secured"]
+    unsecured_debts = [d for d in debts if claim_list_of(d) != "secured"]
     # a codebtor's link to a debt makes it owed with another (R3): live links only
     debt_ids = {d.pk for d in debts}
     with_another = {
@@ -178,9 +266,10 @@ def _read(session) -> ClaimRows:
         if link.get("kind") == "debt" and link.get("id") in debt_ids
     }
     secured = _debt_rows(secured_debts, "2", with_another, session, True)
+    secured = _with_intentions(secured, session, record) if secured else secured
     # the filer's answer alone moves a debt into E/F Part 1 (B15)
-    priority_debts = [d for d in unsecured_debts if d.priority_answer in PRIORITY_TYPES]
-    part_2_debts = [d for d in unsecured_debts if d.priority_answer not in PRIORITY_TYPES]
+    priority_debts = [d for d in unsecured_debts if claim_list_of(d) == "priority"]
+    part_2_debts = [d for d in unsecured_debts if claim_list_of(d) == "unsecured"]
     priority = _debt_rows(priority_debts, "2", with_another, session, False)
     unsecured = _debt_rows(part_2_debts, "4", with_another, session, False)
     return ClaimRows(
@@ -191,11 +280,12 @@ def _read(session) -> ClaimRows:
         unsecured_notices=_notice_rows(priority, "1") + _notice_rows(unsecured, "2"),
         contracts=contract_rows,
         codebtors=_codebtor_rows(codebtors, secured, priority, unsecured, contract_rows),
+        leases=_lease_rows(contract_rows, record),
     )
 
 
 def claim_rows(session) -> ClaimRows:
-    """The seven lists (R2), read once within one_read_of_claims."""
+    """The eight lists (R2, and Form 108's leases), read once within one_read_of_claims."""
     held = _ONE_READ.get()
     if held is not None and session.pk in held:
         return held[session.pk]

@@ -68,7 +68,7 @@ export function ProgressIndicator({ steps, currentStep }: ProgressIndicatorProps
       </ol>
 
       {/* Below 1024px the numbered row is hidden and this summary and stripe show instead
-          (global.css): nine labelled steps don't fit a phone at the 16px text floor */}
+          (global.css): ten labelled steps don't fit a phone at the 16px text floor */}
       <div className="progress-compact">
         <p className="progress-compact-text">
           {`Step ${currentStep} of ${steps.length}: ${steps[currentStep - 1]?.label ?? ''}`}

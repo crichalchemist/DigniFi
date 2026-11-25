@@ -10,6 +10,7 @@
  */
 
 import type { ScheduleITextKey, YesNo } from '../types/api';
+import type { ClaimTextKey } from './claimTextLimits';
 
 // ============================================================================
 // Wizard Copy
@@ -1898,6 +1899,93 @@ export const SCHEDULE_I_TEXT_LABELS: Record<ScheduleITextKey, string> = {
   line_13_text: 'Line 13, Explain',
   schedule_j_line_24_text: 'Line 24, Explain',
 };
+
+// Your Plans: a Form 108 row left open, in the server's words (apps/intake/intentions.py, pinned
+// by test_intention_frontend_copy.py). {name} is the creditor's or lessor's name, or "one amount
+// owed" / "one contract"
+// DRAFT: counsel C-37
+export const INTENTION_GAP_NONE =
+  "Choose what you plan to do with the property for {name}. Or say you haven't decided.";
+// DRAFT: counsel C-37
+export const INTENTION_GAP_UNDECIDED =
+  'Your choice for {name} is open, so Form 108 shows no choice for it.';
+// DRAFT: counsel C-37
+export const INTENTION_GAP_EXPLAIN = 'Type your words for {name}, or choose another answer.';
+// DRAFT: counsel C-37
+export const LEASE_GAP_NONE =
+  "Say if the lease with {name} will be assumed. Or say you haven't decided yet.";
+// DRAFT: counsel C-37
+export const LEASE_GAP_UNDECIDED =
+  'Your answer for the lease with {name} is open, so Form 108 shows no answer for it.';
+
+// Your Plans, Form 108's step (forms step 4e; owner-approved 2026-11-24 as drafted, E7, with E8's
+// words). Nothing here chooses for the filer: the choices are the form's own (formText.ts)
+// DRAFT: counsel C-37
+export const PLANS_TITLE = 'Your plans for what you owe on';
+// DRAFT: counsel C-37
+export const PLANS_INTRO =
+  "These questions are for Form 108. It lists each debt secured by your property and each lease of personal property. For each one, you choose what the form says. DigniFi doesn't choose for you.";
+// DRAFT: counsel C-37
+export const PLANS_NOT_APPLICABLE =
+  "DigniFi isn't preparing Form 108. You listed no debt secured by your property and no lease of personal property. If that isn't right, go back to Amounts Owed or Contracts & Leases.";
+// The app's own fifth answer, after the form's choices (E7)
+// DRAFT: counsel C-37
+export const PLANS_UNDECIDED = "I haven't decided yet.";
+// DRAFT: counsel C-37
+export const PLANS_UNDECIDED_INFO =
+  'You can leave a choice open and come back to it. While it is open, no choice is ticked for that row on Form 108.';
+// The label of the box under "Retain the property and [explain]:"
+// DRAFT: counsel C-37
+export const PLANS_EXPLAIN_LABEL = 'Your words for the form';
+// Each row's exempt box, from the exemptions page's answers (R-EXEMPT, 4e-R6)
+// DRAFT: counsel C-37
+export const PLANS_EXEMPT_LISTED = 'Your Schedule C lists this property.';
+// DRAFT: counsel C-37
+export const PLANS_EXEMPT_NOT_CLAIMING = "Your Schedule C doesn't list this property.";
+// DRAFT: counsel C-37
+export const PLANS_EXEMPT_LATER =
+  'You answer Schedule C after you finish these steps. This box follows your answers there.';
+// DRAFT: counsel C-37
+export const PLANS_EXEMPT_NOT_NAMED =
+  "Your Schedule C answers don't name this property, so this box prints blank.";
+// DRAFT: counsel C-37
+export const PLANS_EXEMPT_NO_PROPERTY =
+  "This debt isn't linked to property on your Assets step, so this box prints blank.";
+// The definitions' names, each the visible words of its summary (E2, Ruling M)
+// DRAFT: counsel C-37
+export const WHAT_DOES_SURRENDER_MEAN = 'What does “surrender” mean on this form?';
+// DRAFT: counsel C-37
+export const WHAT_DOES_REDEEM_MEAN = 'What does “redeem” mean on this form?';
+// DRAFT: counsel C-37
+export const WHAT_DOES_REAFFIRM_MEAN = 'What is a “Reaffirmation Agreement” on this form?';
+// The retain-and-explain panel's name (E8)
+// DRAFT: counsel C-37
+export const WHAT_DOES_EXPLAIN_MEAN = 'What does “retain” mean on this form?';
+// DRAFT: counsel C-37
+export const WHAT_DOES_ASSUME_MEAN = 'What does it mean for a lease to be “assumed”?';
+// Each definition's closing sentence (E1). The number is the court's pro se help desk, not a
+// clerk's office by division (4b-R6)
+// DRAFT: counsel C-37
+export const PLANS_EFFECTS_HELP =
+  "A licensed attorney can answer questions about your own case. The court's pro se help desk takes calls at (312) 229-6344.";
+// The {label} of each claims text in SCHEDULE_I_DETAIL_TOO_LONG, form_108.limits.json's `labels`
+// (E4, E8), pinned by test_intention_frontend_copy.py
+// DRAFT: counsel C-37
+export const CLAIM_TEXT_LABELS: Record<ClaimTextKey, string> = {
+  creditor_name: "the creditor's name",
+  collateral_description: 'the description of the property',
+  counterparty_name: "the lessor's name",
+  description: 'the description of the leased property',
+  explain: 'the explanation of your plan',
+};
+// Where each row comes from
+// DRAFT: counsel C-37
+export const PLANS_FROM_DEBTS = 'From your Amounts Owed step';
+// DRAFT: counsel C-37
+export const PLANS_FROM_CONTRACTS = 'From your Contracts & Leases step';
+// The lead before Form 108's deadline sentence (E6)
+// DRAFT: counsel C-37
+export const PLANS_DEADLINE_LABEL = 'Form 108 says:';
 
 // The write-only numbers: the server says only whether one is saved (F-3, owner ruling Q3)
 export const SSN_SAVED = 'Your Social Security number is saved. You can replace it.';

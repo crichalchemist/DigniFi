@@ -85,7 +85,10 @@ test.describe('SOFA — Form 107 Financial History', () => {
     // Step 8: Codebtors (answered from the persona)
     await wizard.walkCodebtors(JAMES);
 
-    // Step 9: Review & Complete
+    // Step 9: Your Plans (Form 108, the persona's choices)
+    await wizard.walkPlans(JAMES);
+
+    // Step 10: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
     // James pays in full; the filing-fee page continues to the exemptions page
@@ -117,9 +120,10 @@ test.describe('SOFA — Form 107 Financial History', () => {
 
     // ── Form Generation ─────────────────────────────────────
 
-    await dashboard.generateAllForms(15); // James pays in full → 15 forms (no 103B)
+    // James pays in full → no 103B; his car loan brings Form 108
+    await dashboard.generateAllForms(16);
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(15);
+    expect(count).toBe(16);
 
     // ── Download Form 107 ───────────────────────────────────
 

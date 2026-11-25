@@ -103,7 +103,7 @@ export function FormTextarea({
 
   return (
     <div className={`form-field ${error ? 'has-error' : ''}`}>
-      <label htmlFor={inputId} className="form-label">
+      <label id={`${inputId}-label`} htmlFor={inputId} className="form-label">
         {label}
         {required && (
           <span className="required-indicator" aria-label="required">

@@ -39,6 +39,7 @@ from apps.forms.services.derivations import (
     RULE_FIXES,
     money_or_blank,
 )
+from apps.forms.services.explain_split import split_explain
 from apps.forms.services.means_cells import means_value
 from apps.forms.services.widgets import TemplateWidget, page_count, parse_key, template_widgets
 from apps.intake.asset_lines import (
@@ -330,6 +331,11 @@ def _lines(lines: tuple[str, ...]) -> str:
     return ", ".join(lines)
 
 
+def _explain(row: DebtRow) -> str:
+    """Form 108's "[explain]" words, trimmed, only beside the box they explain (R-BLANK-EXPLAIN)."""
+    return row.explain.strip() if row.intention == "retain_explain" else ""
+
+
 _ADDRESS_PARTS = ("name", "city", "state", "zip")
 
 
@@ -360,6 +366,14 @@ CLAIM_CELLS: dict[str, dict[str, Callable[[Any], str]]] = {
         "lien_other_text": _lien_other_text,
         "value": lambda row: money_or_blank(row.value),
         "unsecured": lambda row: money_or_blank(row.unsecured),
+        # Form 108 Part 1 (4e): the printed choice, blank while open; the exempt box from
+        # Schedule C (R-EXEMPT); the words only under a printed "[explain]", split across
+        # Explain1 and Explain2 (4e-R5), trimmed so the sheet and the two boxes agree (F6).
+        "intention": lambda row: row.intention,
+        "exempt": lambda row: row.exempt,
+        "explain": _explain,
+        "explain_1": lambda row: split_explain(_explain(row))[0],
+        "explain_2": lambda row: split_explain(_explain(row))[1],
     },
     "priority": {
         **_addressed("street", "street_2"),
@@ -408,12 +422,21 @@ CLAIM_CELLS: dict[str, dict[str, Callable[[Any], str]]] = {
     },
     # The List of Creditors' rows are CreditorEntry objects, not a ClaimRows list (3c6 R5).
     "creditor_list": {"entry": lambda entry: entry.text},
+    # Form 108 Part 2 (4e-R22): the leases it asks about, with the filer's answer, blank while
+    # open (never a No the filer didn't give).
+    "leases": {
+        "name": _address_cell("name"),
+        "purpose": lambda row: row.contract.description or "",
+        "assumed": lambda row: row.assumed,
+    },
 }
 # The cells that print a dollar amount: the only columns a group's total box may add (R14).
 CLAIM_MONEY_CELLS = frozenset(
     {"amount", "value", "unsecured", "priority_amount", "nonpriority_amount"}
 )
 _CLAIM_BINDING = re.compile(r"claims\.(\w+)\[\]\.(\w+)")
+# The Form 108 cells of a secured row that Your Plans asks (4e-R10).
+_PLANS_CELLS = frozenset({"intention", "explain", "explain_1", "explain_2"})
 # Schedule C's slot columns, one getter per ExemptionRow field (3g2 R1).
 EXEMPTION_CELLS: dict[str, Callable[[ExemptionRow], str]] = {
     "description": lambda row: row.description,
@@ -450,9 +473,9 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
       - "household.dependents[].<attr>" → list of str over Schedule J line 2's dependents
       - "assets.line_<key>[].<attr>" or "assets.line_<key>_<kind>[].<attr>" → list of str over
         that line's Schedule A/B rows, or those of that kind, in the form's order
-      - "claims.<list>[].<attr>" → list of str over one of claim_rows' seven lists (secured,
-        secured_notices, priority, unsecured, unsecured_notices, contracts, codebtors), each cell
-        from CLAIM_CELLS; or over `creditor_list`, the List of Creditors' entries
+      - "claims.<list>[].<attr>" → list of str over one of claim_rows' eight lists (secured,
+        secured_notices, priority, unsecured, unsecured_notices, contracts, codebtors, leases),
+        each cell from CLAIM_CELLS; or over `creditor_list`, the List of Creditors' entries
         (`creditor_entries`: a CreditorEntry, its `entry` cell the entry's text)
       - "exemptions.claims[].<attr>" → list of str over Schedule C's printed claims, each cell
         from EXEMPTION_CELLS
@@ -463,7 +486,6 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
       - "petition.<key>" | "petition.<key>[].<attr>" → the PetitionAnswers key, a str, or a list
         of str over its rows; "" or [] with no record (answer_records.record_value)
       - "schedule_i.<key>" | "schedule_i.<key>[].<attr>" → the same over ScheduleIAnswers
-      - "intentions.<key>" | "intentions.<key>[].<attr>" → the same over IntentionAnswers
       - "affairs.l<n>_<key>" | "affairs.l<n>_<key>[].<attr>" → the same over the financial
         affairs record (Form 107 lines 1-12) or the property affairs record (lines 13-28)
     """
@@ -598,10 +620,10 @@ def _key(field: FieldSpec) -> str:
 def binding_fix(binding: str) -> dict[str, str]:
     """
     Where the filer changes what a binding reads, from its namespace; {} for no namespace. Of the
-    four answer namespaces, only `petition.` and `affairs.` raise ValueError for a key they don't
+    three answer namespaces, only `petition.` and `affairs.` raise ValueError for a key they don't
     list (answer_records.record_step). `schedule_i.` sends any key to its step by its prefix, and
     the startup check (forms.E007) refuses a key ScheduleIAnswers doesn't store or a list
-    binding; `intentions.` takes any key until its PR adds a table.
+    binding.
     """
     binding = binding.strip()
     if binding.startswith("answer:"):
@@ -618,6 +640,14 @@ def binding_fix(binding: str) -> dict[str, str]:
     if binding.startswith("claims."):
         match = _CLAIM_BINDING.match(binding)
         if match:
+            # By list and attribute (4e-R10): Form 108's choices are Your Plans', its exempt box
+            # the exemptions page's, and a lease's name and words Contracts & Leases'.
+            if match[1] == "secured" and match[2] in _PLANS_CELLS:
+                return {"step": "plans"}
+            if match[1] == "secured" and match[2] == "exempt":
+                return {"page": "/exemptions"}
+            if match[1] == "leases":
+                return {"step": "plans"} if match[2] == "assumed" else {"step": "contracts"}
             if match[1] == "contracts":
                 return {"step": "contracts"}
             if match[1] == "codebtors":

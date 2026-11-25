@@ -19,6 +19,7 @@ import { FormField, FormSelect, FormTextarea, Button } from '../../common';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
 import { ASSET_LINES } from '../../../constants/assetLines';
+import { tooLongNote } from '../../../constants/claimTextLimits';
 import { DEBT_TYPE_WORDS } from '../../../constants/claims';
 import {
   ACCOUNT_SAVED,
@@ -558,6 +559,14 @@ export function DebtsStep({
           parties === null || parties === undefined ? null : parties.length > 0 ? 'yes' : 'no';
         const status = debt.claim_status;
         const lienKinds = debt.lien?.kinds ?? [];
+        // A name or property too long for a box its row prints in: saved as typed, noted here, and
+        // never a gap that holds Continue (E4, B47)
+        const nameNote = tooLongNote('creditor_name', debt, debt.creditor_name);
+        const propertyNote = tooLongNote(
+          'collateral_description',
+          debt,
+          debt.collateral_description
+        );
 
         return (
           <section key={debt._key} className="form-section debt-card">
@@ -608,17 +617,29 @@ export function DebtsStep({
             />
 
             <div className="form-row">
-              {/* Draft until counsel rules on C-17 (DIG-280) */}
-              <FormField
-                label="Creditor Name"
-                name={`creditor_name_${index}`}
-                type="text"
-                value={debt.creditor_name ?? ''}
-                onChange={(e) => update(index, { creditor_name: e.target.value })}
-                required
-                helpText="Company or person you owe money to"
-                placeholder="e.g., Capital One, Dr. Smith"
-              />
+              <div>
+                {/* Draft until counsel rules on C-17 (DIG-280) */}
+                <FormField
+                  label="Creditor Name"
+                  name={`creditor_name_${index}`}
+                  type="text"
+                  value={debt.creditor_name ?? ''}
+                  onChange={(e) => update(index, { creditor_name: e.target.value })}
+                  required
+                  helpText="Company or person you owe money to"
+                  placeholder="e.g., Capital One, Dr. Smith"
+                  aria-describedby={
+                    nameNote
+                      ? `field-creditor_name_${index}-help field-creditor_name_${index}-note`
+                      : `field-creditor_name_${index}-help`
+                  }
+                />
+                {nameNote && (
+                  <p id={`field-creditor_name_${index}-note`} className="form-help-text">
+                    {nameNote}
+                  </p>
+                )}
+              </div>
 
               <div>
                 <FormField
@@ -762,7 +783,15 @@ export function DebtsStep({
                   required
                   rows={3}
                   placeholder="e.g., 2015 Honda Civic, Family home at 123 Main Street"
+                  aria-describedby={
+                    propertyNote ? `field-collateral_description_${index}-note` : undefined
+                  }
                 />
+                {propertyNote && (
+                  <p id={`field-collateral_description_${index}-note`} className="form-help-text">
+                    {propertyNote}
+                  </p>
+                )}
               </div>
             )}
 

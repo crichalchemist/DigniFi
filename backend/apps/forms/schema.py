@@ -285,7 +285,6 @@ _BINDING_NAMESPACES = (
     "means.",
     "petition.",
     "schedule_i.",
-    "intentions.",
     "affairs.",
 )
 
@@ -836,7 +835,7 @@ _STATEMENT_BINDING = re.compile(
 )
 _LIST_BINDING = re.compile(
     r"(?:sofa\.\w+|household\.dependents|income\.statement|assets\.line_\w+|means\.line_\w+"
-    r"|(?:petition|schedule_i|intentions|affairs)\.\w+)"
+    r"|claims\.\w+|(?:petition|schedule_i|affairs)\.\w+)"
     r"\[\]\.\w+"
 )
 
@@ -925,8 +924,8 @@ def _sheet_errors(name: str, group: GroupSpec, template: str) -> list[tuple[str,
                     f"group {name!r}: sheet column {column.label!r} binds {column.binding!r}, "
                     "not a sofa.<collection>[].<attr>, household.dependents[].<attr>, "
                     "income.statement[].<attr>, assets.line_<key>[].<attr>, "
-                    "means.line_<key>[].<attr>, petition.<key>[].<attr>, "
-                    "schedule_i.<key>[].<attr>, intentions.<key>[].<attr> or "
+                    "means.line_<key>[].<attr>, claims.<list>[].<attr>, "
+                    "petition.<key>[].<attr>, schedule_i.<key>[].<attr> or "
                     "affairs.<key>[].<attr> list",
                 )
             )

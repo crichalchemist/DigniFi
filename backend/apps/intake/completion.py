@@ -8,12 +8,13 @@ from apps.eligibility.cmi import counted_spouse_income, income_step_gaps
 from apps.forms.registry import PreconditionMissing, _needs_county, _needs_ssn
 
 from .asset_lines import asset_step_gaps
+from .claim_rows import one_read_of_claims
 from .claims import claim_gap_parts
 from .income import deductions_blank, schedule_i_line4
 
-# The wizard's last step is Review, step 9: the length of WIZARD_STEPS in
+# The wizard's last step is Review, step 10: the length of WIZARD_STEPS in
 # frontend/src/constants/wizardSteps.ts, which test_wizard_step_count_is_the_browsers pins.
-WIZARD_STEP_COUNT = 9
+WIZARD_STEP_COUNT = 10
 
 TAKE_HOME_PAY_NOT_ENTERED = (
     "Enter what is taken out of your pay on the Take-home pay step. "
@@ -68,14 +69,26 @@ def completion_gaps(session) -> list[Gap]:
     rent and eviction after the Contracts gaps, before Codebtors' (4b-R4). Schedule I's
     (schedule_i_step_gaps, both kinds) go right after the Income step's, and Schedule J line
     24's right after the Expenses step's (4c-R2).
+
+    Form 108's details (4e-R11, never through claim_step_gaps, whose gaps are all gates): the
+    too-long names and descriptions (claim_text_gaps) after line 16's block on Amounts Owed and
+    after the rent gates on Contracts & Leases; Your Plans' open rows (intention_step_gaps) and
+    the too-long "[explain]" words after Codebtors' gaps, before the claims tail.
     """
     # Imported here: petition.py imports Gap from this module, so a top-level import is a cycle.
-    # schedule_i.py imports Gap inside its function, and is imported here the same way (4c-R2).
+    # schedule_i.py and intentions.py import Gap inside their functions, and are imported here the
+    # same way (4c-R2).
+    from .intentions import claim_text_gaps, intention_step_gaps
     from .petition import petition_step_gaps
     from .schedule_i import schedule_i_step_gaps
 
     petition = petition_step_gaps(session)
     schedule_i = schedule_i_step_gaps(session)
+    # One read of the claim rows serves Form 108's open rows, the too-long texts and their measure
+    # (D5)
+    with one_read_of_claims():
+        texts = claim_text_gaps(session)
+        plans = intention_step_gaps(session)
     gaps = []
 
     # The forms' own identity checks, so Complete and the forms say the same thing.
@@ -131,10 +144,22 @@ def completion_gaps(session) -> list[Gap]:
         (i for i, g in enumerate(claims) if g.step in ("contracts", "codebtors")), len(claims)
     )
     claims[at_debts:at_debts] = [g for g in petition if g.step == "debts"]
+    # Amounts Owed's too-long names and descriptions (4e, E4), right after line 16's block
+    at_debts = next(
+        (i for i, g in enumerate(claims) if g.step in ("contracts", "codebtors")), len(claims)
+    )
+    claims[at_debts:at_debts] = [g for g in texts if g.step == "debts"]
     # Before Codebtors' first gap; with none, at the end, since the head ends with Codebtors'
     at = next((i for i, g in enumerate(claims) if g.step == "codebtors"), len(claims))
     claims[at:at] = [g for g in petition if g.step == "contracts"]
+    # Contracts & Leases' too-long lessors and descriptions (4e, E4), after the rent gates
+    at = next((i for i, g in enumerate(claims) if g.step == "codebtors"), len(claims))
+    claims[at:at] = [g for g in texts if g.step == "contracts"]
     gaps.extend(claims)
+    # Your Plans (4e-R11): each open Form 108 row, then the too-long "[explain]" words, after
+    # Codebtors' gaps and before the claims tail, which stays last (3c4). All details.
+    gaps.extend(plans)
+    gaps.extend(g for g in texts if g.step == "plans")
     gaps.extend(Gap(str(gap), gap.step, GATE) for gap in tail)
 
     return gaps

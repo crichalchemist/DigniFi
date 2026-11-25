@@ -22,7 +22,14 @@ from apps.forms.services.exemption_items import fits_description, fits_law
 from apps.forms.services.means_fit import LIST_ANSWERS, merge_row_errors, shown_box_refusals
 
 from .asset_lines import LINE_BY_KEY, PROPERTY_KINDS, WHO
-from .claims import PRIORITY_ANSWERS, account_last_4, legacy_payments, ordered_debts
+from .claims import (
+    PRIORITY_ANSWERS,
+    account_last_4,
+    is_form_108_lease,
+    legacy_payments,
+    ordered_debts,
+)
+from .exemptions import exempt_states
 from .household import (
     MAX_AGE,
     MAX_MEMBERS,
@@ -57,6 +64,7 @@ from .models import (
     IncomeDetail,
     IncomeInfo,
     IntakeSession,
+    IntentionAnswers,
     PetitionAnswers,
     ScheduleIAnswers,
     SOFACreditorPayment,
@@ -1025,6 +1033,7 @@ _INTAKE_DATA = {
     "claim_answers",
     "petition_answers",
     "schedule_i_answers",
+    "intention_answers",
     "debts",
     "household",
     "spouse_income",
@@ -1145,12 +1154,73 @@ class ScheduleIAnswersField(serializers.DictField):
         return {**record.get_answers(), "answered_on": record.answered_on}
 
 
+class IntentionAnswersField(serializers.DictField):
+    """The filer's Form 108 choices, read from the session's record, with the date of the last
+    change (read-only)."""
+
+    def get_attribute(self, instance):
+        record = getattr(instance, "intention_answers", None)
+        if record is None:
+            return {"answered_on": None}
+        return {**record.get_answers(), "answered_on": record.answered_on}
+
+
 def _save_schedule_i_answers(session: IntakeSession, data: dict) -> None:
     """Set each answer sent; a null removes it (4c)."""
     record, _ = ScheduleIAnswers.objects.get_or_create(session=session)
     record.merge(data)
     record.save()
     session.schedule_i_answers = record
+
+
+def _save_intention_answers(session: IntakeSession, data: dict) -> None:
+    """Replace each top key sent, then keep only the ids still in scope (R-PRUNE): the confirmed
+    secured debts and the leases Form 108 asks about. Called after the save's debts are written
+    (R-SAVE-ORDER). confirmed() is a fresh query, so it sees those debts, never the prefetch; a
+    session save never writes contracts, so their prefetch holds."""
+    secured_ids = {d.pk for d in session.debts.confirmed() if d.is_secured}
+    lease_ids = {c.pk for c in session.executory_contracts.all() if is_form_108_lease(c)}
+    record, _ = IntentionAnswers.objects.get_or_create(session=session)
+    record.merge(data, secured_ids, lease_ids)
+    record.save()
+    session.intention_answers = record
+
+
+# An id is a debt's or a contract's pk: digits with no leading zero, below 10 ** 10 (4e-R17).
+_INTENTION_ID = re.compile(r"[1-9][0-9]{0,9}")
+_INTENTION_ENTRY_KEYS = {"secured": ("intention", "explain"), "leases": ("assumed",)}
+
+
+def _intention_value_ok(cell: str, value) -> bool:
+    if not isinstance(value, str):
+        return False
+    if cell == "intention":
+        return value in IntentionAnswers.INTENTIONS
+    if cell == "assumed":
+        return value in IntentionAnswers.ASSUMED
+    if len(value) > IntentionAnswers.TEXT_CEILING:
+        return False
+    # Half of a surrogate pair can't be written as UTF-8, so every later read of the session
+    # would fail to render: refuse it before anything is stored, as for Form 101's texts.
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+def _intention_entries_ok(key: str, entries) -> bool:
+    """A top key's object: at most ROW_CEILING ids, each an object of its own cells."""
+    if not isinstance(entries, dict) or len(entries) > IntentionAnswers.ROW_CEILING:
+        return False
+    allowed = _INTENTION_ENTRY_KEYS[key]
+    for row_id, entry in entries.items():
+        if _INTENTION_ID.fullmatch(row_id) is None or not isinstance(entry, dict):
+            return False
+        for cell, value in entry.items():
+            if cell not in allowed or not _intention_value_ok(cell, value):
+                return False
+    return True
 
 
 # ASCII digits only: Python's \d also takes other scripts' digits, which no form prints.
@@ -1214,6 +1284,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
     claim_answers = ClaimAnswersField(required=False)
     petition_answers = PetitionAnswersField(required=False)
     schedule_i_answers = ScheduleIAnswersField(required=False)
+    intention_answers = IntentionAnswersField(required=False)
     debts = NestedDebtInfoSerializer(many=True, required=False)
     household = HouseholdSerializer(required=False, allow_null=True)
     spouse_income = SpouseIncomeSerializer(required=False, allow_null=True)
@@ -1222,6 +1293,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
     income_window = serializers.SerializerMethodField()
     legacy_payments = serializers.SerializerMethodField()
     paystub_employer_name = serializers.SerializerMethodField()
+    intention_exempt = serializers.SerializerMethodField()
 
     class Meta:
         model = IntakeSession
@@ -1240,12 +1312,14 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "claim_answers",
             "petition_answers",
             "schedule_i_answers",
+            "intention_answers",
             "debts",
             "household",
             "spouse_income",
             "income_window",
             "legacy_payments",
             "paystub_employer_name",
+            "intention_exempt",
             "created_at",
             "completed_at",
         ]
@@ -1261,6 +1335,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "income_window",
             "legacy_payments",
             "paystub_employer_name",
+            "intention_exempt",
         ]
 
     def validate_asset_lines(self, answers):
@@ -1329,6 +1404,24 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             answers[key] = value
         return answers
 
+    def validate_intention_answers(self, sent):
+        """Check every key before any write, as MeansTestAnswers.merge does. A message names the
+        top key, never an id or a value (Ruling F12)."""
+        answers = {}
+        for key, value in sent.items():
+            if key == "answered_on":
+                continue  # echoed by a read or set by the server; never written from a body
+            if key not in IntentionAnswers.KEYS:
+                raise serializers.ValidationError(f"Not an intention answer: {key}.")
+            if value is not None and not _intention_entries_ok(key, value):
+                raise serializers.ValidationError(f"Check the answer for {key}.")
+            answers[key] = value
+        return answers
+
+    def get_intention_exempt(self, obj) -> dict:
+        """Each secured debt's Form 108 exempt state, by id (R-EXEMPT, 4e-R6)."""
+        return {str(pk): state for pk, state in exempt_states(obj).items()}
+
     def get_paystub_employer_name(self, obj) -> str:
         """The employer name read from a pay stub, shown beside the box and never saved into it
         (4c-R10); "" without one. Read from the prefetched rows, in Python."""
@@ -1364,6 +1457,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         claim_answers_data = validated_data.pop("claim_answers", None)
         petition_answers_data = validated_data.pop("petition_answers", None)
         schedule_i_answers_data = validated_data.pop("schedule_i_answers", None)
+        intention_answers_data = validated_data.pop("intention_answers", None)
 
         # Create session
         session = IntakeSession.objects.create(**validated_data)
@@ -1403,6 +1497,10 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         # Create debts, after the assets so a link is checked against them
         _save_rows_by_id(session, DebtInfo, debts_data, scoped={"secured_by_id": AssetInfo})
 
+        # After the debts, so the prune sees the ones this save made (R-SAVE-ORDER)
+        if intention_answers_data:
+            _save_intention_answers(session, intention_answers_data)
+
         return session
 
     def update(self, instance, validated_data):
@@ -1422,6 +1520,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         if validated_data.get("schedule_i_answers") == {}:
             # Only an echoed answered_on, or nothing: no answer to save, so nothing reopens.
             del validated_data["schedule_i_answers"]
+        if validated_data.get("intention_answers") == {}:
+            # Only an echoed answered_on, or nothing: no answer to save, so nothing reopens.
+            del validated_data["intention_answers"]
         if _INTAKE_DATA.intersection(validated_data):
             instance.reopen()
 
@@ -1436,6 +1537,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         claim_answers_data = validated_data.pop("claim_answers", None)
         petition_answers_data = validated_data.pop("petition_answers", None)
         schedule_i_answers_data = validated_data.pop("schedule_i_answers", None)
+        intention_answers_data = validated_data.pop("intention_answers", None)
 
         # Update session fields
         for attr, value in validated_data.items():
@@ -1487,6 +1589,11 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             instance.sent_rows["debts"] = _save_rows_by_id(
                 instance, DebtInfo, debts_data, scoped={"secured_by_id": AssetInfo}
             )
+
+        # Last, after the debts: the prune must see the debts this save wrote, so a debt made
+        # secured keeps its choice and a debt deleted keeps none (R-SAVE-ORDER).
+        if intention_answers_data is not None:
+            _save_intention_answers(instance, intention_answers_data)
 
         return instance
 

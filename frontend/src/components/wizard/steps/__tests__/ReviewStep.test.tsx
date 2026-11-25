@@ -1,7 +1,10 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { vi } from 'vitest';
 import { ReviewStep } from '../ReviewStep';
+import { fill } from '../claims/claimNames';
 import {
+  INTENTION_GAP_NONE,
+  LEASE_GAP_UNDECIDED,
   REVIEW_ASSISTANCE,
   REVIEW_DEDUCTIONS,
   REVIEW_ENTRIES,
@@ -299,13 +302,55 @@ describe('ReviewStep null-safe rendering', () => {
       render(
         <ReviewStep
           {...baseProps}
-          gaps={[{ message: 'Tell us about your plans.', step: 'plans', kind: 'detail' }]}
+          gaps={[
+            {
+              message: 'Tell us about the last few years.',
+              step: 'last_few_years_1',
+              kind: 'detail',
+            },
+          ]}
           gapsStatus="done"
           onValidationChange={vi.fn()}
         />
       );
-      expect(screen.getByText('Tell us about your plans.')).toBeInTheDocument();
+      expect(screen.getByText('Tell us about the last few years.')).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /^Go to / })).not.toBeInTheDocument();
+    });
+
+    // Review lists step 9's open rows once, through its one gap list (R-REVIEW-ONCE): no second
+    // section, and no heading of its own
+    it('shows each open Form 108 choice once, with a link to Your Plans', () => {
+      const onGoToStep = vi.fn();
+      const open = [
+        {
+          message: fill(INTENTION_GAP_NONE, { name: 'Demo Auto Credit' }),
+          step: 'plans',
+          kind: 'detail' as const,
+          forms: ['form_108'],
+        },
+        {
+          message: fill(LEASE_GAP_UNDECIDED, { name: 'Demo Auto Leasing' }),
+          step: 'plans',
+          kind: 'detail' as const,
+          forms: ['form_108'],
+        },
+      ];
+      render(
+        <ReviewStep
+          {...baseProps}
+          gaps={open}
+          gapsStatus="done"
+          onValidationChange={vi.fn()}
+          onGoToStep={onGoToStep}
+        />
+      );
+      for (const gap of open) expect(screen.getAllByText(gap.message)).toHaveLength(1);
+      const links = screen.getAllByRole('button', { name: 'Go to Your Plans' });
+      expect(links).toHaveLength(2);
+      expect(screen.queryByText('Form 108 choices you left open')).not.toBeInTheDocument();
+
+      fireEvent.click(links[0]);
+      expect(onGoToStep).toHaveBeenCalledWith(9);
     });
 
     it('an unreachable check leaves Complete enabled and says so', () => {

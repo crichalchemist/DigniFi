@@ -7,6 +7,7 @@ import {
   DASHBOARD_GAPS_ONE,
   DASHBOARD_GATES_MANY,
   DASHBOARD_GATES_ONE,
+  INTENTION_GAP_NONE,
   PETITION_DETAIL_CALLED_TO_DUTY,
   PETITION_DETAIL_DEBT_NATURE_TEXT,
   PETITION_DETAIL_DEBTS_ON_DUTY,
@@ -168,6 +169,28 @@ describe('GapsNotice', () => {
     expect(within(notice).getByText(tooLong)).toBeInTheDocument();
     expect(within(notice).getByText(tooLongJ)).toBeInTheDocument();
     expect(notice).not.toHaveTextContent(/blank/i);
+  });
+
+  // E4: a claims text too long for its box reuses Schedule I's sentence, so it is never counted
+  // as blank, while a Form 108 choice left open is a box that prints blank
+  it('GapsNotice leaves the claims too-long details out of the blank count', () => {
+    const tooLong = SCHEDULE_I_DETAIL_TOO_LONG.replace('{label}', "the creditor's name").replace(
+      '{form}',
+      'Schedule D'
+    );
+    const open = INTENTION_GAP_NONE.replace('{name}', 'Demo Auto Finance');
+    renderNotice([
+      { ...detail('debts', tooLong), forms: ['schedule_d'] },
+      { ...detail('plans', open), forms: ['form_108'] },
+    ]);
+
+    const notice = screen.getByRole('status');
+    expect(tooLong).toBe(
+      "Your answer for the creditor's name is too long for its box on Schedule D."
+    );
+    expect(within(notice).getByText(tooLong)).toBeInTheDocument();
+    expect(within(notice).getByText(open)).toBeInTheDocument();
+    expect(within(notice).getByText(DASHBOARD_GAPS_ONE)).toBeInTheDocument();
   });
 
   // Form 101A is refused whole while its landlord is missing; it never prints a blank box (R12)

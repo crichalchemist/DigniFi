@@ -16280,6 +16280,476 @@
     "evidence": "Field index: Landlord ZIP Code_5 p1 T9, \"Landlord's address: ZIP code\" (adjudicated). Printed from the filer's own answer; Form 101A's certification boxes stay unbound. Read by test_form_101a_schema.py and tier 1."
   },
   {
+    "schema": "form_108",
+    "pdf_field": "Debtor 1",
+    "producer": "derived:full_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor 1",
+    "evidence": "Field index: Debtor 1 p1 T1, \"Caption: Debtor 1's name (page 1)\" (adjudicated); p2 T1, \"Caption: Debtor 1's name (page 2)\" (adjudicated). Printed from the filer's name in their debtor information, on both pages. Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Bankruptcy District Information",
+    "producer": "derived:district_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Bankruptcy District Information",
+    "evidence": "Field index: Bankruptcy District Information p1 T3, 'Caption: the court (district)' (adjudicated). Printed from the session's district, not the filer's answer. Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Creditors Name 1a",
+    "producer": "asked:claims.secured[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name 1a",
+    "evidence": "Field index: Creditors Name 1a p1 T8, \"Part 1, row a: creditor's name\" (adjudicated). Row 1 of group f108_part_1 prints claims.secured[].name here (R-SHAPE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "PropertyDescription 1a",
+    "producer": "asked:claims.secured[].property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "PropertyDescription 1a",
+    "evidence": "Field index: PropertyDescription 1a p1 T11, 'Part 1, row a: description of property securing the debt' (adjudicated). Row 1 of group f108_part_1 prints claims.secured[].property here (R-SHAPE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "check1 1a",
+    "producer": "asked:claims.secured[].intention",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check1 1a",
+    "evidence": "Field index: check1 1a p1 T6, 'Part 1, row a: intention, surrender' ('Surrender the property.') (adjudicated); p1 T10, 'Part 1, row a: intention, retain and redeem' ('Retain the property and redeem it.') (adjudicated); p1 T12, 'Part 1, row a: intention, retain and reaffirm' ('Retain the property and enter into a Reaffirmation Agreement.') (adjudicated); p1 T13, 'Part 1, row a: intention, retain and explain' ('Retain the property and [explain]:') (adjudicated). Row 1 of group f108_part_1 prints claims.secured[].intention here (R-SHAPE, R-BLANK-EXPLAIN, 4e-R22: the filer's own choice, blank while open). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "check2 1a",
+    "producer": "asked:claims.secured[].exempt",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2 1a",
+    "evidence": "Field index: check2 1a p1 T7, 'Part 1, row a: claimed as exempt on Schedule C, No' ('No') (adjudicated); p1 T9, 'Part 1, row a: claimed as exempt on Schedule C, Yes' ('Yes') (adjudicated). Row 1 of group f108_part_1 prints claims.secured[].exempt here (R-EXEMPT, 4e-R6: Yes or No from Schedule C's own answers, else blank). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Explain1 1a",
+    "producer": "asked:claims.secured[].explain_1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Explain1 1a",
+    "evidence": "Field index: Explain1 1a p1 T14, 'Part 1, row a: explanation, first box' (adjudicated). Row 1 of group f108_part_1 prints claims.secured[].explain_1 here (R-EXPLAIN, 4e-R5: the words only under the filer's retain-and-explain). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Explain2 1a",
+    "producer": "asked:claims.secured[].explain_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Explain2 1a",
+    "evidence": "Field index: Explain2 1a p1 T15, 'Part 1, row a: explanation, second box' (adjudicated). Row 1 of group f108_part_1 prints claims.secured[].explain_2 here (R-EXPLAIN, 4e-R5: the words only under the filer's retain-and-explain). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Creditors Name 1b",
+    "producer": "asked:claims.secured[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name 1b",
+    "evidence": "Field index: Creditors Name 1b p1 T18, \"Part 1, row b: creditor's name\" (adjudicated). Row 2 of group f108_part_1 prints claims.secured[].name here (R-SHAPE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "PropertyDescription 1b",
+    "producer": "asked:claims.secured[].property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "PropertyDescription 1b",
+    "evidence": "Field index: PropertyDescription 1b p1 T21, 'Part 1, row b: description of property securing the debt' (adjudicated). Row 2 of group f108_part_1 prints claims.secured[].property here (R-SHAPE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "check1 1b",
+    "producer": "asked:claims.secured[].intention",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check1 1b",
+    "evidence": "Field index: check1 1b p1 T16, 'Part 1, row b: intention, surrender' ('Surrender the property.') (adjudicated); p1 T20, 'Part 1, row b: intention, retain and redeem' ('Retain the property and redeem it.') (adjudicated); p1 T22, 'Part 1, row b: intention, retain and reaffirm' ('Retain the property and enter into a Reaffirmation Agreement.') (adjudicated); p1 T23, 'Part 1, row b: intention, retain and explain' ('Retain the property and [explain]:') (adjudicated). Row 2 of group f108_part_1 prints claims.secured[].intention here (R-SHAPE, R-BLANK-EXPLAIN, 4e-R22: the filer's own choice, blank while open). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "check2 1b",
+    "producer": "asked:claims.secured[].exempt",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2 1b",
+    "evidence": "Field index: check2 1b p1 T17, 'Part 1, row b: claimed as exempt on Schedule C, No' ('No') (adjudicated); p1 T19, 'Part 1, row b: claimed as exempt on Schedule C, Yes' ('Yes') (adjudicated). Row 2 of group f108_part_1 prints claims.secured[].exempt here (R-EXEMPT, 4e-R6: Yes or No from Schedule C's own answers, else blank). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Explain1 1b",
+    "producer": "asked:claims.secured[].explain_1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Explain1 1b",
+    "evidence": "Field index: Explain1 1b p1 T24, 'Part 1, row b: explanation, first box' (adjudicated). Row 2 of group f108_part_1 prints claims.secured[].explain_1 here (R-EXPLAIN, 4e-R5: the words only under the filer's retain-and-explain). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Explain2 1b",
+    "producer": "asked:claims.secured[].explain_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Explain2 1b",
+    "evidence": "Field index: Explain2 1b p1 T25, 'Part 1, row b: explanation, second box' (adjudicated). Row 2 of group f108_part_1 prints claims.secured[].explain_2 here (R-EXPLAIN, 4e-R5: the words only under the filer's retain-and-explain). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Creditors Name 1c",
+    "producer": "asked:claims.secured[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name 1c",
+    "evidence": "Field index: Creditors Name 1c p1 T28, \"Part 1, row c: creditor's name\" (adjudicated). Row 3 of group f108_part_1 prints claims.secured[].name here (R-SHAPE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "PropertyDescription 1c",
+    "producer": "asked:claims.secured[].property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "PropertyDescription 1c",
+    "evidence": "Field index: PropertyDescription 1c p1 T31, 'Part 1, row c: description of property securing the debt' (adjudicated). Row 3 of group f108_part_1 prints claims.secured[].property here (R-SHAPE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "check1 1c",
+    "producer": "asked:claims.secured[].intention",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check1 1c",
+    "evidence": "Field index: check1 1c p1 T26, 'Part 1, row c: intention, surrender' ('Surrender the property.') (adjudicated); p1 T30, 'Part 1, row c: intention, retain and redeem' ('Retain the property and redeem it.') (adjudicated); p1 T32, 'Part 1, row c: intention, retain and reaffirm' ('Retain the property and enter into a Reaffirmation Agreement.') (adjudicated); p1 T33, 'Part 1, row c: intention, retain and explain' ('Retain the property and [explain]:') (adjudicated). Row 3 of group f108_part_1 prints claims.secured[].intention here (R-SHAPE, R-BLANK-EXPLAIN, 4e-R22: the filer's own choice, blank while open). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "check2 1c",
+    "producer": "asked:claims.secured[].exempt",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2 1c",
+    "evidence": "Field index: check2 1c p1 T27, 'Part 1, row c: claimed as exempt on Schedule C, No' ('No') (adjudicated); p1 T29, 'Part 1, row c: claimed as exempt on Schedule C, Yes' ('Yes') (adjudicated). Row 3 of group f108_part_1 prints claims.secured[].exempt here (R-EXEMPT, 4e-R6: Yes or No from Schedule C's own answers, else blank). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Explain1 1c",
+    "producer": "asked:claims.secured[].explain_1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Explain1 1c",
+    "evidence": "Field index: Explain1 1c p1 T34, 'Part 1, row c: explanation, first box' (adjudicated). Row 3 of group f108_part_1 prints claims.secured[].explain_1 here (R-EXPLAIN, 4e-R5: the words only under the filer's retain-and-explain). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Explain2 1c",
+    "producer": "asked:claims.secured[].explain_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Explain2 1c",
+    "evidence": "Field index: Explain2 1c p1 T35, 'Part 1, row c: explanation, second box' (adjudicated). Row 3 of group f108_part_1 prints claims.secured[].explain_2 here (R-EXPLAIN, 4e-R5: the words only under the filer's retain-and-explain). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Creditors Name 1d",
+    "producer": "asked:claims.secured[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name 1d",
+    "evidence": "Field index: Creditors Name 1d p1 T38, \"Part 1, row d: creditor's name\" (adjudicated). Row 4 of group f108_part_1 prints claims.secured[].name here (R-SHAPE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "PropertyDescription 1d",
+    "producer": "asked:claims.secured[].property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "PropertyDescription 1d",
+    "evidence": "Field index: PropertyDescription 1d p1 T41, 'Part 1, row d: description of property securing the debt' (adjudicated). Row 4 of group f108_part_1 prints claims.secured[].property here (R-SHAPE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "check1 1d",
+    "producer": "asked:claims.secured[].intention",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check1 1d",
+    "evidence": "Field index: check1 1d p1 T36, 'Part 1, row d: intention, surrender' ('Surrender the property.') (adjudicated); p1 T39, 'Part 1, row d: intention, retain and redeem' ('Retain the property and redeem it.') (adjudicated); p1 T42, 'Part 1, row d: intention, retain and reaffirm' ('Retain the property and enter into a Reaffirmation Agreement.') (adjudicated); p1 T43, 'Part 1, row d: intention, retain and explain' ('Retain the property and [explain]:') (adjudicated). Row 4 of group f108_part_1 prints claims.secured[].intention here (R-SHAPE, R-BLANK-EXPLAIN, 4e-R22: the filer's own choice, blank while open). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "check2 1d",
+    "producer": "asked:claims.secured[].exempt",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2 1d",
+    "evidence": "Field index: check2 1d p1 T37, 'Part 1, row d: claimed as exempt on Schedule C, No' ('No') (adjudicated); p1 T40, 'Part 1, row d: claimed as exempt on Schedule C, Yes' ('Yes') (adjudicated). Row 4 of group f108_part_1 prints claims.secured[].exempt here (R-EXEMPT, 4e-R6: Yes or No from Schedule C's own answers, else blank). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Explain1 1d",
+    "producer": "asked:claims.secured[].explain_1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Explain1 1d",
+    "evidence": "Field index: Explain1 1d p1 T44, 'Part 1, row d: explanation, first box' (adjudicated). Row 4 of group f108_part_1 prints claims.secured[].explain_1 here (R-EXPLAIN, 4e-R5: the words only under the filer's retain-and-explain). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Explain2 1d",
+    "producer": "asked:claims.secured[].explain_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Explain2 1d",
+    "evidence": "Field index: Explain2 1d p1 T45, 'Part 1, row d: explanation, second box' (adjudicated). Row 4 of group f108_part_1 prints claims.secured[].explain_2 here (R-EXPLAIN, 4e-R5: the words only under the filer's retain-and-explain). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Lessors Name 2a",
+    "producer": "asked:claims.leases[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Lessors Name 2a",
+    "evidence": "Field index: Lessors Name 2a p2 T3, \"Part 2, row a: lessor's name\" (adjudicated). Row 1 of group f108_part_2 prints claims.leases[].name here (R-SHAPE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "PropertyDescription 2a",
+    "producer": "asked:claims.leases[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "PropertyDescription 2a",
+    "evidence": "Field index: PropertyDescription 2a p2 T6, 'Part 2, row a: description of leased property' (adjudicated). Row 1 of group f108_part_2 prints claims.leases[].purpose here (R-SHAPE, R-LEASE-GATE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "check2a",
+    "producer": "asked:claims.leases[].assumed",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2a",
+    "evidence": "Field index: check2a p2 T4, 'Part 2, row a: will the lease be assumed, No' ('No') (adjudicated); p2 T5, 'Part 2, row a: will the lease be assumed, Yes' ('Yes') (adjudicated). Row 1 of group f108_part_2 prints claims.leases[].assumed here (R-SHAPE, 4e-R22: the filer's own answer, blank while open). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Lessors Name 2b",
+    "producer": "asked:claims.leases[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Lessors Name 2b",
+    "evidence": "Field index: Lessors Name 2b p2 T7, \"Part 2, row b: lessor's name\" (adjudicated). Row 2 of group f108_part_2 prints claims.leases[].name here (R-SHAPE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "PropertyDescription 2b",
+    "producer": "asked:claims.leases[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "PropertyDescription 2b",
+    "evidence": "Field index: PropertyDescription 2b p2 T10, 'Part 2, row b: description of leased property' (adjudicated). Row 2 of group f108_part_2 prints claims.leases[].purpose here (R-SHAPE, R-LEASE-GATE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "check2b",
+    "producer": "asked:claims.leases[].assumed",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2b",
+    "evidence": "Field index: check2b p2 T8, 'Part 2, row b: will the lease be assumed, No' ('No') (adjudicated); p2 T9, 'Part 2, row b: will the lease be assumed, Yes' ('Yes') (adjudicated). Row 2 of group f108_part_2 prints claims.leases[].assumed here (R-SHAPE, 4e-R22: the filer's own answer, blank while open). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Lessors Name 2c",
+    "producer": "asked:claims.leases[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Lessors Name 2c",
+    "evidence": "Field index: Lessors Name 2c p2 T11, \"Part 2, row c: lessor's name\" (adjudicated). Row 3 of group f108_part_2 prints claims.leases[].name here (R-SHAPE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "PropertyDescription 2c",
+    "producer": "asked:claims.leases[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "PropertyDescription 2c",
+    "evidence": "Field index: PropertyDescription 2c p2 T14, 'Part 2, row c: description of leased property' (adjudicated). Row 3 of group f108_part_2 prints claims.leases[].purpose here (R-SHAPE, R-LEASE-GATE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "check2c",
+    "producer": "asked:claims.leases[].assumed",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2c",
+    "evidence": "Field index: check2c p2 T12, 'Part 2, row c: will the lease be assumed, No' ('No') (adjudicated); p2 T13, 'Part 2, row c: will the lease be assumed, Yes' ('Yes') (adjudicated). Row 3 of group f108_part_2 prints claims.leases[].assumed here (R-SHAPE, 4e-R22: the filer's own answer, blank while open). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Lessors Name 2d",
+    "producer": "asked:claims.leases[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Lessors Name 2d",
+    "evidence": "Field index: Lessors Name 2d p2 T15, \"Part 2, row d: lessor's name\" (adjudicated). Row 4 of group f108_part_2 prints claims.leases[].name here (R-SHAPE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "PropertyDescription 2d",
+    "producer": "asked:claims.leases[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "PropertyDescription 2d",
+    "evidence": "Field index: PropertyDescription 2d p2 T18, 'Part 2, row d: description of leased property' (adjudicated). Row 4 of group f108_part_2 prints claims.leases[].purpose here (R-SHAPE, R-LEASE-GATE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "check2d",
+    "producer": "asked:claims.leases[].assumed",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2d",
+    "evidence": "Field index: check2d p2 T16, 'Part 2, row d: will the lease be assumed, No' ('No') (adjudicated); p2 T17, 'Part 2, row d: will the lease be assumed, Yes' ('Yes') (adjudicated). Row 4 of group f108_part_2 prints claims.leases[].assumed here (R-SHAPE, 4e-R22: the filer's own answer, blank while open). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Lessors Name 2e",
+    "producer": "asked:claims.leases[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Lessors Name 2e",
+    "evidence": "Field index: Lessors Name 2e p2 T19, \"Part 2, row e: lessor's name\" (adjudicated). Row 5 of group f108_part_2 prints claims.leases[].name here (R-SHAPE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "PropertyDescription 2e",
+    "producer": "asked:claims.leases[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "PropertyDescription 2e",
+    "evidence": "Field index: PropertyDescription 2e p2 T22, 'Part 2, row e: description of leased property' (adjudicated). Row 5 of group f108_part_2 prints claims.leases[].purpose here (R-SHAPE, R-LEASE-GATE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "check2e",
+    "producer": "asked:claims.leases[].assumed",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2e",
+    "evidence": "Field index: check2e p2 T20, 'Part 2, row e: will the lease be assumed, No' ('No') (adjudicated); p2 T21, 'Part 2, row e: will the lease be assumed, Yes' ('Yes') (adjudicated). Row 5 of group f108_part_2 prints claims.leases[].assumed here (R-SHAPE, 4e-R22: the filer's own answer, blank while open). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Lessors Name 2f",
+    "producer": "asked:claims.leases[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Lessors Name 2f",
+    "evidence": "Field index: Lessors Name 2f p2 T23, \"Part 2, row f: lessor's name\" (adjudicated). Row 6 of group f108_part_2 prints claims.leases[].name here (R-SHAPE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "PropertyDescription 2f",
+    "producer": "asked:claims.leases[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "PropertyDescription 2f",
+    "evidence": "Field index: PropertyDescription 2f p2 T26, 'Part 2, row f: description of leased property' (adjudicated). Row 6 of group f108_part_2 prints claims.leases[].purpose here (R-SHAPE, R-LEASE-GATE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "check2f",
+    "producer": "asked:claims.leases[].assumed",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2f",
+    "evidence": "Field index: check2f p2 T24, 'Part 2, row f: will the lease be assumed, No' ('No') (adjudicated); p2 T25, 'Part 2, row f: will the lease be assumed, Yes' ('Yes') (adjudicated). Row 6 of group f108_part_2 prints claims.leases[].assumed here (R-SHAPE, 4e-R22: the filer's own answer, blank while open). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "Lessors Name 2g",
+    "producer": "asked:claims.leases[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Lessors Name 2g",
+    "evidence": "Field index: Lessors Name 2g p2 T27, \"Part 2, row g: lessor's name\" (adjudicated). Row 7 of group f108_part_2 prints claims.leases[].name here (R-SHAPE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "PropertyDescription 2g",
+    "producer": "asked:claims.leases[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "PropertyDescription 2g",
+    "evidence": "Field index: PropertyDescription 2g p2 T30, 'Part 2, row g: description of leased property' (adjudicated). Row 7 of group f108_part_2 prints claims.leases[].purpose here (R-SHAPE, R-LEASE-GATE, 4e-R22). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
+    "schema": "form_108",
+    "pdf_field": "check2g",
+    "producer": "asked:claims.leases[].assumed",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2g",
+    "evidence": "Field index: check2g p2 T28, 'Part 2, row g: will the lease be assumed, No' ('No') (adjudicated); p2 T29, 'Part 2, row g: will the lease be assumed, Yes' ('Yes') (adjudicated). Row 7 of group f108_part_2 prints claims.leases[].assumed here (R-SHAPE, 4e-R22: the filer's own answer, blank while open). Debtor 2, the case number, the amended-filing box, the signatures and the dates stay unbound. Read by test_form_108_schema.py, test_form_108_prints.py and tier 1."
+  },
+  {
     "schema": "list_of_creditors",
     "pdf_field": "Debtor1.Name",
     "producer": "derived:full_name",

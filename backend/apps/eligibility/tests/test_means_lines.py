@@ -281,6 +281,7 @@ def _line_3(category):
         pytest.param({"debt_nature": "business"}, False, NOT_CONSUMER, id="business-below"),
         pytest.param({"debt_nature": "business"}, True, NOT_CONSUMER, id="business-above"),
         pytest.param({"debt_nature": "neither"}, True, NOT_CONSUMER, id="neither-above"),
+        pytest.param({"debt_nature": "neither"}, False, NOT_CONSUMER, id="neither-below"),
         pytest.param(
             {
                 "debt_nature": "business",
@@ -358,6 +359,11 @@ def test_an_open_military_question_above_the_median_cannot_be_worked_out(answers
     assert military_question_open(answers) is True
     assert route_outcome(answers, True) == CANNOT_WORK_OUT
     assert route_outcome(answers, False) == AT_OR_BELOW_MEDIAN
+
+
+def test_line_2_yes_yes_leaves_no_line_3_question_open():
+    # Line 2 Yes to both ends the Supp's questions: the form never reaches line 3.
+    assert military_question_open({**LINE_2_YES_YES, "reservist": None}) is False
 
 
 def test_a_category_with_no_date_is_still_a_claim():

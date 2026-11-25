@@ -26,8 +26,8 @@ from apps.intake.tests.builders import answer_petition
 
 # Each form's Debtor 1 signature line and signing date, left blank for wet ink. Form 101's
 # six are its 11/26 Part 7 date and its notice page's signature line and date.
-# Priya's packet holds every form below, 122A-2 included, and Form 101A once the test answers
-# the eviction pair.
+# Priya's packet holds every form below, 122A-2 and Form 108 (her car loan) included, and Form
+# 101A once the test answers the eviction pair.
 SIGNING_LINES = {
     "form_101": ["MM", "DD", " YYYY", "MM  DD_2", " YYYY_4", "undefined_23"],
     "form_106dec": ["Debtor1.signature", "Executed on"],
@@ -36,6 +36,13 @@ SIGNING_LINES = {
     "form_122a2": ["Debtor1.sig", "Debtor1.Date signed"],
     # Form 101A's two signature lines and two dates: the certification a filer signs in ink.
     "form_101a": ["undefined_38", "undefined_39", "Date", "Date_2"],
+    # Form 108's Part 3: both signature lines and both dates (4e).
+    "form_108": [
+        "Signature of Debtor 1",
+        "Signature of Debtor 2",
+        "Date signed Debtor 1",
+        "Date signed Debtor 2",
+    ],
 }
 
 # Boxes on the same form that must still print, so a blank signing line can't come from
@@ -47,6 +54,7 @@ STILL_PRINTS = {
     "form_122a1": {"Debtor1.Name": "Priya Sharma"},
     "form_122a2": {"Debtor1.Name": "Priya Sharma"},
     "form_101a": {"Debtor 1": "Priya Sharma", "Name of landlord": "Demo Property Holdings LLC"},
+    "form_108": {"Debtor 1": "Priya Sharma", "Creditors Name 1a": "Kestrel Auto Finance"},
 }
 
 LANDLORD = {

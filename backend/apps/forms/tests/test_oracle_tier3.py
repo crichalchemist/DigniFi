@@ -646,6 +646,20 @@ EXPECTED = {
             "creditor1.0.2": "Gold Coast Example Residential LLC 850 N State St c/o Management Office Chicago, IL 60610",
             "creditor1.0.3": "",
         },
+        # Form 108 (4e): his car loan, which he keeps and reaffirms (E5); the Camry's claim on
+        # Schedule C ticks the exempt box Yes (R-EXEMPT). His apartment, a residential lease, is
+        # not on Form 108.
+        "form_108": {
+            "Debtor 1": "James D Washington",
+            "Creditors Name 1a": "Crestway Auto Credit",
+            "PropertyDescription 1a": "2019 Toyota Camry",
+            "check1 1a": "/retain and reaffirmation",
+            "check2 1a": "/yes",
+            "Explain1 1a": "",
+            "Explain2 1a": "",
+            "Creditors Name 1b": "",
+            "Lessors Name 2a": "",
+        },
     },
     "priya": {
         "form_101": {
@@ -1032,6 +1046,20 @@ EXPECTED = {
             "creditor2.0.1": "Rohan Sharma 456 W Fullerton Pkwy Chicago, IL 60614",
             "creditor2.0.2": "",
         },
+        # Form 108 (4e): her car loan, which she keeps and redeems (E5); the CR-V's claim on
+        # Schedule C ticks the exempt box Yes (R-EXEMPT). Her apartment, a residential lease, is
+        # not on Form 108.
+        "form_108": {
+            "Debtor 1": "Priya Sharma",
+            "Creditors Name 1a": "Kestrel Auto Finance",
+            "PropertyDescription 1a": "2021 Honda CR-V EX",
+            "check1 1a": "/retain and redeem",
+            "check2 1a": "/yes",
+            "Explain1 1a": "",
+            "Explain2 1a": "",
+            "Creditors Name 1b": "",
+            "Lessors Name 2a": "",
+        },
     },
     "deshawn": {
         "form_101": {
@@ -1234,6 +1262,26 @@ EXPECTED = {
             "creditor1.0.4": "Demo Recovery Services PO Box 4405 Chicago, IL 60680",
             "creditor2.0.0": "Demo Medical Collections PO Box 4406 Chicago, IL 60680",
             "creditor2.0.1": "",
+        },
+        # Form 108 (4e): his mortgage, which he keeps and explains (E5); the home's claim on
+        # Schedule C ticks the exempt box Yes (R-EXEMPT). His words, "I am current on the mortgage
+        # and will keep paying as agreed", split by hand, never read off split_explain: Explain1
+        # 1a is 50.501 pt wide, less 4 x 1.0 pt of margin, 46.501 pt, which is 7750 thousandths
+        # of an em at 6 pt (46.501 / 6). Helvetica advances in thousandths, a space 278:
+        #   "I" 278; " am" 278+556+833 = 1667, so 1945; " current" 278+500+556+333+333+556+556
+        #   +278 = 3390, so 5335; " on" 278+556+556 = 1390, so 6725 (fits, under 7750);
+        #   " the" 278+278+556+556 = 1668, so 8393 (over 7750, stops).
+        # Explain1 takes "I am current on" and Explain2 the rest.
+        "form_108": {
+            "Debtor 1": "DeShawn R Mitchell",
+            "Creditors Name 1a": "Harrowgate Home Loans",
+            "PropertyDescription 1a": "Single-family home, 7823 S Sangamon St",
+            "check1 1a": "/retain and explain",
+            "check2 1a": "/yes",
+            "Explain1 1a": "I am current on",
+            "Explain2 1a": "the mortgage and will keep paying as agreed",
+            "Creditors Name 1b": "",
+            "Lessors Name 2a": "",
         },
     },
     "sarah": {
@@ -1672,6 +1720,29 @@ EXPECTED = {
             "creditor1.0.5.4": "Mateo Kettleby 377 Douglas Ave Elgin, IL 60120",
             "creditor1.0.5.5": "",
         },
+        # Form 108 (4e): his car loan, which he keeps and explains, and his vehicle lease, which
+        # he assumes (E5); the Fit's claim on Schedule C ticks the exempt box Yes (R-EXEMPT). The
+        # Fox Run apartment, a residential lease, is not on Form 108. His words, "My brother
+        # Mateo, the co-owner, keeps paying the loan.", split by hand as DeShawn's are, against
+        # the same 7750 thousandths of an em at 6 pt (Helvetica, a space 278):
+        #   "My" 833+500 = 1333; " brother" 278+556+333+556+278+556+556+333 = 3446, so 4779
+        #   (fits); " Mateo," 278+833+556+278+556+556+278 = 3335, so 8114 (over 7750, stops).
+        # Explain1 takes "My brother" and Explain2 the rest.
+        "form_108": {
+            "Debtor 1": "Andrés J Kettleby",
+            "Bankruptcy District Information": "Northern District of Illinois",
+            "Creditors Name 1a": "Copperline Auto Finance",
+            "PropertyDescription 1a": "2017 Honda Fit, co-owned with my brother",
+            "check1 1a": "/retain and explain",
+            "check2 1a": "/yes",
+            "Explain1 1a": "My brother",
+            "Explain2 1a": "Mateo, the co-owner, keeps paying the loan.",
+            "Creditors Name 1b": "",
+            "Lessors Name 2a": "Northlight Auto Leasing",
+            "PropertyDescription 2a": "Lease of a 2024 Toyota Corolla Hybrid, 36 months, 03/01/2025–02/29/2028",
+            "check2a": "/yes",
+            "Lessors Name 2b": "",
+        },
     },
 }
 
@@ -1846,7 +1917,7 @@ def test_a_renter_with_an_eviction_judgment_gets_form_101a_with_the_landlord():
     answer_petition(session, rents_residence="yes", eviction_judgment="yes", **FORM_101A_LANDLORD)
 
     forms = packet(session)
-    assert len(forms) == 16
+    assert len(forms) == 17  # his 15, Form 101A and Form 108 (his car loan)
     assert forms[1] == "form_101a"
 
     values = build_field_values("form_101a", session)
@@ -1904,11 +1975,11 @@ def _ticks(form_type, session):
 @pytest.mark.django_db
 def test_a_non_consumer_filer_gets_the_supp_and_box_1():
     # Priya is above the median: answering business sends her to box 1 (D1), and the Supp takes
-    # 122A-2's place, so her packet stays at 16 forms.
+    # 122A-2's place, so her packet stays at 17 forms (Form 108 among them, 4e).
     session = _routed("priya", debt_nature="business")
 
     forms = packet(session)
-    assert len(forms) == 16
+    assert len(forms) == 17
     assert "form_122a1_supp" in forms and "form_122a2" not in forms
     assert _ticks("form_122a1", session)["CheckBox1"] == {"/No Abuse"}
     supp = _ticks("form_122a1_supp", session)
@@ -1924,7 +1995,7 @@ def test_a_disabled_veteran_gets_the_supp_and_box_1():
     session = _routed("james", disabled_veteran="yes", debts_on_duty="yes")
 
     forms = packet(session)
-    assert len(forms) == 16
+    assert len(forms) == 17
     assert "form_122a1_supp" in forms and "form_122a2" not in forms
     assert _ticks("form_122a1", session)["CheckBox1"] == {"/No Abuse"}
     supp = _ticks("form_122a1_supp", session)
@@ -1941,7 +2012,7 @@ def test_a_reservist_gets_the_supp_and_box_3():
     session = _routed("priya", reservist="yes", called_to_duty="yes", duty_category="3")
 
     forms = packet(session)
-    assert len(forms) == 16
+    assert len(forms) == 17
     assert "form_122a1_supp" in forms and "form_122a2" not in forms
     assert _ticks("form_122a1", session)["CheckBox1"] == {"/Does not apply"}
     supp = _ticks("form_122a1_supp", session)

@@ -40,6 +40,8 @@ import {
   CodebtorsStep,
   ReviewStep,
 } from '../components/wizard/steps';
+import { PlansStep } from '../components/wizard/steps/PlansStep';
+import { leasePlanRows, plansBody, securedPlanRows } from '../components/wizard/steps/plans';
 import type {
   IntakeSession,
   DebtorInfo,
@@ -55,8 +57,10 @@ import type {
   CompletionError,
   CompletionGap,
   DebtRow,
+  ExemptState,
   HouseholdMember,
   IncomeEntry,
+  IntentionAnswers,
   IncomePeriod,
   LegacyField,
   LegacyPayments,
@@ -428,6 +432,11 @@ export function IntakeWizard() {
   const noDebts = claimAnswers.no_debts === true;
   const [contractsData, setContractsData] = useState<ContractRow[]>([]);
   const [codebtorsData, setCodebtorsData] = useState<CodebtorRow[]>([]);
+  // Form 108's choices (4e), by the debt's or the lease's id (R-SHAPE), and each secured debt's
+  // exempt state, the server's (R-EXEMPT): read with the session and taken again from each session
+  // save's reply (F1), since a debt added on Amounts Owed has none in the read. Never sent.
+  const [intentionAnswers, setIntentionAnswers] = useState<IntentionAnswers>({});
+  const [intentionExempt, setIntentionExempt] = useState<Record<string, ExemptState>>({});
   // What the server says is missing, read when Review shows and again after a refused Complete.
   // The list is the server's; the browser keeps Complete's own reasons only until that read
   // answers, to show them if it fails (`refusalReasons`).
@@ -577,6 +586,8 @@ export function IntakeWizard() {
           contracts.map((row) => ({ ...hydrateContract(row), _key: String(row.id) }))
         );
         setCodebtorsData(codebtors.map((row) => ({ ...row, _key: String(row.id) })));
+        setIntentionAnswers(fresh.intention_answers ?? {});
+        setIntentionExempt(fresh.intention_exempt ?? {});
         setSessionRead('done');
       })
       .catch(() => {
@@ -602,7 +613,8 @@ export function IntakeWizard() {
 
   // What saving the step on screen sends: PATCH /api/intake/sessions/{id}/, whose nested
   // serializer creates and updates each section. Contracts and Codebtors send their bare list
-  // to their own endpoint instead (saveCurrentStepData). null for Review.
+  // to their own endpoint instead (saveCurrentStepData). null for Review, and for Your Plans with
+  // no row to ask about.
   // useAutoSave compares it with the step's last saved or loaded copy, so a step that only
   // shows what the server holds (a blank row, a recomputed total) sends nothing.
   const currentStepKey = WIZARD_STEPS[currentStepNumber - 1]?.key;
@@ -771,6 +783,18 @@ export function IntakeWizard() {
         };
       }
 
+      case 'plans': {
+        // The rows the step shows, keyed by server id (4e-R3): built the same way from loaded and
+        // chosen answers, so a visit sends nothing, and with no row shown nothing at all, Continue
+        // included, never {intention_answers: null}
+        const body = plansBody(
+          intentionAnswers,
+          securedPlanRows(debtsData),
+          leasePlanRows(contractsData)
+        );
+        return body === null ? null : ({ intention_answers: body } as Partial<IntakeSession>);
+      }
+
       default:
         return null;
     }
@@ -797,13 +821,20 @@ export function IntakeWizard() {
     codebtorsData,
     claimAnswers,
     noDebts,
+    intentionAnswers,
   ]);
+
+  // Your Plans with no row to show has nothing to save (its body is null), so it is kept under a
+  // name of its own: the first view with rows is then the copy a visit is compared with, and a
+  // row that appears later (a scanned debt confirmed) sends nothing by being shown (fix wave R1)
+  const stepSaveKey =
+    currentStepKey === 'plans' && currentStepBody === null ? 'plans-no-rows' : currentStepKey;
 
   const { saveStatus, saveNow, lastSavedAt } = useAutoSave({
     data: currentStepBody,
     // Until the read returns, the steps hold empty placeholders, not the session's data, so
     // they are kept under no step's name.
-    dataKey: sessionRead === 'done' ? currentStepKey : undefined,
+    dataKey: sessionRead === 'done' ? stepSaveKey : undefined,
     onSave: (body) => saveCurrentStepData(body),
     // Only autosave a complete, valid step (see architecture rationale), but for the steps in
     // ALWAYS_AUTOSAVE_STEPS, whose half-filled rows save too: a row is kept by what is on it,
@@ -862,6 +893,17 @@ export function IntakeWizard() {
       try {
         const nextStep = currentStepNumber + 1;
         await updateCurrentStep(nextStep);
+
+        // update_step 7 has confirmed every scanned draft on the server, so the wizard's rows
+        // are confirmed too, and Your Plans asks about them (4e-R2). sentDebt leaves `is_draft`
+        // out of step 6's body, so going back sends nothing.
+        if (nextStep === 7) {
+          setDebtsData((rows) =>
+            rows.some((row) => row.is_draft)
+              ? rows.map((row) => (row.is_draft ? { ...row, is_draft: false } : row))
+              : rows
+          );
+        }
 
         // Document upload sits between step 1 and step 2. The debtor's own details are
         // typed by hand; uploads then pre-fill the financial steps that follow, so the
@@ -942,10 +984,8 @@ export function IntakeWizard() {
   const saveCurrentStepData = async (body: StepBody | null): Promise<StepBody | void> => {
     if (!session) return;
 
-    if (body === null) {
-      console.log(`Saving data for ${currentStepKey} not yet implemented`);
-      return;
-    }
+    // Review, and Your Plans with no row, have nothing to save
+    if (body === null) return;
 
     // Each list saves through its own PUT, which takes the bare list and replies in the order
     // sent, and then the step's claim answers go in a session PATCH of their own (R16). Either
@@ -1044,6 +1084,18 @@ export function IntakeWizard() {
     const entriesSave = sendsEntries ? ++listSavesRef.current.entries : 0;
     const spouseEntriesSave = sendsSpouseEntries ? ++listSavesRef.current.spouseEntries : 0;
     const saved = await api.intake.updateSession(session.id, request as Partial<IntakeSession>);
+
+    // Each secured debt's exempt state as the server worked it out for this save (F1): a debt
+    // added since the read has its state only here. A reply a later save of the debts or the
+    // assets (whose rows the state reads) has overtaken is not what the server holds, and a reply
+    // without the field changes nothing.
+    if (
+      saved.intention_exempt !== undefined &&
+      (!debts || debtsSave === listSavesRef.current.debts) &&
+      (!assets || assetsSave === listSavesRef.current.assets)
+    ) {
+      setIntentionExempt(saved.intention_exempt);
+    }
 
     // Step 6's save has landed: if it changed line 16's or the Supp's answers, the sidebar works
     // the means test out again (F0). An edit alone, or a save that changed none of them, doesn't,
@@ -1312,6 +1364,22 @@ export function IntakeWizard() {
             onAnswersChange={setClaimAnswers}
             debts={debtsData}
             contracts={contractsData}
+            onValidationChange={setCanProceed}
+          />
+        );
+
+      case 'plans':
+        return (
+          <PlansStep
+            debts={debtsData}
+            contracts={contractsData}
+            answers={intentionAnswers}
+            onAnswersChange={setIntentionAnswers}
+            exempt={intentionExempt}
+            onGoToStep={(key) => {
+              const step = WIZARD_STEPS.find((wizardStep) => wizardStep.key === key);
+              if (step) moveToStep(step.number);
+            }}
             onValidationChange={setCanProceed}
           />
         );

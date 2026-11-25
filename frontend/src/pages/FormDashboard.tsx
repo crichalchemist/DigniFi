@@ -462,9 +462,11 @@ export function FormDashboard() {
   // Form 122A-2's questions are on the page; Form 122A-1's only while that form is in the packet
   // Form 101A's questions are Contracts & Leases' landlord block: it has no `/ask` page (4b2)
   // Form 122A-1Supp's questions are on the Amounts Owed step: it has no `/ask` page (4d)
+  // Form 108's questions are on the Your Plans step: it has no `/ask` page (4e)
   const answerPathOf = (formType: FormType): string | undefined => {
     if (formType === 'form_101a') return '/intake?step=contracts';
     if (formType === 'form_122a1_supp') return '/intake?step=debts';
+    if (formType === 'form_108') return '/intake?step=plans';
     return formType === 'form_122a2' || (formType === 'form_122a1' && has122a2)
       ? '/means-test'
       : undefined;

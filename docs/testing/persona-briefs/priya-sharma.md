@@ -120,6 +120,8 @@ Amounts Owed: debts primarily consumer; not a disabled veteran; not a Reservist 
 
 **Codebtors:** Yes. Rohan Sharma (your spouse), 456 W Fullerton Pkwy, Chicago, IL 60614, shares the Westhaven University Medical Center amount. Not in a community property state in the last 8 years.
 
+**Your Plans (step 9, Form 108):** For Kestrel Auto Finance (the Honda CR-V), choose "Retain the property and redeem it." This is Priya's own choice for the demo, not a recommended one.
+
 **Exemptions (Schedule C, on the page after the filing-fee page):** Line 1: You are claiming state and federal nonbankruptcy exemptions. You claim: Honda CR-V EX 2021 (line 3.1): 735 ILCS 5/12-1001(c), 100% of fair market value, up to any applicable statutory limit; Clothes (line 11): 735 ILCS 5/12-1001(a), 100% of fair market value, up to any applicable statutory limit; JPMorgan Chase (line 17.1): 735 ILCS 5/12-1001(b), $1,900; JPMorgan Chase (line 17.3): 735 ILCS 5/12-1001(b), $2,100; Vanguard (line 21): 735 ILCS 5/12-1006, 100% of fair market value, up to any applicable statutory limit. Line 3: No.
 
 **Form 122A-2 (the page after the exemptions page):** Line 3: Yes, with one row: "His payroll taxes withheld from his pay", $250.00. Your spouse's vehicles: No. Your spouse's loans: No. You claim an expense for the 2021 Honda CR-V EX. Kestrel Auto Finance: 37 payments left, and the payment won't change. Line 15: No. Line 16: $2,300.00. Line 17: $0.00. Line 18: $120.00. Line 19: $0.00. Line 20: $0.00. Line 21: $1,200.00. Line 22: No. Line 23: $0.00. Line 25: Yes, $620.00, $180.00 and $0.00, and you actually spend it. Lines 26 to 30: No. Line 31: Yes, $50.00. Line 34: No. Line 36: Yes, a projected monthly plan payment of $1,400.00. Line 43: No.

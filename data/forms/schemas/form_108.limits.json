@@ -1,0 +1,22 @@
+{
+  "boxes": {
+    "form_108:claims.secured[].name": 57,
+    "schedule_d:claims.secured[].name": 43,
+    "schedule_e_f:claims.priority[].name": 49,
+    "schedule_e_f:claims.unsecured[].name": 70,
+    "form_108:claims.secured[].property": 190,
+    "schedule_d:claims.secured[].property": 57,
+    "schedule_g:claims.contracts[].name": 79,
+    "form_108:claims.leases[].name": 98,
+    "schedule_g:claims.contracts[].purpose": 301,
+    "form_108:claims.leases[].purpose": 138,
+    "form_108:explain": 62
+  },
+  "labels": {
+    "creditor_name": "the creditor's name",
+    "collateral_description": "the description of the property",
+    "counterparty_name": "the lessor's name",
+    "description": "the description of the leased property",
+    "explain": "the explanation of your plan"
+  }
+}

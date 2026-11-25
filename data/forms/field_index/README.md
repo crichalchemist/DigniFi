@@ -1,6 +1,6 @@
 # Court-form field index
 
-Ground truth for every fillable box on the 19 templates in `../pdfs/` that the app fills. Form 122B has no fillable fields. Built 2026-10-09.
+Ground truth for every fillable box on the 20 templates in `../pdfs/` that the app fills. Form 122B has no fillable fields. Built 2026-10-09.
 
 ## Files
 
@@ -50,6 +50,12 @@ Ground truth for every fillable box on the 19 templates in `../pdfs/` that the a
 - **The method.** As for Form 101: `tools/build_form_101a_index.py render <dir>` tags the widgets on the page image, and `index` writes one row each from a hand table keyed by page and rectangle (PyMuPDF's normalised rectangle, never the PDF `/Rect`), basis `adjudicated`; the three push buttons are `form_control` rows.
 - **The revision check.** The court's Form 101A page was read on 2026-11-18 and again on 2026-11-22 (revision 12/15, effective 2015-12-01, no newer one), and the court's "Pending or Recent Changes" page was read whole on 2026-11-22: it lists no change to Form 101A or 101B.
 - **Two traps.** `Check Box12`'s on-state is literally `No` (it is the first certification box, the state-law right to stay, not an answer), and `Check Box13`'s is `Yes` (the rent deposit); neither is ever ticked by DigniFi, since the certification is sworn. `Name of landlord` and `Date` have inverted rectangles in the PDF, so the tool keys its table on the normalised ones.
+
+## Form 108 (12/15)
+
+- **The template.** `../pdfs/form_b108.pdf` is the court's Form 108, Statement of Intention for Individuals Filing Under Chapter 7, read on 2026-11-24 from https://www.uscourts.gov/sites/default/files/form_b108.pdf, 87,667 bytes, sha256 `fe51d222d87f461b8695e3d9b7a061e768b2a75824511d167cfba736ca35e8fe`. 2 pages, 83 widgets (39 text, 39 check boxes, 1 combo, 4 push buttons) under 58 full names. Every widget has a tooltip, so no vision run was needed.
+- **The method.** As for Form 101A: `tools/build_form_108_index.py render <dir>` tags the widgets on the page image, and `index` writes one row each from a hand table keyed by page and rectangle (PyMuPDF's normalised rectangle), basis `adjudicated`; the four push buttons are `form_control` rows. `form_b108.index.json` is written by the tool and never hand-edited.
+- **Traps.** Kids share names: the four intention boxes of a creditor row share `check1 1<row>`, its No and Yes share `check2 1<row>`, and a lease row's No and Yes share `check2<row>` (one space apart from Part 1's, and a different question). Only the rectangle names a kid, so each carries the form's own words in `option_text`. In Part 1's row d the Yes box sits above the redeem box, the other way round in rows a to c. `Explain1 <row>` (50.5 pt) and `Explain2 <row>` (169.8 pt) are the two boxes of one wrapped line.
 
 ## Filling facts
 

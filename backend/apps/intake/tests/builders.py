@@ -19,6 +19,7 @@ from types import MappingProxyType
 from apps.districts.dated_tables import fill_date
 from apps.eligibility.means_inputs import counted_debts, vehicle_rows
 from apps.intake.asset_lines import shown_lines
+from apps.intake.claims import is_form_108_lease
 from apps.intake.means_test import PER_DEBT_KEYS
 from apps.intake.models import (
     AssetInfo,
@@ -31,6 +32,7 @@ from apps.intake.models import (
     ExpenseInfo,
     FilingFee,
     Household,
+    IntentionAnswers,
     MeansTestAnswers,
     PetitionAnswers,
     ScheduleIAnswers,
@@ -258,6 +260,25 @@ def answer_schedule_i(session, **answers) -> ScheduleIAnswers:
     """
     record = getattr(session, "schedule_i_answers", None) or ScheduleIAnswers(session=session)
     record.merge(answers)
+    record.save()
+    return record
+
+
+def answer_intentions(
+    session, secured: dict | None = None, leases: dict | None = None
+) -> IntentionAnswers:
+    """Store Form 108's answers (4e), through the session's own relation, as a session save
+    would: each top key given replaces its object (`{}` clears it, None leaves it alone), keyed
+    by the debt's or lease's id as a string, then the ids out of scope are dropped (R-PRUNE), so
+    build the rows first. The scope is _save_intention_answers' own: the confirmed secured
+    debts and the leases Form 108 asks about.
+    """
+    record = getattr(session, "intention_answers", None) or IntentionAnswers(session=session)
+    given = (("secured", secured), ("leases", leases))
+    sent = {key: value for key, value in given if value is not None}
+    secured_ids = {d.pk for d in session.debts.confirmed() if d.is_secured}
+    lease_ids = {c.pk for c in session.executory_contracts.all() if is_form_108_lease(c)}
+    record.merge(sent, secured_ids, lease_ids)
     record.save()
     return record
 

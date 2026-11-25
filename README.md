@@ -151,7 +151,7 @@ dignifi/
 
 - **Backend**: Python 3.11, Django 5.0, Django REST Framework, PostgreSQL 15
 - **Frontend**: React 19, Vite 7, TypeScript (Context API for state management)
-- **PDF Generation**: pypdf 6.x — 19 form schemas fill the court's templates (18 official AO forms and ILND's own List of Creditors)
+- **PDF Generation**: pypdf 6.x — 20 form schemas fill the court's templates (19 official AO forms and ILND's own List of Creditors)
 - **Authentication**: JWT (djangorestframework-simplejwt) with silent refresh
 - **Encryption**: django-encrypted-model-fields (Fernet) for PII
 - **Testing**: pytest, vitest, Playwright, vitest-axe (accessibility)

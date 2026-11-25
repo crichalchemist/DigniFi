@@ -106,6 +106,7 @@ def test_registry_is_the_chapter_7_forms_in_filing_order():
         "form_106dec",
         "form_106sum",
         "form_107",
+        "form_108",
         "form_121",
         "list_of_creditors",
         "form_122a1",

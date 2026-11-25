@@ -11,5 +11,6 @@ export const WIZARD_STEPS = [
   { number: 6, label: 'Amounts Owed', key: 'debts' },
   { number: 7, label: 'Contracts & Leases', key: 'contracts' },
   { number: 8, label: 'Codebtors', key: 'codebtors' },
-  { number: 9, label: 'Review & Results', key: 'review' },
+  { number: 9, label: 'Your Plans', key: 'plans' },
+  { number: 10, label: 'Review & Results', key: 'review' },
 ];

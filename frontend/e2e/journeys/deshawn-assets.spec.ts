@@ -71,7 +71,10 @@ test.describe('DeShawn Mitchell — Assets', () => {
     // Step 8: Codebtors (answered from the persona)
     await wizard.walkCodebtors(DESHAWN);
 
-    // Step 9: Review & Complete
+    // Step 9: Your Plans (Form 108, the persona's choices)
+    await wizard.walkPlans(DESHAWN);
+
+    // Step 10: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
 
@@ -86,8 +89,9 @@ test.describe('DeShawn Mitchell — Assets', () => {
     await sofa.skipForNow();
 
     // Generate forms (passes means test)
-    await dashboard.generateAllForms(15); // he pays in installments, so no Form 103B
+    // He pays in installments, so no Form 103B; his mortgage brings Form 108
+    await dashboard.generateAllForms(16);
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(15);
+    expect(count).toBe(16);
   });
 });
