@@ -234,6 +234,32 @@ def test_an_unknown_key_wrong_type_or_value_over_its_ceiling_is_a_400_naming_the
     assert not IntentionAnswers.objects.filter(session=session).exists()
 
 
+def test_words_at_their_ceiling_and_ids_at_theirs_save(filer):
+    # The ceilings are the last value that saves, so a filer who types to the box's end, or a
+    # step with many rows, is never refused (D8): 500 characters, 100 ids a top key
+    client, session = filer
+    debt = _secured(session, creditor_name="Demo Auto Finance")
+    words = "x" * IntentionAnswers.TEXT_CEILING
+    assert IntentionAnswers.TEXT_CEILING == 500
+    response = _patch(
+        client,
+        session,
+        {"secured": {str(debt.pk): {"intention": "retain_explain", "explain": words}}},
+    )
+    assert response.status_code == 200
+    assert _stored(session)["secured"][str(debt.pk)]["explain"] == words
+
+    assert IntentionAnswers.ROW_CEILING == 100
+    others = range(debt.pk + 1, debt.pk + IntentionAnswers.ROW_CEILING)
+    secured = {str(n): {"intention": "surrender"} for n in others}
+    secured[str(debt.pk)] = {"intention": "retain_redeem"}
+    assert len(secured) == IntentionAnswers.ROW_CEILING
+    response = _patch(client, session, {"secured": secured})
+    assert response.status_code == 200
+    # The ids no row of the session holds are pruned; the debt's own choice is kept
+    assert _stored(session)["secured"] == {str(debt.pk): {"intention": "retain_redeem"}}
+
+
 def test_an_echoed_answered_on_alone_saves_nothing_and_reopens_nothing(filer):
     client, session = filer
     session.status = "completed"

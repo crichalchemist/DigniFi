@@ -163,7 +163,7 @@ def test_a_line_spelled_with_a_leading_zero_is_a_defect_not_line_5():
     assert record_step("affairs.l28_answer") == "last_few_years_2"
 
 
-def test_a_binding_outside_the_four_namespaces_is_unrecognized():
+def test_a_binding_outside_the_three_namespaces_is_unrecognized():
     # The readers are reached only through the namespaces fill_resolver routes to them; a binding
     # outside them is a defect named as one, never a StopIteration out of next().
     with pytest.raises(ValueError, match="unrecognized binding"):

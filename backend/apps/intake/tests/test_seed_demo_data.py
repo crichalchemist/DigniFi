@@ -30,9 +30,10 @@ from apps.forms.services.answer_records import PETITION_STEP_OF_KEY
 from apps.forms.services.exemption_items import exemption_items
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.intake.asset_lines import LINE_BY_KEY, ordered_assets, rows_on, shown_lines
+from apps.intake.claim_rows import claim_rows
 from apps.intake.claims import claim_step_gaps, total_monthly_expenses
 from apps.intake.completion import Gap, completion_gaps
-from apps.intake.intentions import claim_text_gaps
+from apps.intake.intentions import claim_text_gaps, intention_step_gaps
 from apps.intake.management.commands.seed_demo_data import (
     PERSONAS,
     _andres_kettleby,
@@ -990,3 +991,33 @@ def test_no_personas_explanation_is_too_long():
     assert len(sessions) == len(PERSONAS)
     for session in sessions:
         assert claim_text_gaps(session) == [], session.user.username
+
+
+@pytest.mark.django_db
+def test_every_personas_form_108_row_has_a_printed_choice():
+    # E5: the owner set a choice for every row, so a secured debt or a lease of personal property
+    # a later seed edit adds without one would print its Form 108 row blank and fail here (F8)
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", stdout=StringIO())
+
+    printed = {"surrender", "retain_redeem", "retain_reaffirm", "retain_explain"}
+    sessions = list(IntakeSession.objects.filter(status="completed"))
+    assert len(sessions) == len(PERSONAS)
+    rows_seen = 0
+    for session in sessions:
+        name = session.user.username
+        assert intention_step_gaps(session) == [], name
+        record = getattr(session, "intention_answers", None)
+        answers = record.get_answers() if record is not None else {}
+        rows = claim_rows(session)
+        for row in rows.secured:
+            entry = answers.get("secured", {}).get(str(row.debt.pk), {})
+            assert entry.get("intention") in printed, (name, row.debt.creditor_name)
+            if entry["intention"] == "retain_explain":
+                assert entry.get("explain", "").strip(), (name, row.debt.creditor_name)
+        for row in rows.leases:
+            entry = answers.get("leases", {}).get(str(row.contract.pk), {})
+            assert entry.get("assumed") in {"yes", "no"}, (name, row.contract.counterparty_name)
+        rows_seen += len(rows.secured) + len(rows.leases)
+    # Four secured debts and Andrés's vehicle lease, so a reader that found no row can't pass
+    assert rows_seen == 5

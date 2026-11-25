@@ -215,15 +215,15 @@ def _send_through_the_api(persona):
 
     # Form 108's choices (Your Plans, step 9), keyed by the ids the API gave the debts and the
     # contracts, found by name as the links are. Before Complete: a PATCH after it would reopen
-    # the intake.
+    # the intake. Both top keys go, an empty one as {}, as the wizard's plansBody sends them.
     if persona in FORM_108_CHOICES:
         kinds = {"secured": "debt", "leases": "contract"}
         sent = {
             key: {
-                str(claim_links(session, [(kinds[key], name)])[0]["id"]): entry
-                for name, entry in entries.items()
+                str(claim_links(session, [(kind, name)])[0]["id"]): entry
+                for name, entry in FORM_108_CHOICES[persona].get(key, {}).items()
             }
-            for key, entries in FORM_108_CHOICES[persona].items()
+            for key, kind in kinds.items()
         }
         response = client.patch(session_url, {"intention_answers": sent}, format="json")
         assert response.status_code == 200, response.data

@@ -100,6 +100,12 @@ def test_the_browsers_caps_and_labels_are_the_tools():
         for key, keys in re.findall(r"'(\w+:\w+)': \[((?:\s*'[^']+',?)+)\s*\]", boxes[1])
     }
     assert browser_boxes == intentions.ROW_BOXES
+    # The forms a note names, in packet order: the order is the sentence's, so compared as a list
+    words = re.search(r"^const FORM_WORDS\b[^\n]*= \{\n(.*?)^\};", source, re.M | re.S)
+    assert words, "claimTextLimits.ts has no FORM_WORDS"
+    browser_words = re.findall(r"^  (\w+): '([^']+)',$", words[1], re.M)
+    assert browser_words == list(intentions.FORM_WORDS.items())
+    assert len(browser_words) == 4
     labels = _quoted_record(FRONTEND / "constants" / "copy.ts", "CLAIM_TEXT_LABELS")
     assert labels == limits["labels"] == intentions.CLAIM_TEXT_LABELS
     assert set(labels) == set(intentions.CLAIM_TEXT_KEYS)
