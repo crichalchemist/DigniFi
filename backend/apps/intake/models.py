@@ -62,7 +62,7 @@ class IntakeSession(models.Model):
         """Set a completed intake back to in progress, because its intake data changed.
 
         The filer then presses Complete again, which re-runs the completion checks (spec
-        §5.3). Form answers, SOFA and the filing fee, exemptions and means-test pages are not
+        §5.3). Form answers and the filing fee, exemptions and means-test pages are not
         intake data and never call this.
 
         The database decides, not this copy: an upload loads the session seconds before it

@@ -10,7 +10,6 @@ import re
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.core.exceptions import FieldDoesNotExist
 from rest_framework import serializers
 
 from apps.districts.counties import ILND_COUNTIES
@@ -68,9 +67,6 @@ from .models import (
     IntentionAnswers,
     PetitionAnswers,
     ScheduleIAnswers,
-    SOFACreditorPayment,
-    SOFAPriorIncome,
-    SOFAReport,
     SpouseIncome,
 )
 
@@ -2205,139 +2201,18 @@ class PolishRequestSerializer(serializers.Serializer):
         return super().to_internal_value(data)
 
 
-class SOFAPriorIncomeSerializer(serializers.ModelSerializer):
-    """Prior income row for SOFA Form 107 Part 1."""
-
-    gross_amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
-
-    class Meta:
-        model = SOFAPriorIncome
-        fields = ["id", "year", "source", "gross_amount"]
-
-
-class SOFACreditorPaymentSerializer(serializers.ModelSerializer):
-    """Creditor payment row for SOFA Form 107 Part 2."""
-
-    total_paid = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
-
-    class Meta:
-        model = SOFACreditorPayment
-        fields = ["id", "creditor_name", "total_paid", "dates_of_payments"]
-
-
-class SOFAReportSerializer(serializers.ModelSerializer):
-    """SOFA report with nested prior income and creditor payment rows."""
-
-    prior_income = SOFAPriorIncomeSerializer(many=True, required=False)
-    creditor_payments = SOFACreditorPaymentSerializer(many=True, required=False)
-
-    class Meta:
-        model = SOFAReport
-        fields = [
-            "id",
-            "session",
-            "has_prior_income",
-            "has_creditor_payments",
-            "has_business",
-            "prior_income",
-            "creditor_payments",
-        ]
-        read_only_fields = ["id", "session"]
-
-    def create(self, validated_data):
-        prior_income_data = validated_data.pop("prior_income", [])
-        creditor_payment_data = validated_data.pop("creditor_payments", [])
-        report = SOFAReport.objects.create(**validated_data)
-        for item in prior_income_data:
-            SOFAPriorIncome.objects.create(report=report, **item)
-        for item in creditor_payment_data:
-            SOFACreditorPayment.objects.create(report=report, **item)
-        return report
-
-    def update(self, instance, validated_data):
-        prior_income_data = validated_data.pop("prior_income", None)
-        creditor_payment_data = validated_data.pop("creditor_payments", None)
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-
-        if prior_income_data is not None:
-            instance.prior_income.all().delete()
-            for item in prior_income_data:
-                SOFAPriorIncome.objects.create(report=instance, **item)
-
-        if creditor_payment_data is not None:
-            instance.creditor_payments.all().delete()
-            for item in creditor_payment_data:
-                SOFACreditorPayment.objects.create(report=instance, **item)
-
-        return instance
-
-
 class BulkAnswerItemSerializer(serializers.Serializer):
     form_type = serializers.CharField(max_length=50)
     binding = serializers.CharField(max_length=200)
     value = serializers.CharField(allow_blank=True)
 
-    def _coerce_field_value(self, field, value):
-        if value == "" and field.null:
-            return None
-        return field.to_python(value)
-
     def validate(self, data):
         binding = data.get("binding", "")
-        value = data.get("value", "")
 
-        if not (binding.startswith("answer:") or binding.startswith("sofa.")):
+        if not binding.startswith("answer:"):
             raise serializers.ValidationError(
-                {"binding": "Invalid binding prefix. Must start with 'answer:' or 'sofa.'"}
+                {"binding": "Invalid binding prefix. Must start with 'answer:'."}
             )
-
-        if binding.startswith("sofa."):
-            field_key = binding[5:]
-            if "[" in field_key and "]." in field_key:
-                match = re.match(r"([a-z_]+)\[(\d+)\]\.(.*)", field_key)
-                if match:
-                    coll_name, idx_str, attr = match.groups()
-                    idx = int(idx_str)
-                    if idx >= 50:
-                        raise serializers.ValidationError(
-                            {"binding": f"Index {idx} exceeds maximum allowed array size of 50."}
-                        )
-                    try:
-                        related_field = SOFAReport._meta.get_field(coll_name)
-                        related_model = related_field.related_model
-                        if related_model is None:
-                            raise serializers.ValidationError(
-                                {
-                                    "binding": f"Invalid array binding. Collection {coll_name} does not exist."
-                                }
-                            )
-                        field = related_model._meta.get_field(attr)
-                        data["value"] = self._coerce_field_value(field, value)
-                        data["parsed_array_binding"] = (coll_name, idx, attr)
-                    except FieldDoesNotExist:
-                        raise serializers.ValidationError(
-                            {"binding": f"Unknown related field: {coll_name} or {attr}"}
-                        ) from None
-                    except Exception as e:
-                        raise serializers.ValidationError(
-                            {"value": f"Invalid value for {coll_name}[].{attr}: {str(e)}"}
-                        ) from e
-                else:
-                    raise serializers.ValidationError({"binding": "Invalid array binding format"})
-            else:
-                try:
-                    field = SOFAReport._meta.get_field(field_key)
-                    data["value"] = self._coerce_field_value(field, value)
-                except FieldDoesNotExist:
-                    raise serializers.ValidationError(
-                        {"binding": f"Unknown SOFAReport field: {field_key}"}
-                    ) from None
-                except Exception as e:
-                    raise serializers.ValidationError(
-                        {"value": f"Invalid value for {field_key}: {str(e)}"}
-                    ) from e
 
         return data
 

@@ -46,7 +46,6 @@ from .models import (
     FilingFee,
     FormAnswer,
     IntakeSession,
-    SOFAReport,
 )
 
 # The names, never the module: the action below is a method named `polish`, which rebinds that
@@ -70,7 +69,6 @@ from .serializers import (
     IntakeSessionSerializer,
     MeansTestSerializer,
     PolishRequestSerializer,
-    SOFAReportSerializer,
     _save_rows_by_id,
 )
 
@@ -438,12 +436,6 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         created_count = 0
         updated_count = 0
 
-        # Ensure SOFAReport exists
-        sofa_report, _ = SOFAReport.objects.get_or_create(session=session)
-
-        models_to_save = {}
-        cached_collections = {}
-
         with transaction.atomic():
             for ans in answers_data:
                 binding = ans["binding"]
@@ -461,44 +453,6 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                         created_count += 1
                     else:
                         updated_count += 1
-
-                elif binding.startswith("sofa."):
-                    path = binding[len("sofa.") :]
-                    if "parsed_array_binding" in ans:
-                        # Array binding: sofa.prior_income[0].source
-                        coll_name, idx, attr = ans["parsed_array_binding"]
-
-                        manager = getattr(sofa_report, coll_name, None)
-                        if manager is not None:
-                            if coll_name not in cached_collections:
-                                cached_collections[coll_name] = list(manager.all().order_by("id"))
-                            items = cached_collections[coll_name]
-
-                            if idx > len(items):
-                                from rest_framework.exceptions import ValidationError
-
-                                raise ValidationError(
-                                    f"Cannot skip index in collection {coll_name}. Expected index {len(items)} but got {idx}"
-                                )
-                            if idx == len(items):
-                                new_item = manager.model(report=sofa_report)
-                                items.append(new_item)
-                                models_to_save[id(new_item)] = new_item
-                                created_count += 1
-                            else:
-                                updated_count += 1
-
-                            setattr(items[idx], attr, val)
-                            models_to_save[id(items[idx])] = items[idx]
-                    else:
-                        # Scalar binding: sofa.has_prior_income
-                        if hasattr(sofa_report, path):
-                            setattr(sofa_report, path, val)
-                            models_to_save[id(sofa_report)] = sofa_report
-                            updated_count += 1
-
-            for model_obj in models_to_save.values():
-                model_obj.save()
 
         return Response({"status": "success", "created": created_count, "updated": updated_count})
 
@@ -946,40 +900,3 @@ class DebtViewSet(viewsets.ModelViewSet):
         lock_session(instance.session_id)
         instance.delete()
         instance.session.reopen()
-
-
-class SOFAReportViewSet(viewsets.GenericViewSet):
-    """
-    Retrieve and update SOFA Report (Form 107 data) for a session.
-
-    GET  /api/sofa-report/{session_pk}/        → report or 404
-    PATCH /api/sofa-report/{session_pk}/        → create/update report + nested rows
-    """
-
-    serializer_class = SOFAReportSerializer
-    permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "patch", "head", "options"]
-
-    def retrieve(self, request, pk=None):
-        session = IntakeSession.objects.filter(pk=pk, user=request.user).first()
-        if not session:
-            return Response(
-                {"detail": "Session not found."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        report, _ = SOFAReport.objects.get_or_create(session=session)
-        serializer = self.get_serializer(report)
-        return Response(serializer.data)
-
-    def partial_update(self, request, pk=None):
-        session = IntakeSession.objects.filter(pk=pk, user=request.user).first()
-        if not session:
-            return Response(
-                {"detail": "Session not found."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        report, _ = SOFAReport.objects.get_or_create(session=session)
-        serializer = self.get_serializer(report, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)

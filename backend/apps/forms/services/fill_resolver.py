@@ -465,7 +465,7 @@ def is_money_binding(binding: str) -> bool:
     match = _AFFAIRS_ROWS_BINDING.fullmatch(binding.strip())
     if match:
         return match[2] in AFFAIRS_MONEY_CELLS
-    return binding.strip() == "sofa.creditor_payments[].total_paid"
+    return False
 
 
 # Single-box answers, compared case-insensitively (spec §5.1).
@@ -478,8 +478,6 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
     Resolve a schema ``binding``:
 
       - "answer:<form_type>.<key>" → the FormAnswer value, or "" if absent
-      - "sofa.<collection>[].<attr>" → list of str over the collection
-      - "sofa.<attr>" → scalar str on the SOFAReport
       - "household.dependents[].<attr>" → list of str over Schedule J line 2's dependents
       - "assets.line_<key>[].<attr>" or "assets.line_<key>_<kind>[].<attr>" → list of str over
         that line's Schedule A/B rows, or those of that kind, in the form's order
@@ -505,18 +503,6 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
         form_type, _, key = binding[len("answer:") :].partition(".")
         ans = FormAnswer.objects.filter(session=session, form_type=form_type, field_key=key).first()
         return ans.value if ans else ""
-
-    if binding.startswith("sofa."):
-        path = binding[len("sofa.") :]
-        report = getattr(session, "sofa_report", None)
-        if "[]." in path:
-            coll_name, _, attr = path.partition("[].")
-            if report is None:
-                return []
-            return [str(getattr(row, attr)) for row in getattr(report, coll_name).all()]
-        if report is None:
-            return ""
-        return str(getattr(report, path))
 
     if binding.startswith("household."):
         collection, _, attr = binding[len("household.") :].partition("[].")
@@ -1010,12 +996,6 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
     _ingested_cache = {
         agg.ingest_key: agg.value for agg in IngestedAggregate.objects.filter(session=session)
     }
-
-    # Prefetch SOFAReport collections to avoid N+1 in repeat group resolution
-    report = getattr(session, "sofa_report", None)
-    if report is not None:
-        _ = list(report.prior_income.all())
-        _ = list(report.creditor_payments.all())
 
     # Batch-fetch all FormAnswer rows for this session once (avoids per-predicate DB hits)
     _form_answers = {(fa.field_key): fa for fa in FormAnswer.objects.filter(session=session)}

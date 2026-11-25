@@ -1386,7 +1386,7 @@ _AB = "schedule_a_b: group 'ab_line_3'"
             (
                 "forms.E007",
                 f"{_AB}: sheet column 'Make' binds 'answer:schedule_a_b.make', "
-                "not a sofa.<collection>[].<attr>, household.dependents[].<attr>, "
+                "not a household.dependents[].<attr>, "
                 "income.statement[].<attr>, assets.line_<key>[].<attr>, "
                 "means.line_<key>[].<attr>, claims.<list>[].<attr>, "
                 "petition.<key>[].<attr>, schedule_i.<key>[].<attr> or "

@@ -4,7 +4,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.districts.models import District
-from apps.intake.models import FormAnswer, Household, IntakeSession
+from apps.intake.models import FormAnswer, Household, IntakeSession, SOFAReport
 from apps.users.models import User
 
 
@@ -35,7 +35,6 @@ class TestBulkAnswerView:
             "answers": [
                 {"form_type": "form_test", "binding": "answer:form_test.q1", "value": "new"},
                 {"form_type": "form_test", "binding": "answer:form_test.q2", "value": "brand new"},
-                {"form_type": "form_test", "binding": "sofa.has_prior_income", "value": "True"},
             ]
         }
         response = client.post(
@@ -46,7 +45,7 @@ class TestBulkAnswerView:
         assert response.status_code == 200
         data = response.json()
         assert data["created"] == 1
-        assert data["updated"] == 2
+        assert data["updated"] == 1
 
         answers = FormAnswer.objects.filter(session=session).order_by("field_key")
         assert answers.count() == 2
@@ -55,54 +54,25 @@ class TestBulkAnswerView:
         assert answers[1].value == "brand new"
         assert answers[1].field_key == "q2"
 
-        from apps.intake.models import SOFAReport
-
-        sofa = SOFAReport.objects.get(session=session)
-        assert sofa.has_prior_income is True
-
-    def test_bulk_upsert_handles_sofa_bindings(self, auth_client_with_session):
+    def test_saving_form_answers_writes_no_sofa_report(
+        self, auth_client_with_session
+    ):  # H5, CR 1.2
         client, session = auth_client_with_session
-        from apps.intake.models import SOFAReport
-
-        report = SOFAReport.objects.create(session=session)
-
-        payload = {
-            "answers": [
-                {"form_type": "form_107", "binding": "answer:form_107.street", "value": "123 Main"},
-                {
-                    "form_type": "form_107",
-                    "binding": "sofa.prior_income[0].source",
-                    "value": "Acme Corp",
-                },
-                {
-                    "form_type": "form_107",
-                    "binding": "sofa.prior_income[0].year",
-                    "value": "2023",
-                },
-                {
-                    "form_type": "form_107",
-                    "binding": "sofa.prior_income[0].gross_amount",
-                    "value": "50000.00",
-                },
-                {"form_type": "form_107", "binding": "sofa.has_prior_income", "value": "True"},
-            ]
-        }
-        response = client.post(
-            f"/api/intake/sessions/{session.pk}/answers/bulk/", payload, format="json"
+        r = client.post(
+            f"/api/intake/sessions/{session.pk}/answers/bulk/",
+            {
+                "answers": [
+                    {
+                        "form_type": "form_103b",
+                        "binding": "answer:form_103b.paid_anyone_for_services",
+                        "value": "Yes",
+                    }
+                ]
+            },
+            format="json",
         )
-        assert response.status_code == 200
-
-        # Verify FormAnswer saved
-        assert FormAnswer.objects.filter(field_key="street", value="123 Main").exists()
-
-        # Verify SOFA saved
-        assert report.prior_income.count() == 1
-        first_item = report.prior_income.first()
-        assert first_item.source == "Acme Corp"
-        assert first_item.year == 2023
-        assert first_item.gross_amount == Decimal("50000.00")
-        report.refresh_from_db()
-        assert report.has_prior_income is True
+        assert r.status_code == 200
+        assert SOFAReport.objects.count() == 0
 
     def test_bulk_upsert_empty_list(self, auth_client_with_session):
         client, session = auth_client_with_session
@@ -133,10 +103,9 @@ class TestBulkAnswerView:
         "binding,value",
         [
             ("invalid:q1", "new"),
-            ("sofa.invalid_field", "true"),
-            ("sofa.has_prior_income", "not a boolean"),
+            ("sofa.has_prior_income", "True"),
         ],
-        ids=["invalid_prefix", "unknown_sofa_field", "sofa_coercion_invalid"],
+        ids=["invalid_prefix", "sofa_prefix_refused"],
     )
     def test_bulk_upsert_invalid_answer(self, auth_client_with_session, binding, value):
         client, session = auth_client_with_session

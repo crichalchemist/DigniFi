@@ -1879,11 +1879,6 @@ RULE_FIXES: dict[str, dict[str, str]] = {
 # ---------------------------------------------------------------------------
 
 
-def _has_business(session: IntakeSession, answer_cache: dict | None = None) -> bool:
-    report = getattr(session, "sofa_report", None)
-    return bool(report and report.has_business)
-
-
 def _has_creditor_payments(session: IntakeSession, answer_cache: dict | None = None) -> bool:
     report = getattr(session, "sofa_report", None)
     return bool(report and report.has_creditor_payments)
@@ -1908,7 +1903,6 @@ def _form_answer_predicate(
 
 
 PREDICATES: dict[str, Callable[[IntakeSession], bool]] = {
-    "has_business": _has_business,
     "has_creditor_payments": _has_creditor_payments,
     "has_prior_income": _has_prior_income,
     "has_insider_payments": lambda s, answer_cache=None: _form_answer_predicate(
