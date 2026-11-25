@@ -616,6 +616,12 @@ WRITES = {
         {"intention_answers": {"leases": {str(r["contract"].pk): {"assumed": "no"}}}},
         200,
     ),
+    "financial_affairs PATCH": lambda s, r: (
+        "patch",
+        _session_url(s),
+        {"financial_affairs": {"l2_answer": "no"}},
+        200,
+    ),
     "Continue to step 7": lambda s, r: (
         "post",
         _session_url(s, "update_step/"),

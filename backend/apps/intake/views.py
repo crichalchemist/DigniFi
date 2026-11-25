@@ -162,6 +162,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                 "schedule_i_answers",
                 "exemption_answers",
                 "intention_answers",
+                "financial_affairs",
             )
             .prefetch_related(
                 "assets", "debts", "ingested_aggregates", "exemption_claims", "executory_contracts"

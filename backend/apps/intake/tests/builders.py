@@ -18,6 +18,7 @@ from types import MappingProxyType
 
 from apps.districts.dated_tables import fill_date
 from apps.eligibility.means_inputs import counted_debts, vehicle_rows
+from apps.forms.services.answer_records import branch_of
 from apps.intake.asset_lines import shown_lines
 from apps.intake.claims import is_form_108_lease
 from apps.intake.means_test import PER_DEBT_KEYS
@@ -31,6 +32,7 @@ from apps.intake.models import (
     ExemptionAnswers,
     ExpenseInfo,
     FilingFee,
+    FinancialAffairsAnswers,
     Household,
     IntentionAnswers,
     MeansTestAnswers,
@@ -279,6 +281,34 @@ def answer_intentions(
     secured_ids = {d.pk for d in session.debts.confirmed() if d.is_secured}
     lease_ids = {c.pk for c in session.executory_contracts.all() if is_form_108_lease(c)}
     record.merge(sent, secured_ids, lease_ids)
+    record.save()
+    return record
+
+
+def answer_financial_affairs(session, **answers) -> FinancialAffairsAnswers:
+    """Store Form 107 lines 1-12's answers (4f-i), through the session's own relation, as a
+    session save would: each key given replaces its value (None removes it), picked debt ids
+    that name no confirmed debt are dropped (R-9) and the line 4 year label follows its amounts
+    (R-4), so build the debts first. There is no default.
+
+    Line 6's answer travels with its branch (R-5, R-47): an `l6_answer` given alone takes the
+    branch of the stored Form 101 line 16 answer (`ValueError` with none), `l6_answer=None`
+    alone removes the branch too, and an `l6_branch` given alone is a `ValueError`.
+    """
+    if "l6_branch" in answers and "l6_answer" not in answers:
+        raise ValueError("l6_branch travels with l6_answer")
+    if "l6_answer" in answers and "l6_branch" not in answers:
+        if answers["l6_answer"] is None:
+            answers["l6_branch"] = None
+        else:
+            petition = getattr(session, "petition_answers", None)
+            stored = petition.get_answers() if petition is not None else {}
+            branch = branch_of(stored.get("debt_nature"))
+            if branch is None:
+                raise ValueError("answer debt_nature first")
+            answers["l6_branch"] = branch
+    record = getattr(session, "financial_affairs", None) or FinancialAffairsAnswers(session=session)
+    record.merge(answers, {d.pk for d in session.debts.confirmed()}, fill_date().year)
     record.save()
     return record
 

@@ -60,6 +60,7 @@ from .models import (
     ExemptionClaim,
     ExpenseInfo,
     FilingFee,
+    FinancialAffairsAnswers,
     Household,
     IncomeDetail,
     IncomeInfo,
@@ -1034,6 +1035,7 @@ _INTAKE_DATA = {
     "petition_answers",
     "schedule_i_answers",
     "intention_answers",
+    "financial_affairs",
     "debts",
     "household",
     "spouse_income",
@@ -1165,6 +1167,19 @@ class IntentionAnswersField(serializers.DictField):
         return {**record.get_answers(), "answered_on": record.answered_on}
 
 
+class FinancialAffairsField(serializers.DictField):
+    """The filer's Form 107 line 1-12 answers, read from the session's record, with the date of
+    the last change and the fill date's year (both read-only), so the browser never labels line
+    4's years by its own clock (R-4)."""
+
+    def get_attribute(self, instance):
+        fill_year = fill_date().year
+        record = getattr(instance, "financial_affairs", None)
+        if record is None:
+            return {"answered_on": None, "fill_year": fill_year}
+        return {**record.get_answers(), "answered_on": record.answered_on, "fill_year": fill_year}
+
+
 def _save_schedule_i_answers(session: IntakeSession, data: dict) -> None:
     """Set each answer sent; a null removes it (4c)."""
     record, _ = ScheduleIAnswers.objects.get_or_create(session=session)
@@ -1184,6 +1199,16 @@ def _save_intention_answers(session: IntakeSession, data: dict) -> None:
     record.merge(data, secured_ids, lease_ids)
     record.save()
     session.intention_answers = record
+
+
+def _save_financial_affairs(session: IntakeSession, data: dict) -> None:
+    """Replace each line key sent, drop picked debt ids that name no confirmed debt (R-9), and
+    keep the line 4 year label with its amounts (R-4). Called after the save's debts are written
+    (R-14): confirmed() is a fresh query, so it sees those debts, never the prefetch."""
+    record, _ = FinancialAffairsAnswers.objects.get_or_create(session=session)
+    record.merge(data, {d.pk for d in session.debts.confirmed()}, fill_date().year)
+    record.save()
+    session.financial_affairs = record
 
 
 # An id is a debt's or a contract's pk: digits with no leading zero, below 10 ** 10 (4e-R17).
@@ -1221,6 +1246,65 @@ def _intention_entries_ok(key: str, entries) -> bool:
             if cell not in allowed or not _intention_value_ok(cell, value):
                 return False
     return True
+
+
+# A picked debt's id is its pk: digits with no leading zero, below 10 ** 10.
+_AFFAIRS_DEBT_ID = re.compile(r"[1-9][0-9]{0,9}")
+# The cells whose "" is a blank choice, stored as absent ("yes" or absent, D§3).
+_AFFAIRS_CHOICE_CELLS = FinancialAffairsAnswers.TICK_CELLS | {"status", "debt_id"}
+
+
+def _affairs_text_ok(value, ceiling: int) -> bool:
+    if not isinstance(value, str) or len(value) > ceiling:
+        return False
+    # Half of a surrogate pair can't be written as UTF-8, so every later read of the session
+    # would fail to render: refuse it before anything is stored.
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+def _affairs_cell_ok(cell: str, value: str) -> bool:
+    record = FinancialAffairsAnswers
+    if cell in record.TICK_CELLS:
+        return value == "yes"
+    if cell == "status":
+        return value in record.STATUSES
+    if cell == "debt_id":
+        return _AFFAIRS_DEBT_ID.fullmatch(value) is not None
+    if cell in record.AMOUNT_CELLS | record.DATE_CELLS | record.SHAPED_CELLS:
+        return _affairs_text_ok(value, record.SHAPED_CEILING)
+    if cell == "text":
+        return _affairs_text_ok(value, record.STATEMENT_CEILING)
+    return _affairs_text_ok(value, record.TEXT_CEILING)
+
+
+def _affairs_rows(key: str, rows) -> list | None:
+    """A list key's rows with each `_key` and blank cell dropped, or None when one is refused:
+    at most ROW_CEILING objects, each of its own cells, every value a string (never a boolean or
+    a number). Shapes are stored as typed (B47)."""
+    if not isinstance(rows, list) or len(rows) > FinancialAffairsAnswers.ROW_CEILING:
+        return None
+    allowed = FinancialAffairsAnswers.LIST_CELLS[key]
+    cleaned = []
+    for row in rows:
+        if not isinstance(row, dict):
+            return None
+        kept = {}
+        for cell, value in row.items():
+            if cell == "_key":
+                continue
+            if cell not in allowed:
+                return None
+            if value is None or (value == "" and cell in _AFFAIRS_CHOICE_CELLS):
+                continue
+            if not isinstance(value, str) or not _affairs_cell_ok(cell, value):
+                return None
+            kept[cell] = value
+        cleaned.append(kept)
+    return cleaned
 
 
 # ASCII digits only: Python's \d also takes other scripts' digits, which no form prints.
@@ -1285,6 +1369,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
     petition_answers = PetitionAnswersField(required=False)
     schedule_i_answers = ScheduleIAnswersField(required=False)
     intention_answers = IntentionAnswersField(required=False)
+    financial_affairs = FinancialAffairsField(required=False)
     debts = NestedDebtInfoSerializer(many=True, required=False)
     household = HouseholdSerializer(required=False, allow_null=True)
     spouse_income = SpouseIncomeSerializer(required=False, allow_null=True)
@@ -1313,6 +1398,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "petition_answers",
             "schedule_i_answers",
             "intention_answers",
+            "financial_affairs",
             "debts",
             "household",
             "spouse_income",
@@ -1418,6 +1504,36 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             answers[key] = value
         return answers
 
+    # Set by the server or echoed by a read; never written from a body.
+    AFFAIRS_READ_ONLY = ("answered_on", "l4_year", "fill_year")
+
+    def validate_financial_affairs(self, sent):
+        """Check every key before any write, as MeansTestAnswers.merge does. A message names the
+        key, never the value. Shapes (dates, amounts, last 4) are stored as typed (B47)."""
+        body = {k: v for k, v in sent.items() if k not in self.AFFAIRS_READ_ONLY}
+        for key in body:
+            if key not in FinancialAffairsAnswers.KEYS:
+                raise serializers.ValidationError(f"Not a Form 107 line 1-12 answer: {key}.")
+        # Line 6's question differs by branch, so its answer never travels without one (R-5).
+        if ("l6_answer" in body) != ("l6_branch" in body):
+            raise serializers.ValidationError("Check the answer for l6_answer.")
+        answers = {}
+        for key, value in body.items():
+            if value is not None:
+                if key in FinancialAffairsAnswers.LIST_CELLS:
+                    value = _affairs_rows(key, value)
+                    ok = value is not None
+                elif key in FinancialAffairsAnswers.YES_NO_KEYS:
+                    ok = isinstance(value, str) and value in ("yes", "no")
+                elif key == "l6_branch":
+                    ok = isinstance(value, str) and value in FinancialAffairsAnswers.BRANCHES
+                else:  # the six line 4 amounts
+                    ok = _affairs_text_ok(value, FinancialAffairsAnswers.SHAPED_CEILING)
+                if not ok:
+                    raise serializers.ValidationError(f"Check the answer for {key}.")
+            answers[key] = value
+        return answers
+
     def get_intention_exempt(self, obj) -> dict:
         """Each secured debt's Form 108 exempt state, by id (R-EXEMPT, 4e-R6)."""
         return {str(pk): state for pk, state in exempt_states(obj).items()}
@@ -1458,6 +1574,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         petition_answers_data = validated_data.pop("petition_answers", None)
         schedule_i_answers_data = validated_data.pop("schedule_i_answers", None)
         intention_answers_data = validated_data.pop("intention_answers", None)
+        financial_affairs_data = validated_data.pop("financial_affairs", None)
 
         # Create session
         session = IntakeSession.objects.create(**validated_data)
@@ -1501,6 +1618,10 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         if intention_answers_data:
             _save_intention_answers(session, intention_answers_data)
 
+        # Last, after the debts, so the prune sees the ones this save made (R-14)
+        if financial_affairs_data:
+            _save_financial_affairs(session, financial_affairs_data)
+
         return session
 
     def update(self, instance, validated_data):
@@ -1523,6 +1644,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         if validated_data.get("intention_answers") == {}:
             # Only an echoed answered_on, or nothing: no answer to save, so nothing reopens.
             del validated_data["intention_answers"]
+        if validated_data.get("financial_affairs") == {}:
+            # Only echoed read-only keys, or nothing: no answer to save, so nothing reopens.
+            del validated_data["financial_affairs"]
         if _INTAKE_DATA.intersection(validated_data):
             instance.reopen()
 
@@ -1538,6 +1662,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         petition_answers_data = validated_data.pop("petition_answers", None)
         schedule_i_answers_data = validated_data.pop("schedule_i_answers", None)
         intention_answers_data = validated_data.pop("intention_answers", None)
+        financial_affairs_data = validated_data.pop("financial_affairs", None)
 
         # Update session fields
         for attr, value in validated_data.items():
@@ -1594,6 +1719,11 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         # secured keeps its choice and a debt deleted keeps none (R-SAVE-ORDER).
         if intention_answers_data is not None:
             _save_intention_answers(instance, intention_answers_data)
+
+        # Last, after the debts: the prune must see the debts this save wrote, so a picked debt
+        # deleted in the same PATCH loses its id (R-14).
+        if financial_affairs_data is not None:
+            _save_financial_affairs(instance, financial_affairs_data)
 
         return instance
 

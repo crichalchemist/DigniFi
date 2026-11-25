@@ -157,6 +157,16 @@ def is_mm_dd_yyyy(value) -> bool:
     return True
 
 
+def branch_of(debt_nature: str | None) -> str | None:
+    """Form 107 line 6's branch from Form 101 line 16: "consumer" for consumer debts, "other"
+    for business debts or neither, None while line 16 holds no answer."""
+    if debt_nature == "consumer":
+        return "consumer"
+    if debt_nature in ("business", "neither"):
+        return "other"
+    return None
+
+
 # The petition record's row lists whose `filed_on` prints only as a real MM/DD/YYYY date (PF2-2).
 _DATED_ROW_LISTS = ("prior_cases", "pending_cases")
 # The petition record's dates that print only as a real MM/DD/YYYY date (4d-R9).
