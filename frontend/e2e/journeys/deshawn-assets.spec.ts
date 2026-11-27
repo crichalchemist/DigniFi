@@ -14,7 +14,6 @@ import { DocumentsPage } from '../pages/documents.page';
 import { FilingFeePage } from '../pages/filing-fee.page';
 import { ExemptionsPage } from '../pages/exemptions.page';
 import { DashboardPage } from '../pages/dashboard.page';
-import { SOFAPage } from '../pages/sofa.page';
 
 test.describe('DeShawn Mitchell — Assets', () => {
   test('enters 3 assets and 4 debts successfully', async ({ page }) => {
@@ -25,7 +24,6 @@ test.describe('DeShawn Mitchell — Assets', () => {
     const filingFee = new FilingFeePage(page);
     const exemptions = new ExemptionsPage(page);
     const dashboard = new DashboardPage(page);
-    const sofa = new SOFAPage(page);
 
     await landing.goto();
     await landing.clickGetStarted();
@@ -82,11 +80,9 @@ test.describe('DeShawn Mitchell — Assets', () => {
     await filingFee.answer(DESHAWN.filing_fee.payment_choice);
     await exemptions.answer(DESHAWN.exemptions);
 
-    // The filing-fee page continues to the exemptions page (DIG-149). This journey isn't about
-    // financial history, so skip SOFA to reach the forms dashboard. (The SOFA save path
-    // itself is covered by sofa-journey.spec.ts.)
-    await sofa.waitForLoad();
-    await sofa.skipForNow();
+    // The filing-fee page continues to the exemptions page (DIG-149), and the forms dashboard
+    // follows it.
+    await page.waitForURL('**/forms');
 
     // Generate forms (passes means test)
     // He pays in installments, so no Form 103B; his mortgage brings Form 108

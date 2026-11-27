@@ -40,7 +40,6 @@ import type {
   UploadedDocument,
   DocumentUploadResponse,
   OCRResult,
-  SOFAReport,
   FormUISpec,
   AnswerPayload,
   FilingFee,
@@ -790,30 +789,6 @@ export async function validateDocument(
 // ============================================================================
 
 // ============================================================================
-// SOFA Report API
-// ============================================================================
-
-export const sofaReportAPI = {
-  /**
-   * Get SOFA report for a session (GET /api/intake/sofa-report/{sessionId}/)
-   * Creates an empty report if none exists.
-   */
-  get: async (sessionId: number): Promise<SOFAReport> => {
-    return apiFetch<SOFAReport>(`/intake/sofa-report/${sessionId}/`);
-  },
-
-  /**
-   * Update SOFA report booleans and/or nested rows (PATCH /api/intake/sofa-report/{sessionId}/)
-   */
-  patch: async (sessionId: number, data: Partial<SOFAReport>): Promise<SOFAReport> => {
-    return apiFetch<SOFAReport>(`/intake/sofa-report/${sessionId}/`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-  },
-};
-
-// ============================================================================
 // SP4: Ask-Modules API
 // ============================================================================
 
@@ -842,7 +817,6 @@ export const api = {
   assets: assetsAPI,
   debts: debtsAPI,
   forms: formsAPI,
-  sofaReport: sofaReportAPI,
   askModules: askModulesAPI,
 };
 

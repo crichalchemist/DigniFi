@@ -54,8 +54,6 @@ export function hydrateAmounts<T extends object>(row: T, keys: readonly string[]
  * in all, so the largest it stores is 10 ** (maxDigits - 2) less one cent:
  * - Income (the ten INCOME_FIELDS and their entries) and Expenses (the 29 EXPENSE_FIELDS): the IncomeInfo and
  *   ExpenseInfo models' DecimalField(max_digits=10, decimal_places=2), 99,999,999.99
- * - SOFA Gross Amount and Total Amount Paid: the serializers' DecimalField(max_digits=12,
- *   decimal_places=2, min_value=0), 9,999,999,999.99
  */
 export function amountError(value: number | undefined, maxDigits: number): string | undefined {
   if (value === undefined) return undefined;

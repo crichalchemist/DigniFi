@@ -4,7 +4,6 @@ A form with several groups continued on copies (3c spec §5.1, §5.2) and a grou
 """
 
 import json
-from decimal import Decimal
 from pathlib import Path
 
 import pymupdf
@@ -14,7 +13,7 @@ from apps.forms.registry import build_parts
 from apps.forms.schema import FieldSpec, GroupSpec, load_schema
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.tests.pdf_readback import read_drawn
-from apps.intake.models import SOFAReport
+from apps.intake.tests.builders import answer_financial_affairs, answer_petition
 
 EF_THIS = ("fill_27.1.0", "fill_27.1.2", "fill_27.1.4", "fill_27.1.6", "fill_27.1.8")
 EF_OF = ("fill_27.0", "fill_27.1.1", "fill_27.1.3", "fill_27.1.5", "fill_27.1.7")
@@ -45,13 +44,13 @@ def _printed(drawn, names):
 
 @pytest.mark.slow
 def test_page_numbers_count_every_groups_copies(
-    schedule_e_f_with_copies, generated_form_factory, creditor_payments
+    schedule_e_f_with_copies, generated_form_factory, affairs_rows
 ):
     # The sworn form's own "page 3 of 9": each group's rows past its slots take a copy, so
     # every later page moves down and every page counts all three copies (3c spec §5.2's table).
     schedule_e_f_with_copies()
     session = generated_form_factory().session
-    creditor_payments(session, 4)
+    affairs_rows(session, 4)
 
     parts, pdf, drawn = _drawn("schedule_e_f", session)
 
@@ -76,12 +75,12 @@ def test_page_numbers_count_every_groups_copies(
 
 @pytest.mark.slow
 def test_page_numbers_count_the_copies_of_a_group_that_doesnt_come_first(
-    schedule_e_f_with_copies, generated_form_factory, creditor_payments
+    schedule_e_f_with_copies, generated_form_factory, affairs_rows
 ):
     # Only Part 2 overflows: a declaration on Part 1's group would have numbered nothing.
     schedule_e_f_with_copies((3, 2, 3))
     session = generated_form_factory().session
-    creditor_payments(session, 3)
+    affairs_rows(session, 3)
 
     parts, _, drawn = _drawn("schedule_e_f", session)
 
@@ -98,11 +97,11 @@ def test_page_numbers_count_the_copies_of_a_group_that_doesnt_come_first(
 
 
 def test_page_numbers_follow_the_pages_not_the_order_the_schema_declares(
-    schedule_e_f_with_copies, generated_form_factory, creditor_payments
+    schedule_e_f_with_copies, generated_form_factory, affairs_rows
 ):
     schedule_e_f_with_copies(reverse=True)
     session = generated_form_factory().session
-    creditor_payments(session, 4)
+    affairs_rows(session, 4)
 
     form, *copies = build_parts("schedule_e_f", session)["parts"]
 
@@ -116,12 +115,12 @@ def test_page_numbers_follow_the_pages_not_the_order_the_schema_declares(
 
 
 def test_rows_that_fit_their_slots_print_no_page_number(
-    schedule_e_f_with_copies, generated_form_factory, creditor_payments
+    schedule_e_f_with_copies, generated_form_factory, affairs_rows
 ):
     # The blank form's own numbering stands until a copy changes it.
     schedule_e_f_with_copies()
     session = generated_form_factory().session
-    creditor_payments(session, 3)
+    affairs_rows(session, 3)
 
     (form,) = build_parts("schedule_e_f", session)["parts"]
 
@@ -130,11 +129,11 @@ def test_rows_that_fit_their_slots_print_no_page_number(
 
 @pytest.mark.slow
 def test_each_group_continues_its_own_rows_after_its_own_page(
-    schedule_d_with_two_groups, generated_form_factory, creditor_payments
+    schedule_d_with_two_groups, generated_form_factory, affairs_rows
 ):
     session = generated_form_factory().session
-    rows = creditor_payments(session, 7)
-    names = [row.creditor_name for row in rows]
+    rows = affairs_rows(session, 7)
+    names = [row["name"] for row in rows]
 
     _, pdf, drawn = _drawn("schedule_d", session)
 
@@ -222,14 +221,15 @@ def test_each_group_continues_its_own_rows_after_its_own_page(
     ids=["no rows", "page 1 only", "no copies", "one copy", "a full copy", "two copies"],
 )
 def test_a_sworn_total_adds_every_row_and_prints_once_on_the_last_page(
-    schedule_d_with_totals, generated_form_factory, creditor_payments, count, totals
+    schedule_d_with_totals, generated_form_factory, affairs_rows, count, totals
 ):
     # "If this is the last page of your form, add the dollar value totals from all pages."
     session = generated_form_factory().session
     if count:
-        creditor_payments(session, count)
+        affairs_rows(session, count)
     else:
-        SOFAReport.objects.create(session=session, has_creditor_payments=False)
+        answer_petition(session, debt_nature="consumer")
+        answer_financial_affairs(session, l6_answer="no")
 
     _, _, drawn = _drawn("schedule_d", session)
 
@@ -237,12 +237,30 @@ def test_a_sworn_total_adds_every_row_and_prints_once_on_the_last_page(
 
 
 @pytest.mark.slow
+def test_a_malformed_paid_amount_prints_blank_and_adds_nothing_to_the_total(
+    schedule_d_with_totals, generated_form_factory, affairs_rows
+):
+    totals = ["undefined_9", "undefined_23", "undefined_24"]
+    session = generated_form_factory().session
+    rows = affairs_rows(session, 2)
+    answer_financial_affairs(session, l6_rows=[rows[0], {**rows[1], "paid": "12.345"}])
+    _, _, drawn = _drawn("schedule_d", session)
+    assert _printed(drawn, ["undefined_5"]) == {(1, None, "undefined_5"): ""}  # row 2's amount
+    one_row = generated_form_factory().session
+    affairs_rows(one_row, 1)
+    _, _, one_row_drawn = _drawn("schedule_d", one_row)
+    # The malformed row adds nothing: every total prints what one valid row's tree prints.
+    assert _printed(drawn, totals) == _printed(one_row_drawn, totals)
+    assert _printed(drawn, ["undefined_9"]) == {(1, None, "undefined_9"): "100.00"}
+
+
+@pytest.mark.slow
 def test_a_groups_totals_land_on_its_own_copies_beside_another_groups(
-    schedule_d_with_totals_and_part_2, generated_form_factory, creditor_payments
+    schedule_d_with_totals_and_part_2, generated_form_factory, affairs_rows
 ):
     # The form's last copy is Part 2's, which has no undefined_24: Part 1's sum goes on Part 1's.
     session = generated_form_factory().session
-    creditor_payments(session, 7)
+    affairs_rows(session, 7)
 
     _, _, drawn = _drawn("schedule_d", session)
 
@@ -264,11 +282,11 @@ def test_a_groups_totals_land_on_its_own_copies_beside_another_groups(
 
 @pytest.mark.slow
 def test_the_last_page_total_lands_on_its_groups_copy_when_only_that_group_overflows(
-    schedule_d_with_totals_and_part_2, generated_form_factory, creditor_payments
+    schedule_d_with_totals_and_part_2, generated_form_factory, affairs_rows
 ):
     # Part 1 overflows by one row; Part 2 doesn't, so its page 3 is the last page and has no copy.
     session = generated_form_factory().session
-    creditor_payments(session, 6)
+    affairs_rows(session, 6)
 
     _, _, drawn = _drawn("schedule_d", session)
 
@@ -287,15 +305,12 @@ def test_the_last_page_total_lands_on_its_groups_copy_when_only_that_group_overf
     ]
 
 
-def test_a_total_keeps_every_cent(
-    schedule_d_with_totals, generated_form_factory, creditor_payments
-):
+def test_a_total_keeps_every_cent(schedule_d_with_totals, generated_form_factory, affairs_rows):
     session = generated_form_factory().session
-    first, second = creditor_payments(session, 2)
-    first.total_paid = Decimal("0.10")
-    first.save()
-    second.total_paid = Decimal("0.20")
-    second.save()
+    rows = affairs_rows(session, 2)
+    rows[0]["paid"] = "0.10"
+    rows[1]["paid"] = "0.20"
+    answer_financial_affairs(session, l6_rows=rows)
 
     (form,) = build_parts("schedule_d", session)["parts"]
 
@@ -308,7 +323,7 @@ def test_a_row_with_no_amount_adds_nothing_and_the_page_still_totals():
     from apps.forms.schema import GroupTotals
     from apps.forms.services.fill_resolver import _write_totals
 
-    column = "sofa.creditor_payments[].total_paid"
+    column = "affairs.l6_rows[].paid"
     slots = [
         FieldSpec(
             pdf_field=box,
@@ -358,14 +373,12 @@ _GUARDED = {"source": "derived", "rule": "full_name", "legal_review": True}
 
 
 def test_rows_the_upl_guard_keeps_blank_add_up_to_no_total(
-    schedule_d_with_totals, generated_form_factory, creditor_payments, settings
+    schedule_d_with_totals, generated_form_factory, affairs_rows, settings
 ):
     # A figure the form leaves blank can't reach the sum beneath it.
-    _change_fields(
-        settings, lambda f: f["binding"] == "sofa.creditor_payments[].total_paid", **_GUARDED
-    )
+    _change_fields(settings, lambda f: f["binding"] == "affairs.l6_rows[].paid", **_GUARDED)
     session = generated_form_factory().session
-    creditor_payments(session, 2)
+    affairs_rows(session, 2)
 
     (form,) = build_parts("schedule_d", session)["parts"]
 
@@ -373,12 +386,12 @@ def test_rows_the_upl_guard_keeps_blank_add_up_to_no_total(
 
 
 def test_a_column_guarded_on_one_slot_adds_up_to_no_total(
-    schedule_d_with_totals, generated_form_factory, creditor_payments, settings
+    schedule_d_with_totals, generated_form_factory, affairs_rows, settings
 ):
     # The sum of the rows left would swear to less than the form lists.
     _change_fields(settings, lambda f: f["pdf_field"] == "undefined", **_GUARDED)
     session = generated_form_factory().session
-    creditor_payments(session, 3)
+    affairs_rows(session, 3)
 
     (form,) = build_parts("schedule_d", session)["parts"]
 
@@ -391,10 +404,11 @@ def test_the_last_page_total_prints_when_the_groups_section_doesnt_apply(
 ):
     # "0.00", as the rule printed it before the group took its box, and no page's own total.
     _change_fields(
-        settings, lambda f: f.get("repeat") == "d_part_1", conditional_on="has_creditor_payments"
+        settings, lambda f: f.get("repeat") == "d_part_1", conditional_on="affairs_l6_rows"
     )
     session = generated_form_factory().session
-    SOFAReport.objects.create(session=session, has_creditor_payments=False)
+    answer_petition(session, debt_nature="consumer")
+    answer_financial_affairs(session, l6_answer="no")
 
     (form,) = build_parts("schedule_d", session)["parts"]
 

@@ -19,7 +19,7 @@ import pypdf
 from django.conf import settings
 
 from apps.forms.field_index import export_state, load_index
-from apps.forms.services.answer_records import PETITION_STEP_OF_KEY
+from apps.forms.services.answer_records import AFFAIRS_COMPUTED_CELLS, PETITION_STEP_OF_KEY
 from apps.forms.services.widgets import (
     TemplateMismatch,
     TemplateWidget,
@@ -86,7 +86,7 @@ class SheetColumn:
     """One column of an attached sheet: its label, the list binding its cells print, its width."""
 
     label: str
-    binding: str  # "sofa.<collection>[].<attr>", "household.dependents[].<attr>" or "assets.…"
+    binding: str  # "household.dependents[].<attr>" or "assets.…"
     width: float  # points
     # The slot bindings this column prints in words (3b spec §8.3). Its own binding then needs
     # no slot, and () prints a list the slots don't bind. None is an ordinary column.
@@ -110,7 +110,7 @@ class GroupTotals:
     """
 
     # the slots' list binding whose cells are amounts (is_money_binding), which add up:
-    # "claims.<list>[].amount|value|unsecured" or "sofa.creditor_payments[].total_paid"
+    # "claims.<list>[].amount|value|unsecured"
     column: str
     page_boxes: dict[int, str]  # template page → the key of the box that page's sum prints in
     last_page_box: str | None  # the key of the box the last page prints the whole sum in
@@ -277,7 +277,6 @@ _WIDGET_TYPES = {
 }
 _BINDING_NAMESPACES = (
     "answer:",
-    "sofa.",
     "household.",
     "assets.",
     "claims.",
@@ -674,8 +673,8 @@ def validate_schema(
                         (
                             "E007",
                             f"group {name!r}: statement column {column.label!r} binds "
-                            f"{column.binding!r}, not an income.statement[].<attr> or "
-                            "means.line_43[].<attr> list",
+                            f"{column.binding!r}, not an income.statement[].<attr>, "
+                            "means.line_43[].<attr> or affairs.l12_statement[].text list",
                         )
                     )
         # A sheet labels each row with the line it continues, its number.
@@ -788,6 +787,12 @@ def validate_schema(
         problem = _schedule_i_binding_error(binding)
         if problem:
             errors.append(("E007", f"{binding!r}: {problem}"))
+    # An affairs. key or cell the record neither stores nor composes reads blank, or raises, at
+    # resolve time (4f-i, R-11).
+    for binding in sorted(b for b in petition_bindings if b.startswith("affairs.")):
+        problem = _affairs_binding_error(binding)
+        if problem:
+            errors.append(("E007", f"{binding!r}: {problem}"))
     return errors
 
 
@@ -820,6 +825,24 @@ def _schedule_i_binding_error(binding: str) -> str | None:
     return None
 
 
+def _affairs_binding_error(binding: str) -> str | None:
+    """Why an affairs. binding names no value FinancialAffairsAnswers stores or composes, or None
+    when it does. Lines 13 to 28 have no record until 4g, so none of their keys passes."""
+    from apps.intake.models import FinancialAffairsAnswers  # here, as the two checks above
+
+    key, is_list, attr = binding.removeprefix("affairs.").partition("[].")
+    if key not in FinancialAffairsAnswers.KEYS:
+        return "not a key FinancialAffairsAnswers asks"
+    cells = FinancialAffairsAnswers.LIST_CELLS.get(key)
+    if not is_list and cells is not None:
+        return f"{key!r} is a row list, so its binding names a cell"
+    if is_list and cells is None:
+        return f"{key!r} is not a row list"
+    if is_list and attr not in (*cells, *AFFAIRS_COMPUTED_CELLS.get(key, ())):
+        return f"{attr!r} is not a cell of the {key!r} rows"
+    return None
+
+
 def _isnt_text_box(key: str, drawn) -> bool:
     """True when a box key names a drawn widget that is not a text box; a bad key is no."""
     try:
@@ -832,9 +855,10 @@ def _isnt_text_box(key: str, drawn) -> bool:
 _STATEMENT_BINDING = re.compile(
     r"income\.statement\[\]\.(?:owner|description|gross|expenses|net)"
     r"|means\.line_43\[\]\.(?:explanation|amount)"
+    r"|affairs\.l12_statement\[\]\.text"
 )
 _LIST_BINDING = re.compile(
-    r"(?:sofa\.\w+|household\.dependents|income\.statement|assets\.line_\w+|means\.line_\w+"
+    r"(?:household\.dependents|income\.statement|assets\.line_\w+|means\.line_\w+"
     r"|claims\.\w+|(?:petition|schedule_i|affairs)\.\w+)"
     r"\[\]\.\w+"
 )
@@ -922,11 +946,11 @@ def _sheet_errors(name: str, group: GroupSpec, template: str) -> list[tuple[str,
                 (
                     "E007",
                     f"group {name!r}: sheet column {column.label!r} binds {column.binding!r}, "
-                    "not a sofa.<collection>[].<attr>, household.dependents[].<attr>, "
+                    "not a household.dependents[].<attr>, "
                     "income.statement[].<attr>, assets.line_<key>[].<attr>, "
                     "means.line_<key>[].<attr>, claims.<list>[].<attr>, "
                     "petition.<key>[].<attr>, schedule_i.<key>[].<attr> or "
-                    "affairs.<key>[].<attr> list",
+                    "affairs.<list>[].<cell> list",
                 )
             )
         width = inner_width(column.width)

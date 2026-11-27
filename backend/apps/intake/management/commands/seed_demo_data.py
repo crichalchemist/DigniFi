@@ -41,9 +41,6 @@ from apps.intake.models import (
     PetitionAnswers,
     ScheduleIAnswers,
     SecuredDebtAnswers,
-    SOFACreditorPayment,
-    SOFAPriorIncome,
-    SOFAReport,
     SpouseIncome,
 )
 from apps.intake.petition import STEP_1_GATES
@@ -442,35 +439,6 @@ def _maria_torres() -> dict:
                 _exempt("11.1", "il_735_5_12_1001_a"),
                 _exempt("16.1", "il_735_5_12_1001_b", amount=40),
                 _exempt("17.1", "il_735_5_12_1001_b", amount=340),
-            ],
-        },
-        "sofa": {
-            "has_prior_income": True,
-            "has_creditor_payments": True,
-            "has_business": False,
-            "prior_income": [
-                {
-                    "year": 2025,
-                    "source": "Wages - CNA at Larkfield General Hospital",
-                    "gross_amount": Decimal("38400.00"),
-                },
-                {
-                    "year": 2024,
-                    "source": "Wages - CNA at Larkfield General Hospital",
-                    "gross_amount": Decimal("37000.00"),
-                },
-            ],
-            "creditor_payments": [
-                {
-                    "creditor_name": "Brightwater Card Services",
-                    "total_paid": Decimal("1020.00"),
-                    "dates_of_payments": "Monthly Jan-Mar 2026",
-                },
-                {
-                    "creditor_name": "Ironbridge Card Company",
-                    "total_paid": Decimal("720.00"),
-                    "dates_of_payments": "Monthly Jan-Mar 2026",
-                },
             ],
         },
         # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
@@ -1825,17 +1793,6 @@ class Command(BaseCommand):
                 answers=json.dumps(stored),
                 answered_on=fill_date().isoformat(),
             )
-
-        # Create SOFA report and related data (Form 107)
-        sofa_data = dict(data.get("sofa", {}))
-        if sofa_data:
-            prior_income_rows = sofa_data.pop("prior_income", [])
-            creditor_payment_rows = sofa_data.pop("creditor_payments", [])
-            report = SOFAReport.objects.create(session=session, **sofa_data)
-            for row in prior_income_rows:
-                SOFAPriorIncome.objects.create(report=report, **row)
-            for row in creditor_payment_rows:
-                SOFACreditorPayment.objects.create(report=report, **row)
 
         # The filing-fee page's answers, which every persona gives after Complete
         FilingFee.objects.create(session=session, **data["filing_fee"])

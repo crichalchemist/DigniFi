@@ -22,9 +22,8 @@ from apps.intake.models import (
     DebtorInfo,
     FormAnswer,
     IntakeSession,
-    SOFACreditorPayment,
-    SOFAReport,
 )
+from apps.intake.tests.builders import answer_financial_affairs
 
 User = get_user_model()
 
@@ -52,28 +51,27 @@ def test_resolve_answer_binding_missing_returns_empty(session):
 
 
 def test_resolve_collection_binding_returns_list(session):
-    report = SOFAReport.objects.create(session=session, has_creditor_payments=True)
-    SOFACreditorPayment.objects.create(
-        report=report, creditor_name="Acme", total_paid=Decimal("100.00")
+    answer_financial_affairs(
+        session,
+        l6_answer="yes",
+        l6_branch="consumer",
+        l6_rows=[{"name": "Acme", "paid": "100.00"}, {"name": "Beta", "paid": "200.00"}],
     )
-    SOFACreditorPayment.objects.create(
-        report=report, creditor_name="Beta", total_paid=Decimal("200.00")
-    )
-    vals = resolve_binding("sofa.creditor_payments[].creditor_name", session)
+    vals = resolve_binding("affairs.l6_rows[].name", session)
     assert vals == ["Acme", "Beta"]
 
 
 def test_resolve_collection_binding_no_report_returns_empty_list(session):
-    assert resolve_binding("sofa.creditor_payments[].creditor_name", session) == []
+    assert resolve_binding("affairs.l6_rows[].name", session) == []
 
 
 def test_resolve_scalar_binding_returns_str(session):
-    SOFAReport.objects.create(session=session, has_creditor_payments=True, has_business=True)
-    assert resolve_binding("sofa.has_business", session) == "True"
+    answer_financial_affairs(session, l6_answer="yes", l6_branch="consumer")
+    assert resolve_binding("affairs.l6_answer", session) == "yes"
 
 
 def test_resolve_scalar_binding_no_report_returns_empty(session):
-    assert resolve_binding("sofa.has_business", session) == ""
+    assert resolve_binding("affairs.l6_answer", session) == ""
 
 
 PRIYA = [("spouse", 45, True, True, False), ("daughter", 10, True, True), ("son", 7, True, True)]
@@ -175,11 +173,11 @@ def test_conditional_section_skipped_when_predicate_false(session):
     schema = _schema(
         [
             _field(
-                pdf_field="BizName", source="constant", value="X", conditional_on="has_business"
+                pdf_field="BizName", source="constant", value="X", conditional_on="affairs_l6_rows"
             ),
         ]
     )
-    # no SOFAReport → has_business False → field skipped
+    # no line 6 answer → affairs_l6_rows False → field skipped
     assert "BizName" not in resolve(schema, session)
 
 
@@ -250,13 +248,12 @@ def test_unmapped_box_in_a_repeat_group_emits_nothing_and_reads_no_value(session
 
 
 def test_repeat_group_expands_rows(session):
-    report = SOFAReport.objects.create(session=session, has_creditor_payments=True)
-    for name, amt in [("Acme", "100.00"), ("Beta", "200.00")]:
-        SOFACreditorPayment.objects.create(
-            report=report,
-            creditor_name=name,
-            total_paid=Decimal(amt),
-        )
+    answer_financial_affairs(
+        session,
+        l6_answer="yes",
+        l6_branch="consumer",
+        l6_rows=[{"name": "Acme", "paid": "100.00"}, {"name": "Beta", "paid": "200.00"}],
+    )
     schema = _schema(
         [
             _field(
@@ -265,7 +262,7 @@ def test_repeat_group_expands_rows(session):
                 repeat="cp",
                 repeat_capacity=3,
                 row=1,
-                binding="sofa.creditor_payments[].creditor_name",
+                binding="affairs.l6_rows[].name",
             ),
             _field(
                 pdf_field="Cred2",
@@ -273,7 +270,7 @@ def test_repeat_group_expands_rows(session):
                 repeat="cp",
                 repeat_capacity=3,
                 row=2,
-                binding="sofa.creditor_payments[].creditor_name",
+                binding="affairs.l6_rows[].name",
             ),
             _field(
                 pdf_field="Cred3",
@@ -281,7 +278,7 @@ def test_repeat_group_expands_rows(session):
                 repeat="cp",
                 repeat_capacity=3,
                 row=3,
-                binding="sofa.creditor_payments[].creditor_name",
+                binding="affairs.l6_rows[].name",
             ),
         ]
     )
@@ -306,11 +303,12 @@ def test_a_tagged_binding_resolves_under_its_widget_address(session):
 
 
 def test_repeat_rows_of_a_shared_name_land_on_their_own_widgets(session):
-    report = SOFAReport.objects.create(session=session, has_creditor_payments=True)
-    for name, amt in [("Acme", "100.00"), ("Beta", "200.00")]:
-        SOFACreditorPayment.objects.create(
-            report=report, creditor_name=name, total_paid=Decimal(amt)
-        )
+    answer_financial_affairs(
+        session,
+        l6_answer="yes",
+        l6_branch="consumer",
+        l6_rows=[{"name": "Acme", "paid": "100.00"}, {"name": "Beta", "paid": "200.00"}],
+    )
 
     def cell(tag, row, attr):
         return _field(
@@ -320,15 +318,15 @@ def test_repeat_rows_of_a_shared_name_land_on_their_own_widgets(session):
             repeat="cp",
             repeat_capacity=2,
             row=row,
-            binding=f"sofa.creditor_payments[].{attr}",
+            binding=f"affairs.l6_rows[].{attr}",
         )
 
     schema = _schema(
         [
-            cell("T5", 1, "creditor_name"),
-            cell("T6", 1, "total_paid"),
-            cell("T9", 2, "creditor_name"),
-            cell("T10", 2, "total_paid"),
+            cell("T5", 1, "name"),
+            cell("T6", 1, "paid"),
+            cell("T9", 2, "name"),
+            cell("T10", 2, "paid"),
         ]
     )
     assert resolve(schema, session) == {
@@ -340,13 +338,12 @@ def test_repeat_rows_of_a_shared_name_land_on_their_own_widgets(session):
 
 
 def _payments(session, count):
-    report = SOFAReport.objects.create(session=session, has_creditor_payments=True)
-    for i in range(count):
-        SOFACreditorPayment.objects.create(
-            report=report,
-            creditor_name=f"C{i}",
-            total_paid=Decimal("1.00"),
-        )
+    answer_financial_affairs(
+        session,
+        l6_answer="yes",
+        l6_branch="consumer",
+        l6_rows=[{"name": f"C{i}", "paid": "1.00"} for i in range(count)],
+    )
 
 
 def _slots():
@@ -359,7 +356,7 @@ def _slots():
             repeat="cp",
             repeat_capacity=4,
             row=row,
-            binding="sofa.creditor_payments[].creditor_name",
+            binding="affairs.l6_rows[].name",
         )
         for row in range(1, 5)
     ]
@@ -397,7 +394,7 @@ def test_a_legal_review_row_prints_neither_in_the_slots_nor_on_a_copy(session):
             repeat="cp",
             repeat_capacity=4,
             row=row,
-            binding="sofa.creditor_payments[].total_paid",
+            binding="affairs.l6_rows[].paid",
         )
         for row in range(1, 5)
     ]
@@ -434,7 +431,7 @@ def test_a_copy_never_repeats_a_row_from_the_form(session):
             repeat="notified",
             repeat_capacity=6,
             row=row,
-            binding="sofa.creditor_payments[].creditor_name",
+            binding="affairs.l6_rows[].name",
         )
         for row, box in enumerate(boxes, start=1)
     ]
@@ -519,7 +516,7 @@ def test_resolve_ingested_source(session):
     "binding,fix",
     [
         ("answer:form_101.mailing_zip", {"page": "/ask/form_101"}),
-        ("sofa.prior_income[].year", {"page": "/sofa"}),
+        ("affairs.l6_rows[].name", {"step": "last_few_years_1"}),
         ("household.dependents[].age", {"step": "income_info"}),
         ("income.statement[].net", {"step": "income_info"}),
         ("assets.line_3[].make", {"step": "assets"}),
@@ -763,10 +760,10 @@ def test_a_statement_sheet_stores_a_wider_line_column_as_a_slot_groups_does(sess
 
 
 def test_a_part_stores_the_number_boxes_it_was_planned_with(
-    schedule_g_numbered, generated_form_factory, creditor_payments
+    schedule_g_numbered, generated_form_factory, affairs_rows
 ):
     session = generated_form_factory().session
-    creditor_payments(session, 14)
+    affairs_rows(session, 14)
 
     document = build_parts("schedule_g", session)
 
@@ -777,10 +774,10 @@ def test_a_part_stores_the_number_boxes_it_was_planned_with(
 
 
 def test_a_form_with_no_number_boxes_stores_none(
-    schedule_d_part_2_with_copies, generated_form_factory, creditor_payments
+    schedule_d_part_2_with_copies, generated_form_factory, affairs_rows
 ):
     session = generated_form_factory().session
-    creditor_payments(session, 8)
+    affairs_rows(session, 8)
 
     document = build_parts("schedule_d", session)
 

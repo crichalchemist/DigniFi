@@ -11,6 +11,7 @@ import pytest
 from apps.forms.registry import build_parts
 from apps.forms.services.pdf_filler import PDFFormFiller, UnknownField, UnprintableLetter
 from apps.forms.tests.pdf_readback import read_drawn
+from apps.intake.tests.builders import answer_financial_affairs
 
 NAMES = [
     "Creditors Name",
@@ -63,8 +64,8 @@ def _page_numbers(drawn):
 
 
 @pytest.mark.slow
-def test_extra_rows_print_on_copies_of_the_extra_page(session, creditor_payments):
-    rows = creditor_payments(session, 6)
+def test_extra_rows_print_on_copies_of_the_extra_page(session, affairs_rows):
+    rows = affairs_rows(session, 6)
 
     parts, pdf, drawn = _drawn(session)
 
@@ -76,11 +77,11 @@ def test_extra_rows_print_on_copies_of_the_extra_page(session, creditor_payments
     # after page 2, and Part 2's page comes last.
     pages = pymupdf.open("pdf", pdf)
     assert len(pages) == 4
-    assert rows[5].creditor_name in pages[2].get_text()
+    assert rows[5]["name"] in pages[2].get_text()
     assert "Part 2:" in pages[3].get_text()
     assert "Part 2:" not in pages[2].get_text()
     # Rows 1-5 fill the form's own slots, page 2's included; row 6 fills the copy's first.
-    names = [row.creditor_name for row in rows]
+    names = [row["name"] for row in rows]
     assert _printed(drawn, NAMES) == {
         **{(box, None): names[n] for n, box in enumerate(NAMES)},
         ("Creditors Name_3", 1): names[5],
@@ -163,10 +164,10 @@ def test_extra_rows_print_on_copies_of_the_extra_page(session, creditor_payments
     ids=["a row on page 2", "every slot", "one copy", "two copies"],
 )
 def test_entry_and_page_numbers_continue_on_each_copy(
-    session, creditor_payments, count, kinds, copies, pages, entries, page_numbers
+    session, affairs_rows, count, kinds, copies, pages, entries, page_numbers
 ):
     # Rows that fit the slots print no copy and no page number.
-    creditor_payments(session, count)
+    affairs_rows(session, count)
 
     parts, pdf, drawn = _drawn(session)
 
@@ -179,11 +180,11 @@ def test_entry_and_page_numbers_continue_on_each_copy(
 
 @pytest.mark.slow
 def test_a_copy_of_the_last_page_goes_after_it(
-    schedule_d_part_2_with_copies, generated_form_factory, creditor_payments
+    schedule_d_part_2_with_copies, generated_form_factory, affairs_rows
 ):
     # C, G and H continue on their last page; here D's Part 2 page, page 3 of 3.
     session = generated_form_factory().session
-    rows = creditor_payments(session, 7)
+    rows = affairs_rows(session, 7)
 
     parts, pdf, drawn = _drawn(session)
 
@@ -194,10 +195,10 @@ def test_a_copy_of_the_last_page_goes_after_it(
     pages = pymupdf.open("pdf", pdf)
     assert len(pages) == 4
     assert ["Part 2:" in page.get_text() for page in pages] == [False, False, True, True]
-    assert rows[6].creditor_name in pages[3].get_text()
+    assert rows[6]["name"] in pages[3].get_text()
     assert _printed(drawn, ["Name"]) == {
-        ("Name", None): rows[0].creditor_name,
-        ("Name", 1): rows[6].creditor_name,
+        ("Name", None): rows[0]["name"],
+        ("Name", 1): rows[6]["name"],
     }
     # Pages 1 and 2 come before the copied page, so they keep their numbers.
     assert _page_numbers(drawn) == [
@@ -208,11 +209,11 @@ def test_a_copy_of_the_last_page_goes_after_it(
     ]
 
 
-def test_a_letter_refused_on_a_copy_names_where_to_fix_it(session, creditor_payments):
-    # Row 6 prints only on the copy of page 2; its creditor's name comes from the SOFA.
-    rows = creditor_payments(session, 6)
-    rows[5].creditor_name = "Wąsowicz Credit"
-    rows[5].save()
+def test_a_letter_refused_on_a_copy_names_where_to_fix_it(session, affairs_rows):
+    # Row 6 prints only on the copy of page 2; its creditor's name comes from line 6's rows.
+    rows = affairs_rows(session, 6)
+    rows[5]["name"] = "Wąsowicz Credit"
+    answer_financial_affairs(session, l6_rows=rows)
     document = build_parts("schedule_d", session)
     assert "Wąsowicz Credit" not in document["parts"][0]["values"].values()
 
@@ -223,7 +224,7 @@ def test_a_letter_refused_on_a_copy_names_where_to_fix_it(session, creditor_paym
         "The court form can't print the letter “ą” in “Creditor's name”. "
         "Change it to a letter without the mark."
     )
-    assert (refused.value.step, refused.value.page) == (None, "/sofa")
+    assert (refused.value.step, refused.value.page) == ("last_few_years_1", None)
 
 
 def test_a_copy_fills_only_the_widgets_on_its_page(schedule_d_with_copies):

@@ -288,11 +288,6 @@ def _send_through_the_api(persona):
         }
         response = client.put(f"{session_url}means-test/", body, format="json")
         assert response.status_code == 200, response.data
-    if "sofa" in data:
-        response = client.patch(
-            f"/api/intake/sofa-report/{session_id}/", _sent(data["sofa"]), format="json"
-        )
-        assert response.status_code == 200, response.data
 
     generated = client.post("/api/forms/generate_all/", {"session_id": session_id}, format="json")
     assert generated.status_code == 200, generated.data

@@ -129,7 +129,6 @@ function renderWizard(entry = '/intake') {
           <Route path="/intake" element={<IntakeWizard />} />
           <Route path="/filing-fee" element={<div>FilingFeePage</div>} />
           <Route path="/forms" element={<div>FormDashboard</div>} />
-          <Route path="/sofa" element={<div>Statement of Financial Affairs</div>} />
           <Route path="/documents" element={<div>DocumentUploadPage</div>} />
         </Routes>
       </IntakeProvider>

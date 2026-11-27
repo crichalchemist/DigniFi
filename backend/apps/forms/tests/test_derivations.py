@@ -103,10 +103,6 @@ def test_district_name(session):
     assert DERIVATIONS["district_name"](session) == "Northern District of Illinois"
 
 
-def test_has_business_predicate_false_without_report(session):
-    assert PREDICATES["has_business"](session) is False
-
-
 def test_has_creditor_payments_predicate_false_without_report(session):
     assert PREDICATES["has_creditor_payments"](session) is False
 

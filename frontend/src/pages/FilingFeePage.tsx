@@ -78,7 +78,7 @@ const incomeStep = WIZARD_STEPS.find((s) => s.key === 'income_info')!;
 /**
  * Form 101 line 8, which every filer answers after Complete (3f spec §6). Beside it, as
  * information, the court's limit and the filer's own 103B figure; the court decides. Under the
- * waiver it asks 103B lines 4, 5, 7 and 9. Continues to the SOFA step.
+ * waiver it asks 103B lines 4, 5, 7 and 9. Continues to the exemptions page.
  */
 export function FilingFeePage() {
   const navigate = useNavigate();
@@ -152,8 +152,7 @@ export function FilingFeePage() {
     setError(null);
     try {
       await api.intake.filingFee.put(sessionId, requestBody(answers));
-      // The exemptions page comes next, then the SOFA step: Form 107 is in every packet, so its
-      // questions come before the forms (DIG-149)
+      // The exemptions page comes next, then the 122A-2 page or the forms dashboard (DIG-149)
       navigate('/exemptions');
     } catch {
       setError(FEE_SAVE_FAILED);

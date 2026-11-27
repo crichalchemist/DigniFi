@@ -62,7 +62,7 @@ class IntakeSession(models.Model):
         """Set a completed intake back to in progress, because its intake data changed.
 
         The filer then presses Complete again, which re-runs the completion checks (spec
-        §5.3). Form answers, SOFA and the filing fee, exemptions and means-test pages are not
+        §5.3). Form answers and the filing fee, exemptions and means-test pages are not
         intake data and never call this.
 
         The database decides, not this copy: an upload loads the session seconds before it
@@ -1225,6 +1225,223 @@ class IntentionAnswers(models.Model):
         if answers != stored:
             self.answers = json.dumps(answers)
             self.answered_on = fill_date().isoformat()
+
+
+class FinancialAffairsAnswers(models.Model):
+    """The filer's own answers to Form 107 lines 1 to 12, Statement of Financial Affairs (4f-i).
+
+    One encrypted JSON object keyed by line (`KEYS`); a key that is absent is unanswered. Every
+    value is a string the filer sent or a list of rows of strings, except `l4_year`, which the
+    server stamps (R-4). Shapes (dates, amounts, last 4) are stored as typed and flagged by the
+    gaps (B47). A save drops a picked debt's id once it names no confirmed debt of the session,
+    keeping the row (R-9).
+    """
+
+    KEYS: ClassVar[tuple[str, ...]] = (
+        "l2_answer",
+        "l2_rows",
+        "l4_answer",
+        "l4_year",
+        "l4_current_wages",
+        "l4_current_business",
+        "l4_last_wages",
+        "l4_last_business",
+        "l4_prior_wages",
+        "l4_prior_business",
+        "l5_answer",
+        "l5_current_rows",
+        "l5_last_rows",
+        "l5_prior_rows",
+        "l6_answer",
+        "l6_branch",
+        "l6_rows",
+        "l7_answer",
+        "l7_rows",
+        "l8_answer",
+        "l8_rows",
+        "l9_answer",
+        "l9_rows",
+        "l10_answer",
+        "l10_rows",
+        "l11_answer",
+        "l11_rows",
+        "l12_answer",
+        "l12_statement",
+    )
+    YES_NO_KEYS: ClassVar[tuple[str, ...]] = tuple(k for k in KEYS if k.endswith("_answer"))
+    # Line 6 asks a different question for consumer debts than for business debts or neither.
+    BRANCHES: ClassVar[tuple[str, ...]] = ("consumer", "other")
+    L4_AMOUNT_KEYS: ClassVar[tuple[str, ...]] = tuple(
+        k for k in KEYS if k.startswith(("l4_current_", "l4_last_", "l4_prior_"))
+    )
+    L5_LIST_KEYS: ClassVar[tuple[str, ...]] = ("l5_current_rows", "l5_last_rows", "l5_prior_rows")
+    # The lists whose rows may name a debt the filer picked from Amounts Owed.
+    PICKED_LIST_KEYS: ClassVar[tuple[str, ...]] = ("l6_rows", "l7_rows", "l8_rows")
+    _PAYMENT_CELLS = (
+        "debt_id",
+        "name",
+        "street",
+        "street_2",
+        "city",
+        "state",
+        "zip",
+        "date_1",
+        "date_2",
+        "date_3",
+        "paid",
+        "owed",
+    )
+    _L5_CELLS = ("source", "amount")
+    LIST_CELLS: ClassVar[dict[str, tuple[str, ...]]] = {
+        "l2_rows": ("street", "street_2", "city", "state", "zip", "from", "to"),
+        "l5_current_rows": _L5_CELLS,
+        "l5_last_rows": _L5_CELLS,
+        "l5_prior_rows": _L5_CELLS,
+        "l6_rows": (
+            *_PAYMENT_CELLS,
+            "mortgage",
+            "car",
+            "credit_card",
+            "loan",
+            "vendors",
+            "other",
+            "other_text",
+        ),
+        "l7_rows": (*_PAYMENT_CELLS, "reason"),
+        "l8_rows": (*_PAYMENT_CELLS, "reason"),
+        "l9_rows": (
+            "case_title",
+            "case_number",
+            "nature",
+            "court_name",
+            "court_street",
+            "court_city",
+            "court_state",
+            "court_zip",
+            "status",
+        ),
+        "l10_rows": (
+            "name",
+            "street",
+            "street_2",
+            "city",
+            "state",
+            "zip",
+            "property",
+            "date",
+            "value",
+            "repossessed",
+            "foreclosed",
+            "garnished",
+            "attached",
+        ),
+        "l11_rows": (
+            "name",
+            "street",
+            "street_2",
+            "city",
+            "state",
+            "zip",
+            "action",
+            "date",
+            "amount",
+            "last_4",
+        ),
+        "l12_statement": ("text",),
+    }
+    # Each "yes" or absent.
+    TICK_CELLS: ClassVar[frozenset[str]] = frozenset(
+        {
+            "mortgage",
+            "car",
+            "credit_card",
+            "loan",
+            "vendors",
+            "other",
+            "repossessed",
+            "foreclosed",
+            "garnished",
+            "attached",
+        }
+    )
+    STATUSES: ClassVar[tuple[str, ...]] = ("pending", "on_appeal", "concluded")
+    AMOUNT_CELLS: ClassVar[frozenset[str]] = frozenset({"paid", "owed", "amount", "value"})
+    DATE_CELLS: ClassVar[frozenset[str]] = frozenset(
+        {"from", "to", "date_1", "date_2", "date_3", "date"}
+    )
+    SHAPED_CELLS: ClassVar[frozenset[str]] = frozenset({"state", "zip", "last_4"})
+    TEXT_CEILING: ClassVar[int] = 500
+    STATEMENT_CEILING: ClassVar[int] = 2000
+    SHAPED_CEILING: ClassVar[int] = 32
+    ROW_CEILING: ClassVar[int] = 100
+
+    session = models.OneToOneField(
+        IntakeSession, on_delete=models.CASCADE, related_name="financial_affairs"
+    )
+    answers = EncryptedTextField(default="{}")
+    answered_on = EncryptedCharField(max_length=10, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "financial_affairs_answers"
+
+    def __str__(self) -> str:
+        return f"FinancialAffairsAnswers (Session: {self.session_id})"
+
+    def get_answers(self) -> dict:
+        return json.loads(self.answers)
+
+    def merge(self, sent: Mapping[str, Any], confirmed_debt_ids: set[int], fill_year: int) -> None:
+        """Replace each sent key whole (a null removes it), drop every picked debt id that names
+        no confirmed debt of the session (R-9), then keep, stamp or remove the line 4 year label
+        (R-4); the fill date is stamped when the stored object changed.
+
+        Every key is checked before any is set: an unknown key raises KeyError naming it.
+        Doesn't save.
+        """
+        for key in sent:
+            if key not in self.KEYS:
+                raise KeyError(key)
+        stored = self.get_answers()
+        answers = dict(stored)
+        for key, value in sent.items():
+            if value is None:
+                answers.pop(key, None)
+            else:
+                answers[key] = value
+        # Ids are digit strings with no leading zero, so the string form of each pk matches. Each
+        # row is rebuilt, never changed in place, so `stored` still holds what was read.
+        confirmed = {str(pk) for pk in confirmed_debt_ids}
+        for key in self.PICKED_LIST_KEYS:
+            if key in answers:
+                answers[key] = [
+                    {
+                        cell: value
+                        for cell, value in row.items()
+                        if cell != "debt_id" or value in confirmed
+                    }
+                    for row in answers[key]
+                ]
+        # The year label stays with the amounts it labels, even ones kept under a No.
+        if self._holds_an_amount(answers):
+            answers.setdefault("l4_year", fill_year)
+        else:
+            answers.pop("l4_year", None)
+        if answers != stored:
+            self.answers = json.dumps(answers)
+            self.answered_on = fill_date().isoformat()
+
+    @classmethod
+    def _holds_an_amount(cls, answers: Mapping[str, Any]) -> bool:
+        def counts(value) -> bool:
+            return isinstance(value, str) and bool(value.strip())
+
+        if any(counts(answers.get(key)) for key in cls.L4_AMOUNT_KEYS):
+            return True
+        return any(
+            counts(row.get("amount")) for key in cls.L5_LIST_KEYS for row in answers.get(key, [])
+        )
 
 
 class DebtInfoQuerySet(models.QuerySet):

@@ -281,9 +281,9 @@ def test_money_bindings_are_the_amount_columns():
     assert is_money_binding("claims.priority[].priority_amount")
     assert is_money_binding("claims.priority[].nonpriority_amount")
     assert not is_money_binding("claims.priority[].other_specify")
-    assert is_money_binding("sofa.creditor_payments[].total_paid")
+    assert is_money_binding("affairs.l6_rows[].paid")
     assert not is_money_binding("claims.secured[].name")
-    assert not is_money_binding("sofa.creditor_payments[].creditor_name")
+    assert not is_money_binding("affairs.l6_rows[].name")
 
 
 def test_a_part_1_row_prints_its_kind_and_its_own_figures(session):

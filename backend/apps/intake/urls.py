@@ -5,14 +5,12 @@ from .views import (
     AssetViewSet,
     DebtViewSet,
     IntakeSessionViewSet,
-    SOFAReportViewSet,
 )
 
 router = DefaultRouter()
 router.register(r"sessions", IntakeSessionViewSet, basename="intake-session")
 router.register(r"assets", AssetViewSet, basename="asset-info")
 router.register(r"debts", DebtViewSet, basename="debt-info")
-router.register(r"sofa-report", SOFAReportViewSet, basename="sofa-report")
 
 urlpatterns = [
     path("", include(router.urls)),

@@ -274,7 +274,7 @@ function namesARowThatHasGone(caught: unknown): boolean {
 /**
  * Form 122A-2's questions, in the form's order (forms step 3h2 spec §8). The filer answers every
  * one and nothing is chosen for them. The page holds its answers itself and saves them on
- * Continue, which leaves for the SOFA step only when nothing is missing and the result hasn't
+ * Continue, which leaves for the forms dashboard only when nothing is missing and the result hasn't
  * changed under the filer.
  */
 export function MeansTestPage() {
@@ -333,7 +333,7 @@ export function MeansTestPage() {
 
   // The form doesn't apply (or stopped applying after a save): the page follows the server
   useEffect(() => {
-    if (applies === false) navigate('/sofa', { replace: true });
+    if (applies === false) navigate('/forms', { replace: true });
   }, [applies, navigate]);
 
   // Opened with #line-43: bring line 43 into view and focus its legend
@@ -395,7 +395,7 @@ export function MeansTestPage() {
   const handleContinue = async () => {
     if (!page || !state || saving.current) return;
     if (applies === null) {
-      navigate('/sofa');
+      navigate('/forms');
       return;
     }
     if (sessionId == null) return;
@@ -451,7 +451,7 @@ export function MeansTestPage() {
         setChanged(true);
         setResultMoved((count) => count + 1);
       } else {
-        navigate('/sofa');
+        navigate('/forms');
       }
     } catch (caught) {
       // A box the 400 refuses keeps its sentence whether or not the page reads itself again too

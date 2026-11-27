@@ -15,7 +15,6 @@ import { DocumentsPage } from '../pages/documents.page';
 import { FilingFeePage } from '../pages/filing-fee.page';
 import { ExemptionsPage } from '../pages/exemptions.page';
 import { DashboardPage } from '../pages/dashboard.page';
-import { SOFAPage } from '../pages/sofa.page';
 
 // Spec-local ID, so this registration never collides with another spec's in the same worker
 const RUN_ID = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -40,7 +39,6 @@ test.describe('Eviction statement — Form 101A', () => {
     const documents = new DocumentsPage(page);
     const filingFee = new FilingFeePage(page);
     const exemptions = new ExemptionsPage(page);
-    const sofa = new SOFAPage(page);
     const dashboard = new DashboardPage(page);
 
     const email = `eviction.e2e+${RUN_ID}@test.dignifi.org`;
@@ -98,8 +96,7 @@ test.describe('Eviction statement — Form 101A', () => {
 
     await filingFee.answer(RENTER.filing_fee.payment_choice);
     await exemptions.answer(RENTER.exemptions);
-    await sofa.waitForLoad();
-    await sofa.skipForNow();
+    await page.waitForURL('**/forms');
 
     // James's 16 forms (Form 108 among them, for his car loan) and Form 101A
     await dashboard.generateAllForms(17);

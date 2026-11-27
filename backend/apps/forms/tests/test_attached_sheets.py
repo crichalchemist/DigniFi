@@ -33,6 +33,7 @@ from apps.forms.services.sheets import draw_sheet, plan_sheet, sheet_spec
 from apps.forms.services.text_fit import font_for
 from apps.forms.tests.pdf_readback import read_drawn, read_sheets
 from apps.intake.models import AssetInfo
+from apps.intake.tests.builders import answer_financial_affairs
 
 MAKES = ["Honda", "Toyota", "Subaru", "Mazda", "Volvo", "Kia", "Saab", "Fiat"]
 SLOTS = {  # line 3's boxes: (make, value), 3.1 to 3.4
@@ -83,8 +84,8 @@ def _drawn(session):
 
 
 @pytest.mark.slow
-def test_extra_rows_print_on_an_attached_sheet(session, creditor_payments):
-    creditor_payments(session, 5, MAKES)
+def test_extra_rows_print_on_an_attached_sheet(session, affairs_rows):
+    affairs_rows(session, 5, MAKES)
 
     parts, pdf = _drawn(session)
 
@@ -139,14 +140,14 @@ def test_extra_rows_print_on_an_attached_sheet(session, creditor_payments):
     assert len(blanks) == 1 and blanks[0][2].x - blanks[0][1].x >= 144  # 2 in at least
 
 
-def test_a_cell_filled_to_its_padding_stays_in_its_column(session, creditor_payments):
+def test_a_cell_filled_to_its_padding_stays_in_its_column(session, affairs_rows):
     # The Make column runs from 90 to 390 pt, and a cell's text starts 2 pt in, at 92, and
     # wraps within 296 pt, ending by 388. Row 3.5: thirty W's and two i's, 293.2 pt at 10 pt,
     # end at 385.2; a third i would end at 390.2, so it starts the next line. Row 3.6:
     # thirty-one W's and an i, 297.64 pt, would end at 389.64, inside the column but past
     # its right padding, so the i starts the next line.
     make = "W" * 30 + " i" * 4
-    creditor_payments(session, 6, [*MAKES[:4], make, "W" * 31 + " i"])
+    affairs_rows(session, 6, [*MAKES[:4], make, "W" * 31 + " i"])
 
     _, pdf = _drawn(session)
 
@@ -169,11 +170,11 @@ def _long_make(n):
 
 
 @pytest.mark.slow
-def test_a_long_sheet_runs_to_a_second_page(session, creditor_payments):
+def test_a_long_sheet_runs_to_a_second_page(session, affairs_rows):
     # Twenty rows on the sheet: three of one line, then three-line rows. Page 1 takes
     # fourteen, and has room left for the first line of the fifteenth but not the whole row.
     makes = {n: _long_make(n) if n >= 8 else MAKES[n - 1] for n in range(1, 25)}
-    creditor_payments(session, 24, list(makes.values()))
+    affairs_rows(session, 24, list(makes.values()))
 
     _, pdf = _drawn(session)
 
@@ -205,7 +206,7 @@ def test_totals_count_rows_printed_on_copies_and_sheets(
     request,
     monkeypatch,
     generated_form_factory,
-    creditor_payments,
+    affairs_rows,
     fixture,
     form_type,
     total,
@@ -243,10 +244,12 @@ def test_totals_count_rows_printed_on_copies_and_sheets(
     monkeypatch.setitem(
         DERIVATIONS,
         "every_row_total",
-        lambda s: str(sum(row.total_paid for row in s.sofa_report.creditor_payments.all())),
+        lambda s: str(
+            sum(Decimal(r["paid"]) for r in s.financial_affairs.get_answers()["l6_rows"])
+        ),
     )
     session = generated_form_factory().session
-    creditor_payments(session, 6, MAKES)
+    affairs_rows(session, 6, MAKES)
 
     document = build_parts(form_type, session)
     pdf = PDFFormFiller().fill(form_type, document)
@@ -258,11 +261,11 @@ def test_totals_count_rows_printed_on_copies_and_sheets(
     assert {(w.copy, w.value) for w in drawn if w.full_name == total} == printed
 
 
-def test_a_letter_the_sheet_cannot_print_is_refused(session, creditor_payments):
-    # The fifth vehicle prints only on the sheet; its make comes from the SOFA.
-    rows = creditor_payments(session, 5, MAKES)
-    rows[4].creditor_name = "Wąsowicz Motors"
-    rows[4].save()
+def test_a_letter_the_sheet_cannot_print_is_refused(session, affairs_rows):
+    # The fifth vehicle prints only on the sheet; its make comes from line 6's rows.
+    rows = affairs_rows(session, 5, MAKES)
+    rows[4]["name"] = "Wąsowicz Motors"
+    answer_financial_affairs(session, l6_rows=rows)
     document = build_parts("schedule_a_b", session)
     assert document["parts"][1]["rows"][0]["cells"][0] == "Wąsowicz Motors"
 
@@ -273,18 +276,18 @@ def test_a_letter_the_sheet_cannot_print_is_refused(session, creditor_payments):
         "The court form can't print the letter “ą” in “Make”. "
         "Change it to a letter without the mark."
     )
-    # Fixed where the column's slots' binding is changed (fix_for): a SOFA list's, the SOFA page.
-    assert (refused.value.step, refused.value.page) == (None, "/sofa")
+    # Fixed where the column's slots' binding is changed (fix_for): line 6's rows, step 10's first page.
+    assert (refused.value.step, refused.value.page) == ("last_few_years_1", None)
 
 
 @pytest.mark.slow
-def test_the_sheet_prints_every_letter_the_form_prints(session, creditor_payments):
+def test_the_sheet_prints_every_letter_the_form_prints(session, affairs_rows):
     # The sheet prints in the templates' own encoding (R62), so Ł, ł and ı, which WinAnsi
     # lacks, print as themselves in its header and in a cell, as on the form.
     debtor = session.debtor_info
     debtor.first_name, debtor.last_name = "Łucja", "Kıłıç"
     debtor.save()
-    creditor_payments(session, 5, [*MAKES[:4], "Łada Niva ł ı"])
+    affairs_rows(session, 5, [*MAKES[:4], "Łada Niva ł ı"])
     pymupdf.TOOLS.mupdf_warnings()  # clears them
 
     _, pdf = _drawn(session)
@@ -301,7 +304,7 @@ def test_the_sheet_prints_every_letter_the_form_prints(session, creditor_payment
 
 @pytest.mark.slow
 def test_letters_typed_with_their_marks_apart_print_whole_on_the_form_and_the_sheet(
-    session, creditor_payments
+    session, affairs_rows
 ):
     # é typed as e and U+0301 (pasted from a file name, say) is checked, measured and drawn
     # as é, the one letter the font prints, on the form's boxes and on its sheet alike.
@@ -309,7 +312,7 @@ def test_letters_typed_with_their_marks_apart_print_whole_on_the_form_and_the_sh
     debtor.first_name = unicodedata.normalize("NFD", "José")
     debtor.last_name = unicodedata.normalize("NFD", "Muñoz")
     debtor.save()
-    creditor_payments(session, 5, [*MAKES[:4], unicodedata.normalize("NFD", "Citroën Müller")])
+    affairs_rows(session, 5, [*MAKES[:4], unicodedata.normalize("NFD", "Citroën Müller")])
 
     parts, pdf = _drawn(session)
 
@@ -324,7 +327,7 @@ def test_letters_typed_with_their_marks_apart_print_whole_on_the_form_and_the_sh
 
 
 def test_a_name_neither_the_form_nor_the_sheet_can_print_is_refused_on_the_form(
-    session, creditor_payments
+    session, affairs_rows
 ):
     # The form's Debtor 1 box refuses the letter first, with or without a sheet: the box
     # named is one that can't print it.
@@ -343,9 +346,9 @@ def test_a_name_neither_the_form_nor_the_sheet_can_print_is_refused_on_the_form(
         "debtor_info",
         None,
     )
-    payments = creditor_payments(session, 5, MAKES)
+    payments = affairs_rows(session, 5, MAKES)
     assert refusal() == the_form_s  # a fifth vehicle, on a sheet
-    payments[4].delete()
+    answer_financial_affairs(session, l6_rows=payments[:4])
     assert refusal() == the_form_s  # no sheet
 
 
@@ -391,31 +394,31 @@ def test_the_sheet_prints_in_the_templates_own_encoding(schedule_a_b_with_sheet)
 
 
 @pytest.mark.slow
-def test_a_word_as_wide_as_its_cell_prints_and_a_wider_one_is_refused(session, creditor_payments):
+def test_a_word_as_wide_as_its_cell_prints_and_a_wider_one_is_refused(session, affairs_rows):
     # The Make column is 300 pt, 296 pt inside its padding. Thirty-one W's and an i are
     # 294.86 pt at 10 pt and print whole; with a second i, 297.08 pt, Generate refuses them
     # rather than Download failing.
-    payments = creditor_payments(session, 5, [*MAKES[:4], "W" * 31 + "i"])
+    payments = affairs_rows(session, 5, [*MAKES[:4], "W" * 31 + "i"])
 
     _, pdf = _drawn(session)
 
     (sheet,) = read_sheets(pdf, _spec())
     assert sheet.rows == (("3.5", "W" * 31 + "i", "500.00"),)
     assert sheet.crossing == ()
-    payments[4].creditor_name = "W" * 31 + "ii"
-    payments[4].save()
+    payments[4]["name"] = "W" * 31 + "ii"
+    answer_financial_affairs(session, l6_rows=payments)
     with pytest.raises(ValueTooLong) as refused:
         PDFFormFiller().check("schedule_a_b", build_parts("schedule_a_b", session))
     assert refused.value.label == "Make"
     # An overlong word after another word in the cell is refused too.
-    payments[4].creditor_name = "Volvo " + "YV1MS382X42" * 6
-    payments[4].save()
+    payments[4]["name"] = "Volvo " + "YV1MS382X42" * 6
+    answer_financial_affairs(session, l6_rows=payments)
     with pytest.raises(ValueTooLong) as refused:
         PDFFormFiller().check("schedule_a_b", build_parts("schedule_a_b", session))
     assert str(refused.value) == (
         "“Make” is too long to fit on the court form, even in small print. Shorten it."
     )
-    assert (refused.value.step, refused.value.page) == (None, "/sofa")
+    assert (refused.value.step, refused.value.page) == ("last_few_years_1", None)
 
 
 def test_a_row_as_tall_as_a_page_prints_and_a_taller_one_is_refused(schedule_a_b_with_sheet):
@@ -446,13 +449,13 @@ def test_a_row_taller_than_a_page_is_refused_naming_its_tallest_cell(schedule_a_
 
 
 @pytest.mark.slow
-def test_a_sheet_page_is_never_read_as_a_page_of_the_form(session, creditor_payments):
-    creditor_payments(session, 5, MAKES)
+def test_a_sheet_page_is_never_read_as_a_page_of_the_form(session, affairs_rows):
+    rows = affairs_rows(session, 5, MAKES)
     parts, pdf = _drawn(session)
     with pytest.raises(ValueError, match="11 pages, but its parts print 10$"):
         read_drawn("schedule_a_b", pdf)
     # A drawing with no sheet, read with parts that have one.
-    session.sofa_report.creditor_payments.order_by("pk").last().delete()
+    answer_financial_affairs(session, l6_rows=rows[:-1])
     _, unsheeted = _drawn(session)
     with pytest.raises(ValueError, match="10 pages, but its parts print 10 and 1 attached sheet"):
         read_drawn("schedule_a_b", unsheeted, parts)
@@ -460,7 +463,7 @@ def test_a_sheet_page_is_never_read_as_a_page_of_the_form(session, creditor_paym
 
 @pytest.mark.parametrize("only_row_1", [False, True], ids=["every slot", "row 1 only"])
 def test_a_guarded_column_prints_blank_on_the_sheet(
-    schedule_a_b_with_sheet, session, creditor_payments, monkeypatch, only_row_1
+    schedule_a_b_with_sheet, session, affairs_rows, monkeypatch, only_row_1
 ):
     # UPL guard: the value slots print only an asked answer, so they print nothing here,
     # on the form's pages or on the sheet. The guard decides which cells print, never
@@ -470,12 +473,12 @@ def test_a_guarded_column_prints_blank_on_the_sheet(
     path = schedule_a_b_with_sheet / "schedule_a_b.json"
     data = json.loads(path.read_text())
     for f in data["fields"]:
-        if f["repeat"] == "ab_line_3" and f["binding"].endswith("total_paid"):
+        if f["repeat"] == "ab_line_3" and f["binding"].endswith("paid"):
             if not only_row_1 or f["row"] == 1:
                 f.update(source="derived", rule="full_name", legal_review=True)
     path.write_text(json.dumps(data))
     load_schema.cache_clear()
-    creditor_payments(session, 5, MAKES)
+    affairs_rows(session, 5, MAKES)
     # PyMuPDF's own log, where it writes an error it swallows; stdout by default.
     log = StringIO()
     monkeypatch.setattr(pymupdf, "_g_out_log", log)
@@ -495,22 +498,22 @@ def test_a_guarded_column_prints_blank_on_the_sheet(
 
 
 def test_a_refused_sheet_cell_names_where_its_columns_slot_is_fixed(
-    schedule_a_b_with_sheet, session, creditor_payments
+    schedule_a_b_with_sheet, session, affairs_rows
 ):
-    # The Make slots are declared derived (rule full_name) but keep their SOFA binding, so
+    # The Make slots are declared derived (rule full_name) but keep their line 6 binding, so
     # they still print the creditor's name, a state no production schema has. A refusal in
-    # their column takes the slot's own fix (fix_for), that rule's step, not the SOFA page:
+    # their column takes the slot's own fix (fix_for), that rule's step, not step 10's first page:
     # a cell's fix comes from its column's slot, not from the value it prints.
     path = schedule_a_b_with_sheet / "schedule_a_b.json"
     data = json.loads(path.read_text())
     for f in data["fields"]:
-        if f["repeat"] == "ab_line_3" and f["binding"].endswith("creditor_name"):
+        if f["repeat"] == "ab_line_3" and f["binding"].endswith("name"):
             f.update(source="derived", rule="full_name")
     path.write_text(json.dumps(data))
     load_schema.cache_clear()
-    rows = creditor_payments(session, 5, MAKES)
-    rows[4].creditor_name = "Wąsowicz Motors"
-    rows[4].save()
+    rows = affairs_rows(session, 5, MAKES)
+    rows[4]["name"] = "Wąsowicz Motors"
+    answer_financial_affairs(session, l6_rows=rows)
 
     with pytest.raises(UnprintableLetter) as refused:
         PDFFormFiller().check("schedule_a_b", build_parts("schedule_a_b", session))
@@ -522,10 +525,10 @@ def test_a_refused_sheet_cell_names_where_its_columns_slot_is_fixed(
     )
 
 
-def test_a_cell_written_like_a_pdf_operand_prints_as_typed(session, creditor_payments):
+def test_a_cell_written_like_a_pdf_operand_prints_as_typed(session, affairs_rows):
     # PyMuPDF takes a line written "[<…>]" as a ready-made text operand: "[<4F4B>]" would
     # print "OK", and a longer one could draw anything on the page.
-    creditor_payments(session, 5, [*MAKES[:4], "[<4F4B>]"])
+    affairs_rows(session, 5, [*MAKES[:4], "[<4F4B>]"])
 
     _, pdf = _drawn(session)
 
@@ -535,12 +538,12 @@ def test_a_cell_written_like_a_pdf_operand_prints_as_typed(session, creditor_pay
 
 @pytest.mark.slow
 def test_a_form_with_a_copy_and_a_sheet_prints_the_sheet_last(
-    session, schedule_d_with_a_copy_and_a_sheet, creditor_payments
+    session, schedule_d_with_a_copy_and_a_sheet, affairs_rows
 ):
     # Seven payments: Part 1 prints five rows and its sixth and seventh on a sheet; Part 2
     # prints six entries on page 3, the template's last, and its seventh on a copy of it.
     # The pages are the form's, then the copy, then the sheet (spec §6, printing order).
-    creditor_payments(session, 7, MAKES)
+    affairs_rows(session, 7, MAKES)
 
     document = build_parts("schedule_d", session)
     pdf = PDFFormFiller().fill("schedule_d", document)
@@ -635,8 +638,8 @@ _FILED_BEFORE_LINE_WIDTH = [
 ]
 
 
-def test_a_sheet_without_a_line_width_stores_none_and_draws_as_before(session, creditor_payments):
-    creditor_payments(session, 5, MAKES)
+def test_a_sheet_without_a_line_width_stores_none_and_draws_as_before(session, affairs_rows):
+    affairs_rows(session, 5, MAKES)
 
     part = build_parts("schedule_a_b", session)["parts"][1]
 
@@ -654,7 +657,7 @@ def _edit_ab(schemas, change):
 
 
 def test_a_sheet_that_widens_its_line_column_stores_its_width_and_prints_its_lines(
-    session, creditor_payments, schedule_a_b_with_sheet
+    session, affairs_rows, schedule_a_b_with_sheet
 ):
     def widen(schema):
         group = schema["groups"]["ab_line_3"]
@@ -663,7 +666,7 @@ def test_a_sheet_that_widens_its_line_column_stores_its_width_and_prints_its_lin
         group["sheet"]["columns"][0]["width"] = 288
 
     _edit_ab(schedule_a_b_with_sheet, widen)
-    creditor_payments(session, 5, MAKES)
+    affairs_rows(session, 5, MAKES)
 
     document = build_parts("schedule_a_b", session)
     part = document["parts"][1]
@@ -715,7 +718,7 @@ def line_3_of_asset_rows(schedule_a_b_with_sheet):
         slots = [f for f in schema["fields"] if f["repeat"] == "ab_line_3"]
         for slot in slots:
             slot["binding"] = (
-                _MAKE_OF_A_ROW if slot["binding"].endswith("creditor_name") else _VALUE_OF_A_ROW
+                _MAKE_OF_A_ROW if slot["binding"].endswith("name") else _VALUE_OF_A_ROW
             )
         for row, box in _COMMUNITY_BOXES:
             on_row = next(slot for slot in slots if slot["row"] == row)

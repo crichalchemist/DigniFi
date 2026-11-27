@@ -4,13 +4,10 @@ What the Statement of Financial Affairs (Form 107) prints from the intake (step 
 
 Business intent: the filer's name heads every page, so a page separated from the filing
 still says whose it is. Lines 4-6 stay blank until steps 3-4 ask what each prior-income
-row is and whether a payment fell in the 90 days before filing (DIG-167). Until then the
-saved SOFA rows printed the income's description in the gross-income boxes and the amount
-paid as the amount still owed, and a fourth row refused the whole form (DIG-77). The SOFA
-answers stay stored for those steps.
+row is and whether a payment fell in the 90 days before filing (DIG-167). An old SOFA
+report, whose tables stay until 4i, changes nothing the form prints.
 """
 
-import json
 from datetime import date
 from decimal import Decimal
 
@@ -18,12 +15,18 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
-from apps.forms.field_index import index_path
+from apps.forms.registry import build_field_values
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.tests.pdf_readback import read_drawn
-from apps.intake.models import DebtorInfo, IntakeSession, SOFAReport
+from apps.intake.models import (
+    DebtorInfo,
+    IntakeSession,
+    SOFACreditorPayment,
+    SOFAPriorIncome,
+    SOFAReport,
+)
 from apps.intake.tests.builders import answer_petition
 
 User = get_user_model()
@@ -57,31 +60,8 @@ def session(db):
     return session
 
 
-def _sofa(session, prior_income=0, creditor_payments=0):
-    """The SOFA page's answers: Yes to both questions, with this many rows of each."""
-    report = SOFAReport.objects.create(
-        session=session, has_prior_income=True, has_creditor_payments=True
-    )
-    for i in range(prior_income):
-        report.prior_income.create(
-            year=2025 - i, source=f"Wages - Employer {i}", gross_amount=Decimal("38400.00")
-        )
-    for i in range(creditor_payments):
-        report.creditor_payments.create(
-            creditor_name=f"Creditor {i}",
-            total_paid=Decimal("1020.00"),
-            dates_of_payments="Monthly Jan-Mar 2026",
-        )
-
-
 def _fill(session):
     return PDFFormFiller().fill("form_107", resolve(load_schema("form_107"), session))
-
-
-def _boxes_on_lines(*lines):
-    """Every box the field index places on these lines of Form 107."""
-    rows = json.loads(index_path(load_schema("form_107").template_filename).read_text())
-    return {row["full_name"] for row in rows if row["line"] in lines}
 
 
 @pytest.mark.slow
@@ -95,30 +75,22 @@ def test_the_filers_name_heads_every_page(session):
     assert [w.value for w in printed if w.full_name == "Debtor 2"] == [""]
 
 
-@pytest.mark.slow
-def test_saved_sofa_rows_print_nothing_on_lines_4_to_6(session):
-    _sofa(session, prior_income=3, creditor_payments=3)
-    # The SOFA rows only: line 6's check6 prints the filer's own Form 101 line 16 answer (4d-R6),
-    # pinned by test_each_debt_nature_answer_ticks_exactly_one_line_6_box. Answered here, so the
-    # test can't pass only because line 16 is unanswered.
-    answer_petition(session, debt_nature="consumer")
-    sofa_boxes = _boxes_on_lines("4", "5", "6") - {"check6"}
-
-    printed = {
-        w.full_name
-        for w in read_drawn("form_107", _fill(session))
-        if w.full_name in sofa_boxes and (w.value or w.state not in ("", "/Off"))
-    }
-
-    assert printed == set()
-
-
-@pytest.mark.parametrize("kind", ["prior_income", "creditor_payments"])
-def test_a_fourth_sofa_row_no_longer_keeps_form_107_from_printing(session, kind):
-    # Lines 4-6 printed three rows of each, so a fourth refused the form (DIG-77).
-    _sofa(session, **{kind: 4})
-
-    assert resolve(load_schema("form_107"), session)["Debtor 1"] == "Jane Q Doe"
+def test_an_old_sofa_report_alone_changes_nothing_form_107_prints(session):
+    # "Alone": this session has no stored answer:form_107 FormAnswer. Under one of the 28 boxes
+    # the two kept predicates (has_prior_income, has_creditor_payments) gate, such a FormAnswer
+    # still prints while an old report says Yes, as at 228371f, until 4f-ii's T-ii.2 rewrites
+    # those bindings (ledger H6, ruling FR-SOFA-TEST).
+    before = build_field_values("form_107", session)
+    report = SOFAReport.objects.create(
+        session=session, has_prior_income=True, has_creditor_payments=True, has_business=True
+    )
+    SOFAPriorIncome.objects.create(
+        report=report, year=2025, source="Demo wages", gross_amount=Decimal("1000.00")
+    )
+    SOFACreditorPayment.objects.create(
+        report=report, creditor_name="Demo Bank", total_paid=Decimal("700.00")
+    )
+    assert build_field_values("form_107", IntakeSession.objects.get(pk=session.pk)) == before
 
 
 # Line 6 asks Form 101 line 16a again, one box an answer (4d-R7): the filer's own line 16 answer

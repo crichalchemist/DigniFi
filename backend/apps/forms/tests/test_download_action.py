@@ -16,6 +16,7 @@ from apps.forms.schema import load_schema
 from apps.forms.services.pdf_filler import PDFFormFiller, TemplateHasNoForm, UnknownField
 from apps.forms.tests.pdf_readback import read_drawn, read_sheets
 from apps.forms.views import FILED_ON_EARLIER_REVISION
+from apps.intake.tests.builders import answer_financial_affairs
 
 
 def _download(client, form):
@@ -233,7 +234,7 @@ def test_a_filed_form_downloads_exactly_what_was_filed(
     generated_form_factory,
     schedule_d_with_copies,
     schedule_a_b_with_sheet,
-    creditor_payments,
+    affairs_rows,
     form_type,
     parts,
     box,
@@ -243,9 +244,7 @@ def test_a_filed_form_downloads_exactly_what_was_filed(
     form = generated_form_factory(status="generated")
     form.form_type = form_type
     form.save()
-    rows = creditor_payments(
-        form.session, 6, ["Honda", "Toyota", "Subaru", "Mazda", "Volvo", "Kia"]
-    )
+    rows = affairs_rows(form.session, 6, ["Honda", "Toyota", "Subaru", "Mazda", "Volvo", "Kia"])
     regenerate = reverse("generated-forms-regenerate", kwargs={"pk": form.pk})
     mark_filed = reverse("generated-forms-mark-filed", kwargs={"pk": form.pk})
     assert api_client_authed.post(regenerate).status_code == 200
@@ -257,7 +256,9 @@ def test_a_filed_form_downloads_exactly_what_was_filed(
     document = json.loads(filed)
     assert (document["version"], [part["kind"] for part in document["parts"]]) == (2, parts)
     _rename_filer(form, "Marisol")  # the filer's later edits
-    rows[5].delete()  # Schedule D would now print five rows, and no copy; A/B one sheet row
+    answer_financial_affairs(
+        form.session, l6_rows=rows[:5] + rows[6:]
+    )  # Schedule D would now print five rows, and no copy; A/B one sheet row
 
     response = _download(api_client_authed, form)
 
@@ -290,9 +291,7 @@ def _rename_the_group(d):
 def _add_a_column(d):
     columns = d["groups"]["ab_line_3"]["sheet"]["columns"]
     columns[0]["width"] = 200
-    columns.insert(
-        1, {"label": "Model", "binding": "sofa.creditor_payments[].creditor_name", "width": 100}
-    )
+    columns.insert(1, {"label": "Model", "binding": "affairs.l6_rows[].name", "width": 100})
 
 
 def _relabel(sheet):
@@ -312,14 +311,14 @@ def _relabel(sheet):
     ids=["rename the group", "add a column", "narrow a column", "relabel"],
 )
 def test_a_filed_sheet_prints_what_was_filed_whatever_its_schema_says_later(
-    api_client_authed, generated_form_factory, schedule_a_b_with_sheet, creditor_payments, edit
+    api_client_authed, generated_form_factory, schedule_a_b_with_sheet, affairs_rows, edit
 ):
     # A sheet part stores the title and columns it was drawn with (R63), so a schema edit
     # that passes startup changes nothing a filed form prints (spec §6, DIG-155).
     form = generated_form_factory(status="generated")
     form.form_type = "schedule_a_b"
     form.save()
-    creditor_payments(form.session, 6, ["Honda", "Toyota", "Subaru", "Mazda", "Volvo", "Kia"])
+    affairs_rows(form.session, 6, ["Honda", "Toyota", "Subaru", "Mazda", "Volvo", "Kia"])
     regenerate = reverse("generated-forms-regenerate", kwargs={"pk": form.pk})
     mark_filed = reverse("generated-forms-mark-filed", kwargs={"pk": form.pk})
     assert api_client_authed.post(regenerate).status_code == 200
@@ -501,12 +500,12 @@ def test_missing_data_is_a_422_with_its_reason(endpoint, api_client_authed, gene
 
 
 def test_rows_past_the_slots_download_on_a_copy(
-    api_client_authed, generated_form_factory, schedule_d_with_copies, creditor_payments
+    api_client_authed, generated_form_factory, schedule_d_with_copies, affairs_rows
 ):
     form = generated_form_factory(status="generated")
     form.form_type = "schedule_d"
     form.save()
-    rows = creditor_payments(form.session, 6)
+    rows = affairs_rows(form.session, 6)
 
     response = _download(api_client_authed, form)
 
@@ -517,8 +516,8 @@ def test_rows_past_the_slots_download_on_a_copy(
     # Page 2's first slot holds the third row; its copy holds the sixth.
     drawn = read_drawn("schedule_d", response.content, parts)
     assert {(w.copy, w.value) for w in drawn if w.full_name == "Creditors Name_3"} == {
-        (None, rows[2].creditor_name),
-        (1, rows[5].creditor_name),
+        (None, rows[2]["name"]),
+        (1, rows[5]["name"]),
     }
 
 
@@ -535,7 +534,7 @@ def test_a_page_of_guarded_slots_still_takes_its_rows_on_a_copy(
     api_client_authed,
     generated_form_factory,
     schedule_d_with_copies,
-    creditor_payments,
+    affairs_rows,
     count,
     entries,
 ):
@@ -552,7 +551,7 @@ def test_a_page_of_guarded_slots_still_takes_its_rows_on_a_copy(
     form = generated_form_factory(status="generated")
     form.form_type = "schedule_d"
     form.save()
-    rows = creditor_payments(form.session, count)
+    rows = affairs_rows(form.session, count)
 
     response = _download(api_client_authed, form)
 
@@ -562,8 +561,8 @@ def test_a_page_of_guarded_slots_still_takes_its_rows_on_a_copy(
     drawn = read_drawn("schedule_d", response.content, parts)
     assert [w.value for w in drawn if w.full_name in ("undefined_12", "undefined_19")] == entries
     text = "".join(page.get_text() for page in pymupdf.open("pdf", response.content))
-    assert rows[0].creditor_name in text  # page 1's boxes aren't guarded
-    guarded = {r.creditor_name for r in rows[2:]} | {str(r.total_paid) for r in rows[2:]}
+    assert rows[0]["name"] in text  # page 1's boxes aren't guarded
+    guarded = {r["name"] for r in rows[2:]} | {r["paid"] for r in rows[2:]}
     assert [value for value in guarded if value in text] == []
 
 

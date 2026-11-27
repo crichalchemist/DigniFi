@@ -32,6 +32,8 @@ from apps.intake.models import (
     ExpenseInfo,
     IncomeInfo,
     IntakeSession,
+    SOFACreditorPayment,
+    SOFAReport,
     SpouseIncome,
 )
 from apps.intake.petition import (
@@ -1146,7 +1148,7 @@ def test_a_write_that_loaded_the_intake_before_complete_still_reopens_it(complet
 # ── What is not intake data ───────────────────────────────────────────
 
 
-def test_form_answers_and_sofa_leave_a_completed_intake_complete(filer, completed):
+def test_form_answers_leave_a_completed_intake_complete(filer, completed):
     # A waiver filer answers 103B lines 17-19 at /ask/form_103b after Complete; that must not
     # send them back to the wizard.
     client, _ = filer
@@ -1160,7 +1162,6 @@ def test_form_answers_and_sofa_leave_a_completed_intake_complete(filer, complete
                     "binding": "answer:form_103b.paid_anyone_for_services",
                     "value": "Yes",
                 },
-                {"form_type": "form_107", "binding": "sofa.has_prior_income", "value": "True"},
             ]
         },
         format="json",
@@ -1168,11 +1169,23 @@ def test_form_answers_and_sofa_leave_a_completed_intake_complete(filer, complete
     assert answers.status_code == 200
     assert _status(completed) == "completed"
 
-    sofa = client.patch(
-        f"/api/intake/sofa-report/{completed.pk}/", {"has_business": False}, format="json"
+
+def test_the_sofa_report_route_is_gone(filer, completed):
+    client, _ = filer
+    assert client.get(f"/api/intake/sofa-report/{completed.pk}/").status_code == 404
+
+
+def test_a_session_with_an_old_sofa_report_still_deletes(filer, completed):  # P1
+    client, user = filer
+    report = SOFAReport.objects.create(session=completed, has_creditor_payments=True)
+    SOFACreditorPayment.objects.create(
+        report=report, creditor_name="Demo Bank", total_paid=Decimal("100.00")
     )
-    assert sofa.status_code == 200
-    assert _status(completed) == "completed"
+    user.delete()
+    assert (
+        not SOFAReport.objects.exists()
+        and not IntakeSession.objects.filter(pk=completed.pk).exists()
+    )
 
 
 def test_the_filing_fee_leaves_a_completed_intake_complete_and_a_petition_answer_reopens_it(

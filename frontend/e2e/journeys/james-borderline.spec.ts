@@ -13,7 +13,6 @@ import { DocumentsPage } from '../pages/documents.page';
 import { FilingFeePage } from '../pages/filing-fee.page';
 import { ExemptionsPage } from '../pages/exemptions.page';
 import { DashboardPage } from '../pages/dashboard.page';
-import { SOFAPage } from '../pages/sofa.page';
 
 test.describe('James Washington — Borderline', () => {
   test('completes intake near median threshold', async ({ page }) => {
@@ -23,7 +22,6 @@ test.describe('James Washington — Borderline', () => {
     const documents = new DocumentsPage(page);
     const filingFee = new FilingFeePage(page);
     const exemptions = new ExemptionsPage(page);
-    const sofa = new SOFAPage(page);
     const dashboard = new DashboardPage(page);
 
     await landing.goto();
@@ -75,13 +73,11 @@ test.describe('James Washington — Borderline', () => {
     await wizard.fillReview();
     await wizard.completeIntake();
 
-    // James pays the fee in full, then the page continues to the exemptions page. This journey
-    // isn't about financial history, so skip SOFA to reach the forms dashboard. (The SOFA
-    // save path itself is covered by sofa-journey.spec.ts.)
+    // James pays the fee in full, then the page continues to the exemptions page and the forms
+    // dashboard follows it.
     await filingFee.answer(JAMES.filing_fee.payment_choice);
     await exemptions.answer(JAMES.exemptions);
-    await sofa.waitForLoad();
-    await sofa.skipForNow();
+    await page.waitForURL('**/forms');
 
     // Forms generated (passes means test). James pays in full, so Form 103B is not in his
     // packet; his car loan brings Form 108.

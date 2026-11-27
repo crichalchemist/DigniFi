@@ -31,7 +31,12 @@ from apps.forms.schema import (
     is_statement_group,
     number_box_keys,
 )
-from apps.forms.services.answer_records import ANSWER_NAMESPACES, record_step, record_value
+from apps.forms.services.answer_records import (
+    AFFAIRS_MONEY_CELLS,
+    ANSWER_NAMESPACES,
+    record_step,
+    record_value,
+)
 from apps.forms.services.derivations import (
     ANSWER_BOX_RULES,
     DERIVATIONS,
@@ -435,6 +440,8 @@ CLAIM_MONEY_CELLS = frozenset(
     {"amount", "value", "unsecured", "priority_amount", "nonpriority_amount"}
 )
 _CLAIM_BINDING = re.compile(r"claims\.(\w+)\[\]\.(\w+)")
+# Form 107's row cells (4f-i): a group's total may add only AFFAIRS_MONEY_CELLS.
+_AFFAIRS_ROWS_BINDING = re.compile(r"affairs\.(\w+)\[\]\.(\w+)")
 # The Form 108 cells of a secured row that Your Plans asks (4e-R10).
 _PLANS_CELLS = frozenset({"intention", "explain", "explain_1", "explain_2"})
 # Schedule C's slot columns, one getter per ExemptionRow field (3g2 R1).
@@ -455,7 +462,10 @@ def is_money_binding(binding: str) -> bool:
     match = _CLAIM_BINDING.fullmatch(binding.strip())
     if match:
         return match[2] in CLAIM_MONEY_CELLS
-    return binding.strip() == "sofa.creditor_payments[].total_paid"
+    match = _AFFAIRS_ROWS_BINDING.fullmatch(binding.strip())
+    if match:
+        return match[2] in AFFAIRS_MONEY_CELLS
+    return False
 
 
 # Single-box answers, compared case-insensitively (spec §5.1).
@@ -468,8 +478,6 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
     Resolve a schema ``binding``:
 
       - "answer:<form_type>.<key>" → the FormAnswer value, or "" if absent
-      - "sofa.<collection>[].<attr>" → list of str over the collection
-      - "sofa.<attr>" → scalar str on the SOFAReport
       - "household.dependents[].<attr>" → list of str over Schedule J line 2's dependents
       - "assets.line_<key>[].<attr>" or "assets.line_<key>_<kind>[].<attr>" → list of str over
         that line's Schedule A/B rows, or those of that kind, in the form's order
@@ -495,18 +503,6 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
         form_type, _, key = binding[len("answer:") :].partition(".")
         ans = FormAnswer.objects.filter(session=session, form_type=form_type, field_key=key).first()
         return ans.value if ans else ""
-
-    if binding.startswith("sofa."):
-        path = binding[len("sofa.") :]
-        report = getattr(session, "sofa_report", None)
-        if "[]." in path:
-            coll_name, _, attr = path.partition("[].")
-            if report is None:
-                return []
-            return [str(getattr(row, attr)) for row in getattr(report, coll_name).all()]
-        if report is None:
-            return ""
-        return str(getattr(report, path))
 
     if binding.startswith("household."):
         collection, _, attr = binding[len("household.") :].partition("[].")
@@ -631,8 +627,6 @@ def binding_fix(binding: str) -> dict[str, str]:
         # preparer prints on 106Dec and 107 too.
         form_type, _, _ = binding[len("answer:") :].partition(".")
         return {"page": f"/ask/{form_type}"}
-    if binding.startswith("sofa."):
-        return {"page": "/sofa"}
     if binding.startswith(("household.", "income.")):
         return {"step": "income_info"}
     if binding.startswith("assets."):
@@ -1002,12 +996,6 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
     _ingested_cache = {
         agg.ingest_key: agg.value for agg in IngestedAggregate.objects.filter(session=session)
     }
-
-    # Prefetch SOFAReport collections to avoid N+1 in repeat group resolution
-    report = getattr(session, "sofa_report", None)
-    if report is not None:
-        _ = list(report.prior_income.all())
-        _ = list(report.creditor_payments.all())
 
     # Batch-fetch all FormAnswer rows for this session once (avoids per-predicate DB hits)
     _form_answers = {(fa.field_key): fa for fa in FormAnswer.objects.filter(session=session)}

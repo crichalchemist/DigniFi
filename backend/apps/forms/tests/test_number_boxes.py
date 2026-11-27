@@ -122,11 +122,11 @@ def test_no_box_but_a_number_box_takes_the_slack():
 
 @pytest.mark.slow
 def test_schedule_d_prints_its_twelfth_secured_debt(
-    schedule_d_with_copies, generated_form_factory, creditor_payments
+    schedule_d_with_copies, generated_form_factory, affairs_rows
 ):
     # Row 12 lands in undefined_12, the narrow box, on the third copy of page 2.
     session = generated_form_factory().session
-    rows = creditor_payments(session, 12)
+    rows = affairs_rows(session, 12)
 
     document = build_parts("schedule_d", session)
     pdf = PDFFormFiller().fill("schedule_d", document)
@@ -134,16 +134,16 @@ def test_schedule_d_prints_its_twelfth_secured_debt(
 
     printed = {(w.copy, w.full_name): w.value for w in drawn}
     assert printed[(3, "undefined_12")] == "2.12"
-    assert printed[(3, "Creditors Name_3")] == rows[11].creditor_name
+    assert printed[(3, "Creditors Name_3")] == rows[11]["name"]
 
 
 @pytest.mark.slow
 def test_schedule_g_prints_its_tenth_contract(
-    schedule_g_numbered, generated_form_factory, creditor_payments
+    schedule_g_numbered, generated_form_factory, affairs_rows
 ):
     # The blank form's "fill 2.10" holds one letter: a filer with ten contracts was refused.
     session = generated_form_factory().session
-    creditor_payments(session, 14)
+    affairs_rows(session, 14)
 
     document = build_parts("schedule_g", session)
     pdf = PDFFormFiller().fill("schedule_g", document)
@@ -217,7 +217,7 @@ def test_a_number_that_cant_fit_is_refused_in_plain_words(
         "This form has more entries than its boxes can hold."
     )
     # The fix is where the group's rows come from, and no index label reaches the filer.
-    assert (refused.step, refused.page) == (None, "/sofa")
+    assert (refused.step, refused.page) == ("last_few_years_1", None)
     index_labels = {row.label for rows in load_index("form_b106d.pdf").values() for row in rows}
     assert refused.label not in index_labels
     assert not any(label and label in str(refused) for label in index_labels)
@@ -227,7 +227,7 @@ def test_a_total_too_wide_for_its_box_is_refused_in_plain_words(schedule_d_with_
     refused = _refused_copy("schedule_d", "undefined_23", "9" * 40 + ".00")
 
     assert refused.label == "The total"
-    assert (refused.step, refused.page) == (None, "/sofa")
+    assert (refused.step, refused.page) == ("last_few_years_1", None)
     assert str(refused).endswith("Check the amounts you entered.")
 
 
@@ -237,7 +237,7 @@ def test_the_dashboard_gets_a_number_refusals_sentence_and_its_fix(schedule_d_wi
     body, code = _failure("schedule_d", refused)
 
     assert code == 422
-    assert body["page"] == "/sofa"
+    assert body["step"] == "last_few_years_1"
     assert "entry number" in body["error"]
 
 

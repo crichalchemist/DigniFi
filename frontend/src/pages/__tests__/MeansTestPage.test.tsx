@@ -40,7 +40,7 @@ import {
 import { UPL_MEANS_TEST_DISCLAIMER, UPL_WIZARD_DISCLAIMER } from '../../constants/upl';
 import type { MeansPage } from '../../types/api';
 import {
-  SOFA,
+  DASHBOARD,
   URL,
   field,
   gapRegion,
@@ -193,7 +193,7 @@ describe('MeansTestPage', () => {
     expect(names(first)).toEqual(['', 'Honda CR-V EX 2021', 'Demo leased car']);
   });
 
-  it("a filer the form doesn't apply to sees no heading before the page moves to /sofa", async () => {
+  it("a filer the form doesn't apply to goes on to the forms dashboard, with no heading first", async () => {
     const headings: string[] = [];
     const observer = new MutationObserver((records) => {
       for (const record of records) {
@@ -211,7 +211,7 @@ describe('MeansTestPage', () => {
     expect(await screen.findByText(MEANS_PAGE_LOADING)).toBeInTheDocument();
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
     release();
-    await screen.findByText(SOFA);
+    await screen.findByText(DASHBOARD);
     observer.disconnect();
     expect(headings).toEqual([]);
   });
@@ -224,7 +224,7 @@ describe('MeansTestPage', () => {
     expect(within(gapRegion()).getByText(why)).toBeInTheDocument();
     expect(screen.queryAllByRole('radio')).toEqual([]);
     await pressContinue();
-    await screen.findByText(SOFA);
+    await screen.findByText(DASHBOARD);
     expect(sent).toEqual([]);
   });
 
@@ -275,7 +275,7 @@ describe('MeansTestPage', () => {
     await waitFor(() => expect(sent).toHaveLength(1));
     expect(sent[0].line_16).toBe('100.00');
     expect(sent[0].line_17).toBeNull();
-    expect(screen.queryByText(SOFA)).not.toBeInTheDocument();
+    expect(screen.queryByText(DASHBOARD)).not.toBeInTheDocument();
     expect(within(gapRegion()).getByText(MEANS_GAP_LINE_3)).toBeInTheDocument();
     expect(field('means_line_16').value).toBe('100');
   });
@@ -289,12 +289,12 @@ describe('MeansTestPage', () => {
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 
-  it('with no gap and the same result, Continue goes to /sofa', async () => {
+  it('with no gap and the same result, Continue goes to the forms dashboard', async () => {
     const sent = serve(priyaPage());
     renderPage();
     await ready();
     await pressContinue();
-    await screen.findByText(SOFA);
+    await screen.findByText(DASHBOARD);
     expect(sent).toHaveLength(1);
   });
 
@@ -306,7 +306,7 @@ describe('MeansTestPage', () => {
     expect(gapRegion().textContent).toBe('');
     await pressContinue();
     expect(await within(gapRegion()).findByText(sentence)).toBeInTheDocument();
-    expect(screen.queryByText(SOFA)).not.toBeInTheDocument();
+    expect(screen.queryByText(DASHBOARD)).not.toBeInTheDocument();
   });
 
   it('shows the gap beside Continue once anything is answered', async () => {
@@ -330,7 +330,7 @@ describe('MeansTestPage', () => {
     for (const radio of screen.getAllByRole('radio')) expect(radio).toBeDisabled();
     expect(sent).toHaveLength(1);
     release();
-    await screen.findByText(SOFA);
+    await screen.findByText(DASHBOARD);
     expect(sent).toHaveLength(1);
   });
 
@@ -341,7 +341,7 @@ describe('MeansTestPage', () => {
     typeAmount('means_line_17', '5');
     await pressContinue();
     expect(await screen.findByRole('alert')).toHaveTextContent(MEANS_PAGE_SAVE_FAILED);
-    expect(screen.queryByText(SOFA)).not.toBeInTheDocument();
+    expect(screen.queryByText(DASHBOARD)).not.toBeInTheDocument();
     expect(field('means_line_16').value).toBe('2300.00');
     expect(field('means_line_17').value).toBe('5');
     expect(radio('means_line_43', 'no')).toBeChecked();
@@ -388,13 +388,13 @@ describe('MeansTestPage', () => {
     expect(await screen.findByRole('alert', {}, { timeout: 10000 })).toHaveTextContent(
       MEANS_PAGE_SAVE_FAILED
     );
-    expect(screen.queryByText(SOFA)).not.toBeInTheDocument();
+    expect(screen.queryByText(DASHBOARD)).not.toBeInTheDocument();
     expect(field('means_line_17').value).toBe('5');
     expect(radio('means_line_34', 'yes')).toBeChecked();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   }, 20000);
 
-  it('a reply that says the form no longer applies moves to /sofa without showing a heading', async () => {
+  it('a reply that says the form no longer applies moves to the forms dashboard without showing a heading', async () => {
     serve(priyaPage(), { reply: { ...priyaPage(), applies: false } });
     renderPage();
     await ready();
@@ -411,7 +411,7 @@ describe('MeansTestPage', () => {
     });
     observer.observe(document.body, { childList: true, subtree: true });
     await pressContinue();
-    await screen.findByText(SOFA);
+    await screen.findByText(DASHBOARD);
     observer.disconnect();
     expect(headings).toEqual([]);
   });
@@ -425,13 +425,13 @@ describe('MeansTestPage', () => {
       await pressContinue();
       // The page has the reply and has not left: it draws nothing, not even its title
       await waitFor(() => expect(screen.queryAllByRole('heading')).toEqual([]));
-      expect(screen.queryByText(SOFA)).toBeNull();
+      expect(screen.queryByText(DASHBOARD)).toBeNull();
     } finally {
       navigation.held = false;
     }
   });
 
-  it("a reply that can't say whether the form applies shows why, and Continue goes to /sofa", async () => {
+  it("a reply that can't say whether the form applies shows why, and Continue goes to the forms dashboard", async () => {
     const why = 'Enter your income by source on the Income step.';
     const sent = serve(priyaPage(), {
       reply: { ...priyaPage(), applies: null, applies_gap: why },
@@ -440,9 +440,9 @@ describe('MeansTestPage', () => {
     await ready();
     await pressContinue();
     await waitFor(() => expect(within(gapRegion()).getByText(why)).toBeInTheDocument());
-    expect(screen.queryByText(SOFA)).not.toBeInTheDocument();
+    expect(screen.queryByText(DASHBOARD)).not.toBeInTheDocument();
     await pressContinue();
-    await screen.findByText(SOFA);
+    await screen.findByText(DASHBOARD);
     expect(sent).toHaveLength(1);
   });
 
@@ -516,7 +516,7 @@ describe('MeansTestPage', () => {
     expect(gapRegion()).toHaveTextContent(
       'Enter the amount for line 16. Enter 0 if you have none.'
     );
-    expect(screen.queryByText(SOFA)).not.toBeInTheDocument();
+    expect(screen.queryByText(DASHBOARD)).not.toBeInTheDocument();
   });
 
   it('a figure the server would refuse stays in its box with its reason, and goes as unanswered', async () => {
@@ -589,14 +589,14 @@ describe('MeansTestPage', () => {
     expect(within(result()).getByText(MEANS_OUTCOME_ANSWER_PAGE)).toBeInTheDocument();
     await pressContinue();
     expect(await within(gapRegion()).findByText(MEANS_RESULT_CHANGED)).toBeInTheDocument();
-    expect(screen.queryByText(SOFA)).not.toBeInTheDocument();
+    expect(screen.queryByText(DASHBOARD)).not.toBeInTheDocument();
     expect(within(result()).queryByText(MEANS_OUTCOME_ANSWER_PAGE)).not.toBeInTheDocument();
     expect(within(result()).getByText(MEANS_OUTCOME_PRESUMPTION)).toBeInTheDocument();
     expect(within(result()).getByRole('link', { name: MEANS_LINE_43_LINK })).toBeInTheDocument();
     expect(result()).toHaveFocus();
 
     await pressContinue();
-    await screen.findByText(SOFA);
+    await screen.findByText(DASHBOARD);
     expect(sent).toHaveLength(2);
   });
 
@@ -947,7 +947,7 @@ describe('after the intake changes elsewhere (F7)', () => {
     await pressContinue();
     expect(await screen.findByRole('region', { name: 'Demo Truck Loan' })).toBeInTheDocument();
     expect(selectNamed('means_debt_12_payments_left')).not.toBeNull();
-    expect(screen.queryByText(SOFA)).toBeNull();
+    expect(screen.queryByText(DASHBOARD)).toBeNull();
   });
 });
 
@@ -978,11 +978,11 @@ describe('a changed result is always stopped on (F9, F14)', () => {
 
     await pressContinue();
     expect(await within(gapRegion()).findByText(MEANS_RESULT_CHANGED)).toBeInTheDocument();
-    expect(screen.queryByText(SOFA)).toBeNull();
+    expect(screen.queryByText(DASHBOARD)).toBeNull();
     expect(result()).toHaveFocus();
 
     await pressContinue();
-    await screen.findByText(SOFA);
+    await screen.findByText(DASHBOARD);
     expect(sent).toHaveLength(3);
   });
 
@@ -994,7 +994,7 @@ describe('a changed result is always stopped on (F9, F14)', () => {
     await ready();
     await pressContinue();
     expect(await within(gapRegion()).findByText(MEANS_RESULT_CHANGED)).toBeInTheDocument();
-    expect(screen.queryByText(SOFA)).toBeNull();
+    expect(screen.queryByText(DASHBOARD)).toBeNull();
     expect(within(result()).getByText(MEANS_OUTCOME_NO_PRESUMPTION)).toBeInTheDocument();
   });
 
@@ -1010,7 +1010,7 @@ describe('a changed result is always stopped on (F9, F14)', () => {
     });
     await waitFor(() => expect(sent).toHaveLength(1));
     release();
-    await screen.findByText(SOFA);
+    await screen.findByText(DASHBOARD);
     expect(sent).toHaveLength(1);
   });
 });
